@@ -1221,14 +1221,20 @@
         return matchesTag && matchesSearch;
       });
 
-      // Si le filtre est "interne", on masque la grille des jeux externes
-      if (currentFilter === 'interne') {
+      const sectionInternes = document.getElementById('sectionInternes');
+
+      // Gestion de l'affichage de la section Jeux Internes
+      if (currentFilter === 'externe' || currentFilter === 'favoris') {
+        sectionInternes.classList.add('hidden');
+        container.parentElement.classList.remove('hidden');
+      } else if (currentFilter === 'interne') {
+        sectionInternes.classList.remove('hidden');
         container.parentElement.classList.add('hidden');
-        document.getElementById('sectionInternes').classList.remove('hidden');
         return;
       } else {
+        // "all" : on affiche les deux sections
+        sectionInternes.classList.remove('hidden');
         container.parentElement.classList.remove('hidden');
-        document.getElementById('sectionInternes').classList.remove('hidden');
       }
 
       container.innerHTML = filtered.map(game => {
