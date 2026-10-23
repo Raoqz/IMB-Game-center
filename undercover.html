@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Undercover (L'Imposteur) — IMB Game Center</title>
+  <title>Undercover — IMB Game Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
@@ -69,7 +69,7 @@
       letter-spacing: 0.02em;
     }
 
-    /* Eventail de cartes au-dessus du titre */
+    /* Éventail de 4 cartes au-dessus du titre */
     .fan-cards {
       position: relative;
       height: 82px;
@@ -130,79 +130,13 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-  <!-- ================= AUTH OVERLAY (SI NON CONNECTÉ) ================= -->
-  <div id="authOverlay" class="hidden fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 relative max-h-[95vh] overflow-y-auto custom-scrollbar">
-      <div class="flex items-center justify-between mb-5">
-        <div class="flex items-center gap-2.5">
-          <div class="w-11 h-11 rounded-2xl bg-[#fed72d] border-[2.5px] border-[#12131a] flex items-center justify-center text-xl shadow-[2px_3px_0px_#12131a]">
-            🕵️‍♂️
-          </div>
-          <div>
-            <span class="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#12131a] bg-[#fed72d] border-2 border-[#12131a] px-2 py-0.5 rounded-full inline-block shadow-[1px_1.5px_0px_#12131a]">Accès Promo</span>
-            <h1 class="text-2xl font-black italic tracking-tight text-[#12131a] leading-none mt-1">UNDERCOVER</h1>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-4">
-        <button type="button" onclick="switchAuthTab('login')" id="tabBtnLogin" class="neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl">Connexion</button>
-        <button type="button" onclick="switchAuthTab('register')" id="tabBtnRegister" class="bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all">Inscription</button>
-      </div>
-
-      <div id="authErrorBanner" class="hidden mb-4 p-3 bg-rose-50 border-2 border-rose-600 rounded-xl text-rose-700 text-xs font-bold"></div>
-
-      <!-- Connexion -->
-      <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-3.5">
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Ton Tag *</label>
-          <div class="flex items-center">
-            <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
-            <input type="text" id="loginTag" required placeholder="sara" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] focus:outline-none focus:bg-white">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe *</label>
-          <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-        </div>
-        <button type="submit" id="btnSubmitLogin" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
-          <span>Se connecter & Jouer</span>
-          <span>🔑</span>
-        </button>
-      </form>
-
-      <!-- Inscription -->
-      <form id="formRegister" onsubmit="handleRegister(event)" class="space-y-3.5 hidden">
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (avec ton prénom) *</label>
-          <input type="text" id="regNickname" required placeholder="Ex : Thomas S." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a]">
-        </div>
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Tag unique *</label>
-          <div class="flex items-center">
-            <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
-            <input type="text" id="regTag" required placeholder="thomas" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a]">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe simple *</label>
-          <input type="password" id="regPassword" required placeholder="Ex: 1234" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a]">
-        </div>
-        <button type="submit" id="btnSubmitReg" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
-          <span>Créer mon compte & Jouer</span>
-          <span>🚀</span>
-        </button>
-      </form>
-    </div>
-  </div>
-
   <!-- ================= TOP NAVBAR (STYLE CAPTURE PRÉSIDENT) ================= -->
   <header id="topNavbar" class="bg-[#121526] border-b-[3px] border-[#fed72d] sticky top-0 z-40 text-white transition-all">
     <div class="max-w-[1440px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
       
-      <!-- Gauche : Bouton Retour + Nom du jeu -->
+      <!-- Gauche : Bouton Retour vers index.html + Nom du jeu -->
       <div class="flex items-center gap-3">
-        <a href="index.html" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 no-underline">
+        <a href="index.html" onclick="window.location.href='index.html'" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 no-underline">
           <span>←</span>
           <span>Retour</span>
         </a>
@@ -213,7 +147,7 @@
       <div class="flex items-center gap-2">
         <button onclick="announcePartyFromHeader()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
           <span>📣</span>
-          <span class="hidden xs:inline sm:inline">Annoncer ma partie</span>
+          <span class="hidden sm:inline">Annoncer ma partie</span>
         </button>
 
         <div class="hidden sm:flex items-center gap-1.5 bg-white text-[#12131a] px-3 py-1.5 rounded-xl border-[2.5px] border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a]">
@@ -240,26 +174,26 @@
     </div>
   </header>
 
-  <!-- ================= VUE 1 : LOBBY CENTRAL (STYLE PRÉSIDENT) ================= -->
+  <!-- ================= VUE 1 : LOBBY CENTRAL (STYLE CAPTURE PRÉSIDENT) ================= -->
   <main id="viewLobby" class="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
     
-    <!-- Éventail de 4 cartes style Président -->
+    <!-- Éventail de 4 cartes identique à la capture -->
     <div class="fan-cards">
       <div class="playing-card card-1 text-rose-600">
-        <div class="text-xs leading-none">C<br><span class="text-[10px]">♥</span></div>
-        <div class="text-center text-lg">🕵️‍♂️</div>
+        <div class="text-xs leading-none">D<br><span class="text-[10px]">♥</span></div>
+        <div class="text-center text-base">♥</div>
       </div>
       <div class="playing-card card-2 text-[#12131a]">
         <div class="text-xs leading-none">2<br><span class="text-[10px]">♠</span></div>
-        <div class="text-center text-lg">🎭</div>
+        <div class="text-center text-base">♠</div>
       </div>
       <div class="playing-card card-3 text-[#12131a]">
         <div class="text-xs leading-none">A<br><span class="text-[10px]">♠</span></div>
-        <div class="text-center text-lg">🤫</div>
+        <div class="text-center text-base">♠</div>
       </div>
       <div class="playing-card card-4 text-[#12131a]">
-        <div class="text-xs leading-none">I<br><span class="text-[10px]">♣</span></div>
-        <div class="text-center text-lg">🔍</div>
+        <div class="text-xs leading-none">D<br><span class="text-[10px]">♣</span></div>
+        <div class="text-center text-base">♣</div>
       </div>
     </div>
 
@@ -274,7 +208,7 @@
     </p>
 
     <!-- Carte Blanche Centrale (Créer / Rejoindre / Revenir) -->
-    <div class="neo-box bg-white max-w-md w-full p-5 sm:p-6 space-y-4">
+    <div class="neo-box bg-white max-w-lg w-full p-5 sm:p-6 space-y-4">
       
       <p class="text-xs sm:text-sm font-bold text-slate-700">
         Salut <strong id="lobbyUserGreeting" class="font-black text-[#12131a]">Joueur</strong> 👋 Crée une salle ou rejoins tes potes.
@@ -286,23 +220,6 @@
         <span>Créer une salle</span>
       </button>
 
-      <!-- Options rapides des packs de mots pour la création -->
-      <div class="bg-[#f8fafc] border-2 border-[#12131a] rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
-        <div class="flex items-center gap-3">
-          <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" id="chkWordsClassic" checked class="w-3.5 h-3.5 accent-[#12131a] rounded">
-            <span>Mots classiques</span>
-          </label>
-          <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" id="chkWordsCustom" checked class="w-3.5 h-3.5 accent-[#12131a] rounded">
-            <span>Mots promo</span>
-          </label>
-        </div>
-        <button type="button" onclick="openCustomWordsModal()" class="text-blue-600 hover:underline font-black text-[11px]">
-          + Ajouter un mot
-        </button>
-      </div>
-
       <!-- Séparateur "ou" -->
       <div class="flex items-center gap-3 py-0.5">
         <div class="flex-1 h-px bg-slate-200"></div>
@@ -311,22 +228,22 @@
       </div>
 
       <!-- Champ CODE + Bouton Rejoindre -->
-      <form onsubmit="event.preventDefault(); joinImposteurRoomFromInput();" class="flex gap-2">
+      <form onsubmit="event.preventDefault(); joinImposteurRoomFromInput();" class="flex gap-2.5">
         <input type="text" id="imposteurJoinCodeInput" placeholder="C O D E" maxlength="12" class="flex-1 min-w-0 bg-white border-[2.5px] border-[#12131a] rounded-xl px-3 py-2.5 text-center font-mono font-black text-sm uppercase tracking-[0.2em] placeholder-slate-400 focus:outline-none focus:bg-[#fffdf0]">
         <button type="submit" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black">
           Rejoindre
         </button>
       </form>
 
-      <!-- Bouton Revenir dans la dernière salle (affiché dynamiquement) -->
-      <button id="btnReturnLastRoom" onclick="rejoinLastImposteurRoom()" class="hidden w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5">
+      <!-- Bouton Revenir dans la dernière salle -->
+      <button id="btnReturnLastRoom" onclick="rejoinLastImposteurRoom()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5">
         <span>↩</span>
-        <span id="returnLastRoomText">Revenir dans la salle IMPO</span>
+        <span id="returnLastRoomText">Revenir dans la salle JYHR</span>
       </button>
 
     </div>
 
-    <!-- Boutons pilules sous la carte : Les règles & Mots de la promo -->
+    <!-- Bouton "Les règles" sous la carte -->
     <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
       <button onclick="openRulesModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
         <span>📖</span>
@@ -334,7 +251,7 @@
       </button>
       <button onclick="openCustomWordsModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
         <span>✨</span>
-        <span>Boîte à mots de la promo</span>
+        <span>Mots de la promo</span>
       </button>
     </div>
 
@@ -352,7 +269,7 @@
         </button>
         <div class="bg-[#fed72d] border-2 border-[#12131a] rounded-2xl px-3.5 py-1 shadow-[2px_3px_0px_#12131a] text-center">
           <span class="block text-[9px] font-black uppercase text-[#12131a]/70 leading-none">Salle</span>
-          <span id="imposteurRoomBadge" class="block text-base sm:text-lg font-mono font-black text-[#12131a] leading-tight tracking-wider">IMPO-0000</span>
+          <span id="imposteurRoomBadge" class="block text-base sm:text-lg font-mono font-black text-[#12131a] leading-tight tracking-wider">JYHR</span>
         </div>
         <div>
           <h3 class="text-sm sm:text-base font-black text-[#12131a] leading-tight">Salon Undercover</h3>
@@ -379,8 +296,8 @@
       <!-- COLONNE GAUCHE : TABLE DE POKER & SAISIE D'INDICE (8 COLS) -->
       <div class="lg:col-span-8 flex flex-col gap-4">
 
-        <!-- Action Tour par Tour : Entrée du mot indice (affiché en haut quand c'est notre tour) -->
-        <div id="imposteurTurnInputArea" class="hidden neo-box-sm bg-[#fed72d] p-3.5 animate-bounce-once">
+        <!-- Action Tour par Tour : Entrée du mot indice -->
+        <div id="imposteurTurnInputArea" class="hidden neo-box-sm bg-[#fed72d] p-3.5">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-xs sm:text-sm font-black text-[#12131a] flex items-center gap-1.5">
               <span>🗣️</span>
@@ -455,7 +372,7 @@
         <div class="neo-box bg-white overflow-hidden">
           <div class="bg-[#fed72d] px-4 py-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between">
             <span class="text-xs sm:text-sm font-black text-[#12131a] uppercase tracking-tight">📋 Récapitulatif du Salon</span>
-            <span id="summaryPlayersCountBadge" class="text-[11px] font-mono font-black bg-white border-2 border-[#12131a] px-2 py-0.5 rounded-full">0 joueur</span>
+            <span id="summaryPlayersCountBadge" class="text-[11px] font-mono font-black bg-white border-2 border-[#12131a] px-2 py-0.5 rounded-full">1 joueur</span>
           </div>
 
           <div class="p-3.5 space-y-3">
@@ -476,6 +393,23 @@
                 <span id="summaryRoundsCount" class="text-sm font-black text-[#12131a] block">2 tours</span>
                 <span class="text-[10px] font-bold text-slate-600 block">Avant vote</span>
               </div>
+            </div>
+
+            <!-- Choix des packs de mots -->
+            <div class="bg-[#f8fafc] border-2 border-[#12131a] rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" id="chkWordsClassic" checked onchange="updateRoomSettings()" class="w-3.5 h-3.5 accent-[#12131a] rounded">
+                  <span>Mots classiques</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" id="chkWordsCustom" checked onchange="updateRoomSettings()" class="w-3.5 h-3.5 accent-[#12131a] rounded">
+                  <span>Mots promo</span>
+                </label>
+              </div>
+              <button type="button" onclick="openCustomWordsModal()" class="text-blue-600 hover:underline font-black text-[11px]">
+                + Ajouter un mot
+              </button>
             </div>
 
             <!-- Liste synthétique des joueurs présents -->
@@ -655,7 +589,7 @@
 
   <script>
     /* =========================================================
-       FIREBASE CONFIGURATION & SESSION PARTAGÉE
+       FIREBASE CONFIGURATION & PARTAGE DE SESSION (index.html -> undercover.html)
        ========================================================= */
     const firebaseConfig = {
       apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
@@ -727,99 +661,38 @@
       return a;
     }
 
-    /* ---------------- INITIALISATION ---------------- */
+    /* ---------------- INITIALISATION SANS MOT DE PASSE ---------------- */
     window.addEventListener('DOMContentLoaded', () => {
-      checkAuthSession();
+      loadSharedSession();
       listenToLiveUsersCount();
       listenToFloatingPromoChat();
       checkLastSavedRoomButton();
+      checkImposteurRoomFromHash();
     });
 
     window.addEventListener('hashchange', checkImposteurRoomFromHash);
 
-    function checkAuthSession() {
+    // Récupère automatiquement la session créée sur index.html via localStorage
+    function loadSharedSession() {
       const stored = localStorage.getItem(STORAGE_AUTH_SESSION);
-      const overlay = document.getElementById('authOverlay');
-
       if (stored) {
-        currentUser = JSON.parse(stored);
-        overlay.classList.add('hidden');
-        document.getElementById('lobbyUserGreeting').textContent = currentUser.nickname;
-        checkImposteurRoomFromHash();
-      } else {
-        overlay.classList.remove('hidden');
-      }
-    }
-
-    /* ---------------- AUTH FALLBACK ---------------- */
-    function switchAuthTab(tab) {
-      const formReg = document.getElementById('formRegister');
-      const formLog = document.getElementById('formLogin');
-      const btnReg = document.getElementById('tabBtnRegister');
-      const btnLog = document.getElementById('tabBtnLogin');
-      document.getElementById('authErrorBanner').classList.add('hidden');
-
-      if (tab === 'register') {
-        formReg.classList.remove('hidden');
-        formLog.classList.add('hidden');
-        btnReg.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
-        btnLog.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
-      } else {
-        formLog.classList.remove('hidden');
-        formReg.classList.add('hidden');
-        btnLog.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
-        btnReg.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
-      }
-    }
-
-    function showAuthError(msg) {
-      const banner = document.getElementById('authErrorBanner');
-      banner.textContent = msg;
-      banner.classList.remove('hidden');
-    }
-
-    async function handleLogin(e) {
-      e.preventDefault();
-      const tag = document.getElementById('loginTag').value.trim().toLowerCase().replace(/^@/, '');
-      const password = document.getElementById('loginPassword').value;
-      try {
-        const snap = await db.ref(`users/${tag}`).get();
-        const userData = snap.val();
-        if (!userData || userData.password !== password) {
-          showAuthError("Identifiants incorrects ou compte inexistant.");
-          return;
+        try {
+          currentUser = JSON.parse(stored);
+        } catch (e) {
+          currentUser = null;
         }
-        localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(userData));
-        currentUser = userData;
-        checkAuthSession();
-        showToast(`Salut ${userData.nickname} !`, '👋');
-      } catch (err) {
-        showAuthError("Erreur : " + err.message);
       }
-    }
-
-    async function handleRegister(e) {
-      e.preventDefault();
-      const nickname = document.getElementById('regNickname').value.trim();
-      const tag = document.getElementById('regTag').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      const password = document.getElementById('regPassword').value;
-      if (!nickname || !tag || !password) return;
-
-      try {
-        const exists = (await db.ref(`users/${tag}`).get()).exists();
-        if (exists) {
-          showAuthError(`Le tag @${tag} est déjà pris.`);
-          return;
-        }
-        const newUser = { nickname, tag, password, avatarEmoji: '🕵️‍♂️', flagEmoji: '🇫🇷', createdAt: Date.now() };
-        await db.ref(`users/${tag}`).set(newUser);
-        localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(newUser));
-        currentUser = newUser;
-        checkAuthSession();
-        showToast(`Compte créé, bienvenue ${nickname} !`, '🚀');
-      } catch (err) {
-        showAuthError("Erreur : " + err.message);
+      if (!currentUser || !currentUser.tag) {
+        // Profil invité automatique si la page est ouverte directement sans passer par index.html
+        const randId = Math.floor(100 + Math.random() * 900);
+        currentUser = {
+          nickname: 'Joueur ' + randId,
+          tag: 'joueur_' + randId,
+          avatarEmoji: '🕵️‍♂️',
+          flagEmoji: '🇫🇷'
+        };
       }
+      document.getElementById('lobbyUserGreeting').textContent = currentUser.nickname;
     }
 
     /* ---------------- BARRE SUPÉRIEURE ACTIONS ---------------- */
@@ -869,36 +742,24 @@
         btn.classList.add('hidden');
         return;
       }
-      try {
-        const snap = await db.ref(`rooms_imposteur/${savedCode}`).get();
-        if (snap.exists()) {
-          txt.textContent = `Revenir dans la salle ${savedCode}`;
-          btn.classList.remove('hidden');
-        } else {
-          localStorage.removeItem(STORAGE_LAST_IMPO_ROOM);
-          btn.classList.add('hidden');
-        }
-      } catch (e) {
-        btn.classList.add('hidden');
-      }
+      txt.textContent = `Revenir dans la salle ${savedCode}`;
+      btn.classList.remove('hidden');
     }
 
     function rejoinLastImposteurRoom() {
       const savedCode = localStorage.getItem(STORAGE_LAST_IMPO_ROOM);
       if (savedCode) {
         enterImposteurRoom(savedCode);
+      } else {
+        showToast("Aucune salle récente enregistrée !", '⚠️');
       }
     }
 
     /* ---------------- CRÉATION & CONNEXION AU SALON ---------------- */
     async function createImposteurRoom() {
-      if (!currentUser) return;
+      if (!currentUser) loadSharedSession();
       const classic = document.getElementById('chkWordsClassic').checked;
       const custom = document.getElementById('chkWordsCustom').checked;
-      if (!classic && !custom) {
-        showToast('Coche au moins un pack de mots (classiques ou promo) !', '⚠️');
-        return;
-      }
 
       const btn = document.getElementById('btnCreateImposteurRoom');
       btn.disabled = true;
@@ -908,8 +769,7 @@
         for (let i = 0; i < 10 && !code; i++) {
           let shortCode = '';
           for (let c = 0; c < 4; c++) shortCode += chars[Math.floor(Math.random() * chars.length)];
-          const candidate = 'IMPO-' + shortCode;
-          if (!(await db.ref(`rooms_imposteur/${candidate}`).get()).exists()) code = candidate;
+          if (!(await db.ref(`rooms_imposteur/${shortCode}`).get()).exists()) code = shortCode;
         }
         if (!code) throw new Error('no-code');
 
@@ -917,17 +777,29 @@
           status: 'waiting',
           hostTag: currentUser.tag,
           hostNick: currentUser.nickname,
-          settings: { classic, custom },
+          settings: { classic: classic || true, custom: custom || true },
           createdAt: firebase.database.ServerValue.TIMESTAMP
         });
 
         await enterImposteurRoom(code);
         showToast(`Salle ${code} créée ! Clique sur "Annoncer ma partie" pour inviter la promo.`, '🃏');
       } catch (err) {
-        showToast('Impossible de créer la salle, réessaie !', '❌');
+        showToast("Impossible de créer la salle, réessaie !", '❌');
       } finally {
         btn.disabled = false;
       }
+    }
+
+    function updateRoomSettings() {
+      if (!imposteurRoomId) return;
+      const classic = document.getElementById('chkWordsClassic').checked;
+      const custom = document.getElementById('chkWordsCustom').checked;
+      if (!classic && !custom) {
+        document.getElementById('chkWordsClassic').checked = true;
+        showToast("Au moins un pack de mots doit rester actif !", '⚠️');
+        return;
+      }
+      imposteurRef('settings').set({ classic, custom });
     }
 
     function joinImposteurRoomFromInput() {
@@ -936,18 +808,15 @@
         showToast('Entre un code de salle !', '⚠️');
         return;
       }
-      // Permet de taper soit "ABCD" soit "IMPO-ABCD"
-      const clean = safeRoomCode(raw);
-      const code = clean.startsWith('IMPO-') ? clean : `IMPO-${clean}`;
+      const code = safeRoomCode(raw);
       enterImposteurRoom(code);
     }
 
     async function enterImposteurRoom(rawCode) {
-      if (!currentUser) return;
+      if (!currentUser) loadSharedSession();
       let code = safeRoomCode(rawCode);
       if (!code) return;
 
-      // Vérifie si le code existe tel quel ou avec préfixe IMPO-
       try {
         let snap = await db.ref(`rooms_imposteur/${code}`).get();
         if (!snap.exists() && !code.startsWith('IMPO-')) {
@@ -1012,7 +881,7 @@
     }
 
     function checkImposteurRoomFromHash() {
-      if (!currentUser) return;
+      if (!currentUser) loadSharedSession();
       if (location.hash.startsWith(IMPOSTEUR_HASH_PREFIX)) {
         enterImposteurRoom(location.hash.slice(IMPOSTEUR_HASH_PREFIX.length));
       }
@@ -1044,7 +913,7 @@
 
     function shareImposteurRoomInChat() {
       if (!imposteurRoomId || !currentUser) return;
-      const inviteUrl = `${window.location.origin}${window.location.pathname}#imposteur=${imposteurRoomId}`;
+      const inviteUrl = `undercover.html#imposteur=${imposteurRoomId}`;
       db.ref('chat').push({
         authorNick: currentUser.nickname,
         authorTag: currentUser.tag,
@@ -1283,6 +1152,8 @@
       const hostName = data.hostNick || "l'hôte";
 
       const settings = data.settings || { classic: true, custom: true };
+      document.getElementById('chkWordsClassic').checked = !!settings.classic;
+      document.getElementById('chkWordsCustom').checked = !!settings.custom;
       const wordTypes = [settings.classic ? 'classiques' : null, settings.custom ? 'promo' : null].filter(Boolean).join(' + ');
       document.getElementById('imposteurRoomSettingsText').textContent = `Hôte : ${hostName} · Mots ${wordTypes || 'classiques'}`;
 
@@ -1811,7 +1682,7 @@
 
     function handleSendPromoChat(e) {
       e.preventDefault();
-      if (!currentUser) return;
+      if (!currentUser) loadSharedSession();
       const input = document.getElementById('floatingPromoInput');
       const text = input.value.trim();
       if (!text) return;
