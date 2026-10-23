@@ -123,19 +123,8 @@
       transform: translate(2px, 3px) scale(0.97) rotate(1deg);
       box-shadow: 1px 1px 0px var(--border-dark) !important;
     }
-    .neo-tag {
-      border: 2px solid var(--border-dark);
-      box-shadow: 2px 2.5px 0px var(--border-dark);
-      font-weight: 800;
-      transition: all 0.15s ease;
-    }
 
-    .neo-tag:active {
-      transform: translate(1px, 1.5px);
-      box-shadow: 1px 1px 0px var(--border-dark);
-    }
-
-    /* Carte de jeu style capture */
+    /* Carte de jeu */
     .game-card {
       border: 3px solid var(--border-dark);
       box-shadow: 4px 5px 0px var(--border-dark);
@@ -158,6 +147,18 @@
     .game-card:active {
       transform: translate(2px, 2px);
       box-shadow: 2px 2px 0px var(--border-dark);
+    }
+
+    /* Animation de ping quand on est tagué */
+    @keyframes pingPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .ping-message-card {
+      background-color: #fffbeb !important;
+      border-color: #e11d48 !important;
+      box-shadow: 3px 4px 0px #e11d48 !important;
+      animation: pingPulse 0.6s ease 2;
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -289,10 +290,12 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3">
-        <div class="hidden sm:flex items-center gap-2 bg-white text-[#12131a] px-3 py-1 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a]">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="navOnlineCount">1</span> en ligne
-        </div>
+        <!-- Bouton cliquable En ligne / Membres -->
+        <button onclick="openDirectoryFromNavbar()" title="Voir les membres connectés et inscrits" class="flex items-center gap-2 bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
+          <span><span id="navOnlineCount">1</span> en ligne</span>
+          <span class="hidden md:inline text-[10px] font-mono text-slate-500">/ <span id="navRegisteredCount">1</span> inscrits</span>
+        </button>
 
         <button onclick="openProfileModal()" class="flex items-center gap-2 bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-1.5 rounded-2xl border-2 border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
           <span id="navUserEmojis" class="text-sm">🍺 🇫🇷</span>
@@ -321,7 +324,7 @@
             SALUT JOUEUR !
           </h2>
           <p class="text-white font-bold text-sm sm:text-base mt-3 opacity-95 tracking-wide max-w-xl leading-relaxed drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)]">
-            Choisis un jeu et lance la partie avec tes camarades.
+            Choisis un jeu, tague tes potes avec <span class="bg-[#fed72d] text-[#12131a] font-mono px-1.5 py-0.5 rounded border border-[#12131a] text-xs">@pseudo</span> et lance la partie !
           </p>
         </div>
 
@@ -338,12 +341,18 @@
         </div>
       </div>
 
-      <!-- SEARCH BAR -->
-      <div class="relative">
-        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black">
-          🔍
+      <!-- SEARCH BAR + BOUTON ROULETTE -->
+      <div class="flex gap-2.5">
+        <div class="relative flex-1">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black">
+            🔍
+          </div>
+          <input type="text" id="gameSearchInput" oninput="renderGamesCatalog()" placeholder="Chercher un jeu (Morpion, Undercover, Pop Sauce, Loup-Garou...)..." class="w-full bg-white border-[3px] border-[#12131a] rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-[#12131a] placeholder-slate-400 shadow-[4px_5px_0px_#12131a] focus:outline-none focus:bg-[#fffdf0] focus:translate-x-0.5 focus:translate-y-0.5 transition-all">
         </div>
-        <input type="text" id="gameSearchInput" oninput="renderGamesCatalog()" placeholder="Chercher un jeu (Morpion, Pop Sauce, Loup-Garou...)..." class="w-full bg-white border-[3px] border-[#12131a] rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-[#12131a] placeholder-slate-400 shadow-[4px_5px_0px_#12131a] focus:outline-none focus:bg-[#fffdf0] focus:translate-x-0.5 focus:translate-y-0.5 transition-all">
+        <button onclick="pickRandomGame()" title="Choisir un jeu au hasard" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-4 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 flex-shrink-0">
+          <span class="text-lg">🎰</span>
+          <span class="hidden sm:inline">Au hasard</span>
+        </button>
       </div>
 
       <!-- CATEGORY PILLS -->
@@ -367,7 +376,7 @@
           
           <!-- Carte Morpion -->
           <div onclick="openMorpionModal()" class="game-card">
-            <div class="w-full h-32 bg-[#ffd166] flex items-center justify-center border-b-[3px] border-[#12131a]">
+            <div class="w-full h-32 bg-[#ffd166] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">⭕❌</span>
             </div>
             <div class="p-4 flex flex-col justify-between flex-1">
@@ -384,17 +393,22 @@
 
           <!-- Carte L'Imposteur -> Ouvre la page dédiée undercover.html -->
           <a href="undercover.html" onclick="window.location.href='undercover.html'" class="game-card">
-            <div class="w-full h-32 bg-[#06d6a0] flex items-center justify-center border-b-[3px] border-[#12131a]">
+            <div class="w-full h-32 bg-[#00e599] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
+              <span id="undercoverLiveBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#00e599] border-2 border-[#00e599] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full">
+                🟢 0 en mission
+              </span>
             </div>
             <div class="p-4 flex flex-col justify-between flex-1">
               <div>
                 <h4 class="text-lg font-black text-[#12131a]">L'Imposteur (Undercover)</h4>
-                <p class="text-xs font-bold text-slate-500 mt-1">Trouve l'infiltré qui ne sait même pas qu'il l'est ! Table de poker en direct.</p>
+                <p class="text-xs font-bold text-slate-500 mt-1">3 mots pour prouver ton alibi, 60s pour voter et démasquer l'infiltré !</p>
               </div>
-              <div class="flex items-center gap-2 mt-3">
-                <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Jeu Interne</span>
-                <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
+              <div class="flex items-center justify-between gap-2 mt-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Page dédiée ↗</span>
+                  <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
+                </div>
               </div>
             </div>
           </a>
@@ -416,33 +430,101 @@
 
     </div>
 
-    <!-- RIGHT: CHAT GÉNÉRAL TEMPS RÉEL (4 COLS) -->
-    <div class="lg:col-span-4 flex flex-col gap-4">
-      <div class="neo-box bg-white flex flex-col h-[680px] lg:sticky lg:top-20 overflow-hidden">
+    <!-- RIGHT: PANNEAU COMMUNAUTÉ (ONGLET CHAT GÉNÉRAL + ONGLET LISTE DES JOUEURS) (4 COLS) -->
+    <div class="lg:col-span-4 flex flex-col gap-4" id="communitySidebar">
+      <div class="neo-box bg-white flex flex-col h-[690px] lg:sticky lg:top-20 overflow-hidden">
         
-        <div class="p-4 bg-[#fed72d] border-b-[3px] border-[#12131a] flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#12131a]"></span>
-            <div>
-              <h3 class="font-black text-sm text-[#12131a] tracking-tight leading-none uppercase">Général Promo</h3>
-              <p class="text-[10px] font-bold text-[#12131a]/80 mt-0.5">En direct avec toute la classe</p>
+        <!-- Header avec Switcher d'onglets : Chat Promo vs Membres -->
+        <div class="p-3 bg-[#fed72d] border-b-[3px] border-[#12131a] flex flex-col gap-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#12131a]"></span>
+              <div>
+                <h3 class="font-black text-sm text-[#12131a] tracking-tight leading-none uppercase">QG de la Promo</h3>
+                <p class="text-[10px] font-bold text-[#12131a]/80 mt-0.5">Utilise @tag pour ping un joueur</p>
+              </div>
             </div>
+            <!-- Bouton Son Ping On/Off -->
+            <button type="button" onclick="toggleSoundMute()" id="btnSoundToggle" title="Activer/Désactiver le son des pings" class="w-8 h-8 rounded-xl bg-white border-2 border-[#12131a] flex items-center justify-center text-sm shadow-[1.5px_2px_0px_#12131a]">
+              🔔
+            </button>
           </div>
-          <div class="w-8 h-8 rounded-full bg-white border-2 border-[#12131a] flex items-center justify-center text-sm shadow-[1.5px_2px_0px_#12131a]">
-            💬
+
+          <!-- Onglets : Chat / Joueurs -->
+          <div class="grid grid-cols-2 gap-1.5 p-1 bg-white/70 rounded-xl border-2 border-[#12131a]">
+            <button type="button" onclick="switchSidebarTab('chat')" id="sidebarTabChat" class="neo-btn bg-[#12131a] text-white py-1.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5">
+              <span>💬</span>
+              <span>Chat Général</span>
+            </button>
+            <button type="button" onclick="switchSidebarTab('users')" id="sidebarTabUsers" class="bg-transparent text-[#12131a] hover:bg-white font-black py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5">
+              <span>👥</span>
+              <span>Joueurs (<span id="tabUsersOnlineBadge">1</span>/<span id="tabUsersTotalBadge">1</span>)</span>
+            </button>
           </div>
         </div>
 
-        <div id="chatMessagesContainer" class="flex-1 p-3.5 overflow-y-auto space-y-reverse space-y-3 custom-scrollbar bg-[#f8fafc] flex flex-col-reverse">
-          <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement du chat...</p>
+        <!-- ================= ONGLET 1 : CHAT GÉNÉRAL ================= -->
+        <div id="sidebarPanelChat" class="flex-1 flex flex-col min-h-0 relative">
+          
+          <div id="chatMessagesContainer" class="flex-1 p-3.5 overflow-y-auto space-y-reverse space-y-3 custom-scrollbar bg-[#f8fafc] flex flex-col-reverse">
+            <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement du chat...</p>
+          </div>
+
+          <!-- Menu Autocomplétion @Mention -->
+          <div id="mentionAutocompleteBox" class="hidden absolute bottom-[62px] left-3 right-3 bg-white border-[2.5px] border-[#12131a] rounded-2xl shadow-[4px_5px_0px_#12131a] max-h-48 overflow-y-auto custom-scrollbar z-30 divide-y divide-slate-100"></div>
+
+          <form onsubmit="handleSendChatMessage(event)" class="p-3 bg-white border-t-[3px] border-[#12131a] flex gap-2 relative">
+            <input type="text" id="chatInputMessage" oninput="handleChatInputKey(event)" autocomplete="off" placeholder="Écris un message ou @tag quelqu'un..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+            <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-2 rounded-xl text-xs font-black">
+              Envoyer
+            </button>
+          </form>
+
         </div>
 
-        <form onsubmit="handleSendChatMessage(event)" class="p-3 bg-white border-t-[3px] border-[#12131a] flex gap-2">
-          <input type="text" id="chatInputMessage" autocomplete="off" placeholder="Écris un message à la promo..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
-          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-2 rounded-xl text-xs font-black">
-            Envoyer
-          </button>
-        </form>
+        <!-- ================= ONGLET 2 : LISTE DES JOUEURS (PRÉSENTS & INSCRITS) ================= -->
+        <div id="sidebarPanelUsers" class="hidden flex-1 flex-col min-h-0 bg-[#f8fafc]">
+          
+          <!-- Barre de recherche d'un élève -->
+          <div class="p-3 bg-white border-b-2 border-[#12131a]">
+            <input type="text" id="userDirectorySearch" oninput="renderUsersDirectory()" placeholder="Chercher un élève ou un @tag..." class="w-full bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+          </div>
+
+          <div class="flex-1 p-3.5 overflow-y-auto custom-scrollbar space-y-4">
+            
+            <!-- Sous-section : En ligne maintenant -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-mono font-black uppercase text-emerald-700 flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
+                  <span>Présents en ligne</span>
+                </span>
+                <span id="dirOnlineCountLabel" class="text-[10px] font-mono font-extrabold bg-emerald-100 text-emerald-900 border border-[#12131a] px-2 py-0.5 rounded-full">0</span>
+              </div>
+              <div id="dirOnlineList" class="space-y-2"></div>
+            </div>
+
+            <!-- Sous-section : Tous les inscrits (Hors-ligne) -->
+            <div class="pt-3 border-t-2 border-slate-200">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-mono font-black uppercase text-slate-500 flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-slate-300 border border-[#12131a]"></span>
+                  <span>Inscrits hors-ligne</span>
+                </span>
+                <span id="dirOfflineCountLabel" class="text-[10px] font-mono font-extrabold bg-slate-200 text-slate-700 border border-[#12131a] px-2 py-0.5 rounded-full">0</span>
+              </div>
+              <div id="dirOfflineList" class="space-y-2"></div>
+            </div>
+
+          </div>
+
+          <div class="p-2.5 bg-white border-t-[3px] border-[#12131a] text-center">
+            <button type="button" onclick="mentionUserInChat('promo')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2 rounded-xl text-xs font-black">
+              📢 Taguer toute la classe (@promo) dans le chat
+            </button>
+          </div>
+
+        </div>
 
       </div>
     </div>
@@ -542,8 +624,8 @@
         </div>
 
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Message (facultatif)</label>
-          <input type="text" id="modalInputRoomMsg" placeholder="Ex : on lance dans 5 min !" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+          <label class="block text-xs font-black text-[#12131a] mb-1">Message (tu peux @tag tes potes)</label>
+          <input type="text" id="modalInputRoomMsg" placeholder="Ex : @promo on lance dans 2 min !" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
         </div>
       </div>
 
@@ -628,12 +710,11 @@
 
     const AVATAR_EMOJIS = ['🍺', '🍷', '👑', '🗿', '🎆', '💩', '🎲', '⚡'];
     const FLAG_EMOJIS = [
-      '🇫🇷', '🇮🇹', '🇵🇱', '🇫🇮', '🇸🇮', '🇷🇸', // Europe
-      '🇺🇸', '🇨🇦',                         // Amérique
-      '🇯🇵', '🇹🇭', '🇮🇳'                     // Asie
+      '🇫🇷', '🇮🇹', '🇵🇱', '🇫🇮', '🇸🇮', '🇷🇸',
+      '🇺🇸', '🇨🇦',
+      '🇯🇵', '🇹🇭', '🇮🇳'
     ];
 
-    // CATALOGUE COMPLET DES JEUX EXTERNES
     const GAMES_CATALOG = [
       {
         id: 'codenames',
@@ -726,13 +807,21 @@
     let currentFilter = 'all';
     let activeExternalGame = null;
 
+    // Cache temps réel des joueurs inscrits et présents en ligne
+    let allUsersMap = {};
+    let onlinePresenceMap = {};
+    let soundMuted = false;
+    let initialChatTimestamp = Date.now();
+    let lastNotifiedMsgKey = null;
+
     /* ---------------- DÉMARRAGE ---------------- */
     window.addEventListener('DOMContentLoaded', () => {
       renderPickers();
       checkAuthSession();
       renderGamesCatalog();
+      listenToUsersAndPresence();
       listenToLiveChat();
-      listenToLiveUsersCount();
+      listenToUndercoverLiveActivity();
     });
 
     function checkAuthSession() {
@@ -743,6 +832,7 @@
         currentUser = JSON.parse(stored);
         overlay.classList.add('hidden');
         updateUserUI();
+        setupMyRealtimePresence();
         if (location.hash.startsWith('#imposteur=')) {
           window.location.href = 'undercover.html' + location.hash;
         }
@@ -759,9 +849,328 @@
       document.getElementById('heroGreeting').textContent = `SALUT ${currentUser.nickname} !`;
     }
 
-    // Redirection vers la page dédiée undercover.html
-    function openImposteurModal() {
-      window.location.href = 'undercover.html';
+    /* =========================================================
+       VRAI SYSTÈME DE PRÉSENCE EN LIGNE & ANNUAIRE DES JOUEURS
+       ========================================================= */
+    function setupMyRealtimePresence() {
+      if (!currentUser || !currentUser.tag) return;
+      const myPresenceRef = db.ref(`presence/${currentUser.tag}`);
+
+      db.ref('.info/connected').on('value', snap => {
+        if (snap.val() === true && currentUser) {
+          myPresenceRef.onDisconnect().remove();
+          myPresenceRef.set({
+            tag: currentUser.tag,
+            nickname: currentUser.nickname,
+            avatarEmoji: currentUser.avatarEmoji || '🍺',
+            flagEmoji: currentUser.flagEmoji || '🇫🇷',
+            connectedAt: firebase.database.ServerValue.TIMESTAMP
+          });
+        }
+      });
+    }
+
+    function listenToUsersAndPresence() {
+      // 1. Liste de tous les comptes enregistrés
+      db.ref('users').on('value', snapshot => {
+        allUsersMap = snapshot.val() || {};
+        updatePresenceCountersAndDirectory();
+      });
+
+      // 2. Liste des sessions réellement connectées en ce moment
+      db.ref('presence').on('value', snapshot => {
+        onlinePresenceMap = snapshot.val() || {};
+        updatePresenceCountersAndDirectory();
+      });
+    }
+
+    function updatePresenceCountersAndDirectory() {
+      const onlineCount = Object.keys(onlinePresenceMap).length || (currentUser ? 1 : 0);
+      const registeredCount = Object.keys(allUsersMap).length || onlineCount;
+
+      document.getElementById('navOnlineCount').textContent = onlineCount;
+      document.getElementById('navRegisteredCount').textContent = registeredCount;
+      document.getElementById('tabUsersOnlineBadge').textContent = onlineCount;
+      document.getElementById('tabUsersTotalBadge').textContent = registeredCount;
+
+      renderUsersDirectory();
+    }
+
+    function switchSidebarTab(tab) {
+      const btnChat = document.getElementById('sidebarTabChat');
+      const btnUsers = document.getElementById('sidebarTabUsers');
+      const panelChat = document.getElementById('sidebarPanelChat');
+      const panelUsers = document.getElementById('sidebarPanelUsers');
+
+      if (tab === 'users') {
+        btnUsers.className = 'neo-btn bg-[#12131a] text-white py-1.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5';
+        btnChat.className = 'bg-transparent text-[#12131a] hover:bg-white font-black py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5';
+        panelChat.classList.add('hidden');
+        panelUsers.classList.remove('hidden');
+        panelUsers.classList.add('flex');
+        renderUsersDirectory();
+      } else {
+        btnChat.className = 'neo-btn bg-[#12131a] text-white py-1.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5';
+        btnUsers.className = 'bg-transparent text-[#12131a] hover:bg-white font-black py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5';
+        panelUsers.classList.add('hidden');
+        panelUsers.classList.remove('flex');
+        panelChat.classList.remove('hidden');
+      }
+    }
+
+    function openDirectoryFromNavbar() {
+      switchSidebarTab('users');
+      document.getElementById('communitySidebar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderUsersDirectory() {
+      const searchInput = document.getElementById('userDirectorySearch');
+      const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+      // Fusionner les inscrits et les présents
+      const combinedTags = new Set([
+        ...Object.keys(allUsersMap),
+        ...Object.keys(onlinePresenceMap)
+      ]);
+
+      const onlineUsers = [];
+      const offlineUsers = [];
+
+      combinedTags.forEach(tag => {
+        const reg = allUsersMap[tag] || {};
+        const pres = onlinePresenceMap[tag] || null;
+        const userObj = {
+          tag: tag,
+          nickname: (pres && pres.nickname) || reg.nickname || tag,
+          avatarEmoji: (pres && pres.avatarEmoji) || reg.avatarEmoji || '🍺',
+          flagEmoji: (pres && pres.flagEmoji) || reg.flagEmoji || '🇫🇷',
+          isOnline: Boolean(pres)
+        };
+
+        if (query && !userObj.nickname.toLowerCase().includes(query) && !userObj.tag.toLowerCase().includes(query)) {
+          return;
+        }
+
+        if (userObj.isOnline) {
+          onlineUsers.push(userObj);
+        } else {
+          offlineUsers.push(userObj);
+        }
+      });
+
+      onlineUsers.sort((a, b) => a.nickname.localeCompare(b.nickname));
+      offlineUsers.sort((a, b) => a.nickname.localeCompare(b.nickname));
+
+      document.getElementById('dirOnlineCountLabel').textContent = onlineUsers.length;
+      document.getElementById('dirOfflineCountLabel').textContent = offlineUsers.length;
+
+      const onlineContainer = document.getElementById('dirOnlineList');
+      const offlineContainer = document.getElementById('dirOfflineList');
+
+      onlineContainer.innerHTML = onlineUsers.length
+        ? onlineUsers.map(u => renderDirectoryUserCard(u, true)).join('')
+        : `<p class="text-xs font-bold text-slate-400 italic py-2">Aucun joueur correspondant en ligne.</p>`;
+
+      offlineContainer.innerHTML = offlineUsers.length
+        ? offlineUsers.map(u => renderDirectoryUserCard(u, false)).join('')
+        : `<p class="text-xs font-bold text-slate-400 italic py-2">Aucun inscrit hors-ligne.</p>`;
+    }
+
+    function renderDirectoryUserCard(u, isOnline) {
+      const isMe = currentUser && currentUser.tag === u.tag;
+      return `
+        <div class="neo-box-sm bg-white p-2.5 flex items-center justify-between gap-2 ${isOnline ? '' : 'opacity-75'}">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="relative flex-shrink-0">
+              <span class="w-9 h-9 rounded-xl bg-[#f1f3f9] border-2 border-[#12131a] flex items-center justify-center text-base">
+                ${u.avatarEmoji}
+              </span>
+              <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#12131a] ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-[#12131a] truncate">
+                ${escapeHtml(u.nickname)} ${u.flagEmoji} ${isMe ? '<span class="text-[10px] font-mono text-emerald-700">(Toi)</span>' : ''}
+              </div>
+              <div class="text-[10px] font-mono font-bold text-slate-400 truncate">@${escapeHtml(u.tag)}</div>
+            </div>
+          </div>
+
+          ${!isMe ? `
+            <button type="button" onclick="mentionUserInChat('${escapeHtml(u.tag)}')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-2.5 py-1 rounded-lg text-[10px] font-mono font-black flex-shrink-0">
+              @ Ping
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    /* =========================================================
+       SYSTÈME DE TAG @MENTION, AUTOCOMPLÉTION & PING AUDIO
+       ========================================================= */
+    function mentionUserInChat(tag) {
+      switchSidebarTab('chat');
+      const input = document.getElementById('chatInputMessage');
+      const currentVal = input.value;
+      const prefix = currentVal && !currentVal.endsWith(' ') ? currentVal + ' ' : currentVal;
+      input.value = `${prefix}@${tag} `;
+      input.focus();
+      hideMentionAutocomplete();
+    }
+
+    function handleChatInputKey(e) {
+      const input = e.target;
+      const val = input.value;
+      const cursor = input.selectionStart || val.length;
+      const textBeforeCursor = val.slice(0, cursor);
+
+      // Détecte si l'utilisateur est en train de taper @quelquechose
+      const match = textBeforeCursor.match(/(?:^|\s)@([a-zA-Z0-9_-]*)$/);
+      if (!match) {
+        hideMentionAutocomplete();
+        return;
+      }
+
+      const query = match[1].toLowerCase();
+      const candidates = [
+        { tag: 'promo', nickname: 'Toute la promo', avatarEmoji: '📢', isOnline: true }
+      ];
+
+      Object.keys(allUsersMap).forEach(tag => {
+        const u = allUsersMap[tag];
+        candidates.push({
+          tag: tag,
+          nickname: u.nickname || tag,
+          avatarEmoji: u.avatarEmoji || '🍺',
+          isOnline: Boolean(onlinePresenceMap[tag])
+        });
+      });
+
+      const filtered = candidates.filter(c =>
+        c.tag.toLowerCase().includes(query) || c.nickname.toLowerCase().includes(query)
+      ).slice(0, 6);
+
+      if (filtered.length === 0) {
+        hideMentionAutocomplete();
+        return;
+      }
+
+      const box = document.getElementById('mentionAutocompleteBox');
+      box.innerHTML = filtered.map(c => `
+        <button type="button" onclick="selectMentionAutocomplete('${escapeHtml(c.tag)}')" class="w-full px-3 py-2 text-left hover:bg-[#fffdf0] flex items-center justify-between text-xs">
+          <span class="font-black text-[#12131a] flex items-center gap-2">
+            <span>${c.avatarEmoji}</span>
+            <span>${escapeHtml(c.nickname)}</span>
+            <span class="font-mono text-[10px] text-slate-500">@${escapeHtml(c.tag)}</span>
+          </span>
+          ${c.isOnline ? '<span class="w-2 h-2 rounded-full bg-emerald-500 border border-[#12131a]"></span>' : ''}
+        </button>
+      `).join('');
+      box.classList.remove('hidden');
+    }
+
+    function selectMentionAutocomplete(tag) {
+      const input = document.getElementById('chatInputMessage');
+      const val = input.value;
+      const cursor = input.selectionStart || val.length;
+      const before = val.slice(0, cursor).replace(/@([a-zA-Z0-9_-]*)$/, `@${tag} `);
+      const after = val.slice(cursor);
+      input.value = before + after;
+      input.focus();
+      hideMentionAutocomplete();
+    }
+
+    function hideMentionAutocomplete() {
+      document.getElementById('mentionAutocompleteBox').classList.add('hidden');
+    }
+
+    function toggleSoundMute() {
+      soundMuted = !soundMuted;
+      document.getElementById('btnSoundToggle').textContent = soundMuted ? '🔕' : '🔔';
+      showToast(soundMuted ? 'Son des pings désactivé' : 'Son des pings activé', soundMuted ? '🔕' : '🔔');
+    }
+
+    // Bip sonore synthétisé en Web Audio API (zéro fichier MP3 externe)
+    function playPingSound() {
+      if (soundMuted) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.setValueAtTime(880, now + 0.09); // A5
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } catch (e) {}
+    }
+
+    // Vérifie si un texte mentionne @monTag ou @promo
+    function isUserMentionedInText(text) {
+      if (!text || !currentUser || !currentUser.tag) return false;
+      const regex = new RegExp(`(^|\\s)@(${currentUser.tag}|promo|all)\\b`, 'i');
+      return regex.test(text);
+    }
+
+    // Transforme les @tag dans le texte du message en badges stylisés et cliquables
+    function formatChatMessageWithMentions(rawText) {
+      const safe = escapeHtml(rawText || '');
+      return safe.replace(/(^|\s)@([a-zA-Z0-9_-]+)/g, (full, space, tag) => {
+        const lower = tag.toLowerCase();
+        const isMe = currentUser && currentUser.tag.toLowerCase() === lower;
+        const isPromo = lower === 'promo' || lower === 'all';
+
+        if (isMe || isPromo) {
+          return `${space}<span onclick="mentionUserInChat('${tag}')" class="cursor-pointer inline-block bg-[#ff2a5f] text-white border border-[#12131a] px-1.5 py-0.2 rounded-md font-mono text-[11px] font-black shadow-[1px_1px_0px_#12131a]">@${tag}</span>`;
+        }
+        return `${space}<span onclick="mentionUserInChat('${tag}')" class="cursor-pointer inline-block bg-[#fed72d] text-[#12131a] border border-[#12131a] px-1.5 py-0.2 rounded-md font-mono text-[11px] font-black">@${tag}</span>`;
+      });
+    }
+
+    /* ---------------- COMPTEUR LIVE UNDERCOVER SUR LA CARTE ---------------- */
+    function listenToUndercoverLiveActivity() {
+      const badge = document.getElementById('undercoverLiveBadge');
+      db.ref('rooms_imposteur').on('value', snap => {
+        const rooms = snap.val() || {};
+        let activePlayers = 0;
+        Object.values(rooms).forEach(r => {
+          if (r && r.players) {
+            activePlayers += Object.keys(r.players).length;
+          }
+        });
+        if (activePlayers > 0) {
+          badge.textContent = `🟢 ${activePlayers} en mission`;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      });
+    }
+
+    /* ---------------- ROULETTE JEU AU HASARD ---------------- */
+    function pickRandomGame() {
+      const allGames = [
+        { type: 'morpion', title: 'Morpion' },
+        { type: 'undercover', title: "L'Imposteur (Undercover)" },
+        ...GAMES_CATALOG.map(g => ({ type: 'external', id: g.id, title: g.title }))
+      ];
+      const chosen = allGames[Math.floor(Math.random() * allGames.length)];
+      showToast(`La roulette a choisi : ${chosen.title} ! 🎲`, '🎰');
+
+      setTimeout(() => {
+        if (chosen.type === 'morpion') openMorpionModal();
+        else if (chosen.type === 'undercover') window.location.href = 'undercover.html';
+        else openExternalGameModal(chosen.id);
+      }, 650);
     }
 
     /* ---------------- GESTION AUTH (100% SANS EMAIL) ---------------- */
@@ -891,11 +1300,15 @@
 
     function logout() {
       if (confirm('Te déconnecter du Game Center ?')) {
+        if (currentUser && currentUser.tag) {
+          db.ref(`presence/${currentUser.tag}`).remove();
+        }
         localStorage.removeItem(STORAGE_AUTH_SESSION);
         location.reload();
       }
     }
 
+    /* ---------------- CHAT GÉNÉRAL AVEC DÉTECTION DE PING ---------------- */
     function listenToLiveChat() {
       const container = document.getElementById('chatMessagesContainer');
       db.ref('chat').limitToLast(50).on('value', snapshot => {
@@ -905,7 +1318,26 @@
           return;
         }
 
-        const messages = Object.values(data).reverse();
+        const entries = Object.entries(data);
+        const [lastKey, lastMsg] = entries[entries.length - 1];
+
+        // Si c'est un nouveau message arrivé après l'ouverture de la page et qui nous mentionne
+        if (
+          lastMsg &&
+          !lastMsg.isSystem &&
+          lastMsg.timestamp &&
+          lastMsg.timestamp > initialChatTimestamp &&
+          lastKey !== lastNotifiedMsgKey &&
+          currentUser &&
+          lastMsg.authorTag !== currentUser.tag &&
+          isUserMentionedInText(lastMsg.text)
+        ) {
+          lastNotifiedMsgKey = lastKey;
+          playPingSound();
+          showToast(`🔔 ${lastMsg.authorNick} t'a tagué dans le chat !`, '📣');
+        }
+
+        const messages = entries.map(([, val]) => val).reverse();
         container.innerHTML = messages.map(m => {
           if (m.isSystem) {
             return `
@@ -915,11 +1347,13 @@
             `;
           }
 
+          const mentionedMe = isUserMentionedInText(m.text);
+
           if (m.isInvite) {
             return `
-              <div class="neo-box bg-[#fed72d] p-3 text-[#12131a] space-y-2">
+              <div class="neo-box bg-[#fed72d] p-3 text-[#12131a] space-y-2 ${mentionedMe ? 'ring-4 ring-rose-500' : ''}">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-black flex items-center gap-1.5">
+                  <span onclick="mentionUserInChat('${escapeHtml(m.authorTag)}')" class="cursor-pointer text-xs font-black flex items-center gap-1.5 hover:underline">
                     <span>${m.authorAvatar || '🍺'} ${m.authorFlag || ''}</span>
                     <span>${escapeHtml(m.authorNick)}</span>
                     <span class="text-[10px] font-mono text-slate-700">(@${escapeHtml(m.authorTag)})</span>
@@ -932,7 +1366,7 @@
                     <span>🎮</span>
                     <span>Partie de ${escapeHtml(m.gameTitle)}</span>
                   </div>
-                  <p class="text-[11px] font-bold text-slate-700 italic mb-2">« ${escapeHtml(m.text)} »</p>
+                  <p class="text-[11px] font-bold text-slate-700 italic mb-2">« ${formatChatMessageWithMentions(m.text)} »</p>
                   ${m.internalGame ? `
                   <button type="button" onclick="openInternalInvite('${safeRoomCode(m.internalGame)}', '${safeRoomCode(m.internalRoom)}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2 rounded-xl text-xs flex items-center justify-center gap-1">
                     <span>Rejoindre la salle ${escapeHtml(safeRoomCode(m.internalRoom))}</span>
@@ -948,28 +1382,26 @@
           }
 
           return `
-            <div class="neo-box-sm bg-white p-2.5">
+            <div class="neo-box-sm bg-white p-2.5 ${mentionedMe ? 'ping-message-card' : ''}">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs font-black text-[#12131a] flex items-center gap-1.5">
+                <span onclick="mentionUserInChat('${escapeHtml(m.authorTag)}')" title="Cliquer pour répondre à @${escapeHtml(m.authorTag)}" class="cursor-pointer text-xs font-black text-[#12131a] flex items-center gap-1.5 hover:underline">
                   <span>${m.authorAvatar || '🍺'} ${m.authorFlag || ''}</span>
                   <span>${escapeHtml(m.authorNick)}</span>
                   <span class="text-[10px] font-mono text-slate-400">(@${escapeHtml(m.authorTag)})</span>
                 </span>
                 <span class="text-[10px] font-mono font-bold text-slate-400">${m.time}</span>
               </div>
-              <p class="text-xs font-bold text-slate-800 break-words leading-relaxed">${escapeHtml(m.text)}</p>
+              <p class="text-xs font-bold text-slate-800 break-words leading-relaxed">${formatChatMessageWithMentions(m.text)}</p>
             </div>
           `;
         }).join('');
       });
     }
 
-    // Codes de salle : uniquement lettres, chiffres et tirets (sûrs dans le HTML et les chemins Firebase)
     function safeRoomCode(code) {
       return String(code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
     }
 
-    // Invitation d'un jeu interne dans le chat : ouvre directement la bonne salle
     function openInternalInvite(game, code) {
       if (!currentUser || !code) return;
       if (game === 'MORPION') {
@@ -980,13 +1412,6 @@
       } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
         window.location.href = 'undercover.html#imposteur=' + code;
       }
-    }
-
-    function listenToLiveUsersCount() {
-      db.ref('users').on('value', snapshot => {
-        const users = snapshot.val();
-        document.getElementById('navOnlineCount').textContent = users ? Object.keys(users).length : 1;
-      });
     }
 
     function handleSendChatMessage(e) {
@@ -1008,6 +1433,7 @@
       });
 
       input.value = '';
+      hideMentionAutocomplete();
     }
 
     function sendSystemChat(text) {
@@ -1035,7 +1461,6 @@
 
       const sectionInternes = document.getElementById('sectionInternes');
 
-      // Gestion de l'affichage de la section Jeux Internes
       if (currentFilter === 'externe' || currentFilter === 'favoris') {
         sectionInternes.classList.add('hidden');
         container.parentElement.classList.remove('hidden');
@@ -1044,7 +1469,6 @@
         container.parentElement.classList.add('hidden');
         return;
       } else {
-        // "all" : on affiche les deux sections
         sectionInternes.classList.remove('hidden');
         container.parentElement.classList.remove('hidden');
       }
@@ -1141,7 +1565,7 @@
         isInvite: true,
         gameTitle: activeExternalGame.title,
         roomUrl: roomUrl,
-        text: customMsg || 'On lance la partie, rejoignez vite !',
+        text: customMsg || '@promo On lance la partie, rejoignez vite !',
         time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now()
       });
@@ -1153,13 +1577,13 @@
     /* =========================================================
        MORPION (LOCAL & EN LIGNE TEMPS RÉEL SYNCHRONISÉ)
        ========================================================= */
-    let morpionMode = 'local'; // 'local' ou 'online'
+    let morpionMode = 'local';
     let morpionBoard = Array(9).fill('');
     let morpionTurn = 'X';
     let morpionScoreX = 0;
     let morpionScoreO = 0;
     let morpionRoomCode = null;
-    let morpionMySymbol = 'X'; // 'X' pour créateur, 'O' pour invité
+    let morpionMySymbol = 'X';
 
     function normalizeMorpionBoard(raw) {
       const board = Array(9).fill('');
@@ -1351,7 +1775,7 @@
 
         leaveMorpionRoom();
         morpionRoomCode = code;
-        morpionMySymbol = 'O'; // L'invité prend les O
+        morpionMySymbol = 'O';
 
         db.ref(`rooms_morpion/${code}`).update({
           playerO: currentUser ? currentUser.nickname : 'Invité'
@@ -1408,7 +1832,7 @@
         roomUrl: '#',
         internalGame: 'morpion',
         internalRoom: morpionRoomCode,
-        text: `Qui veut me défier au Morpion ? Code de la salle : ${morpionRoomCode}`,
+        text: `@promo Qui veut me défier au Morpion ? Code de la salle : ${morpionRoomCode}`,
         time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now()
       });
@@ -1447,6 +1871,7 @@
 
       localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(currentUser));
       updateUserUI();
+      setupMyRealtimePresence();
       closeProfileModal();
       showToast('Profil mis à jour !', '✅');
     }
@@ -1485,7 +1910,7 @@
       setTimeout(() => {
         toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
         toast.classList.remove('opacity-100', 'translate-y-0');
-      }, 3000);
+      }, 3200);
     }
 
     function escapeHtml(str) {
