@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mission: Undercover — IMB Game Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,600;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-blue: #2348fa;
+      --yellow-main: #fed72d;
+      --yellow-hover: #eec418;
+      --border-dark: #12131a;
+      --card-shadow: 4px 5px 0px #12131a;
+      --btn-shadow: 3px 4px 0px #12131a;
+    }
+
+    body {
+      background-color: var(--bg-blue);
+      background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.5px, transparent 1.5px);
+      background-size: 22px 22px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #12131a;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .neo-box {
+      border: 3.5px solid var(--border-dark);
+      box-shadow: var(--card-shadow);
+      border-radius: 1.5rem;
+    }
+
+    .neo-box-sm {
+      border: 2.5px solid var(--border-dark);
+      box-shadow: 2px 3px 0px var(--border-dark);
+      border-radius: 1.1rem;
+    }
+
+    .neo-btn {
+      border: 2.5px solid var(--border-dark);
+      box-shadow: var(--btn-shadow);
+      font-weight: 800;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+      cursor: pointer;
+    }
+
+    .neo-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 4px 6px 0px var(--border-dark);
+    }
+
+    .neo-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px var(--border-dark) !important;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f4fb;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c3cbdf;
+      border-radius: 4px;
+      border: 1px solid #12131a;
+    }
+
+    /* Floating Chat Drawer */
+    #chatFloatingDrawer {
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+    }
+    #chatFloatingDrawer.closed {
+      transform: translateY(20px) scale(0.9);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Pulsing Badge */
+    @keyframes spyPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .spy-badge-pulse {
+      animation: spyPulse 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- ================= TOP NAVBAR ================= -->
+  <header class="bg-[#121526] border-b-[3px] border-[#12131a] sticky top-0 z-40 text-white">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+      
+      <!-- Gauche : Bouton retour & Titre du jeu -->
+      <div class="flex items-center gap-3">
+        <a href="/" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+          <span>←</span>
+          <span>Retour</span>
+        </a>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🕵️‍♂️</span>
+          <span class="font-black italic tracking-wider text-base sm:text-lg text-white leading-none">Mission: Undercover</span>
+        </div>
+      </div>
+
+      <!-- Droite : Actions de la barre du hub -->
+      <div class="flex items-center gap-2 sm:gap-2.5">
+        <button onclick="announceCurrentSalonInChat()" id="btnNavAnnounce" class="hidden sm:flex items-center gap-1.5 bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-1.5 rounded-xl border-2 border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
+          <span>📣</span>
+          <span>Annoncer ma partie</span>
+        </button>
+
+        <div class="hidden md:flex items-center gap-2 bg-white text-[#12131a] px-3 py-1 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a]">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="navOnlineCount">1</span> en ligne
+        </div>
+
+        <button onclick="toggleFullScreen()" title="Plein écran" class="hidden sm:flex neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-bold">
+          ⛶ Plein écran
+        </button>
+
+        <button onclick="window.open(window.location.href, '_blank')" title="Ouvrir dans un nouvel onglet" class="hidden sm:flex neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-bold">
+          ↗ Nouvel onglet
+        </button>
+
+        <div class="flex items-center gap-1.5 bg-white text-[#12131a] px-3 py-1 rounded-xl border-2 border-[#12131a] font-black text-xs shadow-[2px_2px_0px_#12131a]">
+          <span id="navUserAvatar">🍺</span>
+          <span id="navUserNick" class="max-w-[80px] sm:max-w-[110px] truncate">Agent</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= CONTENU PRINCIPAL ================= -->
+  <main class="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-6 flex flex-col items-center justify-center relative">
+
+    <!-- ================= ÉCRAN 1 : ACCUEIL / LOBBY DU JEU ================= -->
+    <div id="screenAccueil" class="w-full flex flex-col items-center py-4">
+      
+      <!-- Illustration & Titre central style jeu Président -->
+      <div class="text-center mb-6">
+        <div class="text-6xl sm:text-7xl mb-2 drop-shadow-[3px_4px_0px_rgba(0,0,0,0.5)]">
+          🕵️‍♂️🔎🎭
+        </div>
+        <h1 class="text-4xl sm:text-6xl font-black italic tracking-tighter text-[#fed72d] uppercase leading-none drop-shadow-[4px_5px_0px_#12131a]">
+          MISSION: UNDERCOVER
+        </h1>
+        <p class="text-white font-extrabold text-sm sm:text-base mt-2 drop-shadow-[1px_2px_0px_rgba(0,0,0,0.6)]">
+          Trouve l'infiltré qui ne sait même pas qu'il l'est ! 🕵️‍♂️
+        </p>
+      </div>
+
+      <!-- Boîte centrale Créer / Rejoindre -->
+      <div class="neo-box bg-white max-w-md w-full p-6 sm:p-7 relative shadow-[5px_7px_0px_#12131a]">
+        
+        <p class="text-xs sm:text-sm font-black text-[#12131a] mb-4">
+          Salut <span id="lobbyGreetingNick" class="text-blue-600 font-extrabold">Agent</span> 👋 Crée un salon ou rejoins tes potes.
+        </p>
+
+        <!-- Bouton Créer une salle -->
+        <button onclick="createSalon()" id="btnActionCreate" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 mb-4">
+          <span>🎲</span>
+          <span>Créer un salon</span>
+        </button>
+
+        <!-- Séparateur "ou" -->
+        <div class="relative flex py-2 items-center mb-4">
+          <div class="flex-grow border-t-2 border-slate-300"></div>
+          <span class="flex-shrink mx-3 text-xs font-black text-slate-400 uppercase tracking-widest">ou</span>
+          <div class="flex-grow border-t-2 border-slate-300"></div>
+        </div>
+
+        <!-- Formulaire Rejoindre -->
+        <div class="flex gap-2">
+          <input type="text" id="inputJoinSalonCode" placeholder="CODE (ex: JYHR)" maxlength="9" class="flex-1 bg-white border-[2.5px] border-[#12131a] rounded-2xl px-4 py-3 text-center font-mono font-black text-sm uppercase tracking-wider placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#fed72d]">
+          <button onclick="joinSalonFromInput()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-5 py-3 rounded-2xl text-xs font-black">
+            Rejoindre
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Bouton Règle du jeu en dessous -->
+      <button onclick="openRulesModal()" class="mt-5 neo-btn bg-white hover:bg-slate-50 text-[#12131a] px-4 py-2 rounded-2xl text-xs font-extrabold flex items-center gap-1.5 shadow-[2px_3px_0px_#12131a]">
+        <span>📖</span>
+        <span>Les règles</span>
+      </button>
+
+    </div>
+
+    <!-- ================= ÉCRAN 2 : SALON D'ATTENTE ================= -->
+    <div id="screenSalon" class="w-full max-w-xl hidden flex flex-col items-center py-2 space-y-4">
+      
+      <!-- Titre SALON -->
+      <h2 class="text-3xl sm:text-4xl font-black italic tracking-tight text-[#fed72d] uppercase leading-none drop-shadow-[3px_4px_0px_#12131a]">
+        SALON
+      </h2>
+
+      <!-- Carte 1 : Code de la salle -->
+      <div class="neo-box bg-white w-full p-5 text-center">
+        <span class="text-xs font-black text-slate-500 block mb-2">Code du salon</span>
+        
+        <div onclick="copySalonCode()" title="Cliquer pour copier" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-4 rounded-2xl cursor-pointer">
+          <span id="displaySalonCode" class="text-3xl sm:text-4xl font-mono font-black tracking-widest block">----</span>
+        </div>
+
+        <p class="text-[11px] font-bold text-slate-500 mt-3 leading-snug">
+          Invite tes potes avec le bouton <strong class="text-[#12131a]">Annoncer ma partie</strong> de la barre en haut, ou donne-leur ce code.
+        </p>
+      </div>
+
+      <!-- Carte 2 : Joueurs dans le salon -->
+      <div class="neo-box bg-white w-full p-4 sm:p-5">
+        <div class="flex items-center justify-between border-b-2 border-slate-100 pb-2.5 mb-3">
+          <h3 class="font-black text-sm text-[#12131a] uppercase tracking-wide">Joueurs</h3>
+          <span id="badgeSalonCount" class="neo-btn bg-white px-2.5 py-0.5 rounded-full text-[11px] font-mono font-black">1/8</span>
+        </div>
+
+        <div id="salonPlayersList" class="space-y-2">
+          <!-- Injecté via JS -->
+        </div>
+      </div>
+
+      <!-- Carte 3 : Paramètres de la mission -->
+      <div class="neo-box bg-white w-full p-4 sm:p-5">
+        <h3 class="font-black text-sm text-[#12131a] uppercase tracking-wide mb-3">Paramètres de la mission</h3>
+        
+        <div class="space-y-2 text-xs font-bold text-slate-700">
+          <label class="flex items-start gap-2.5 p-2 bg-[#f8fafc] border-2 border-slate-200 rounded-xl cursor-pointer">
+            <input type="checkbox" id="settingClassicWords" checked onchange="updateSalonSettings()" class="w-4 h-4 mt-0.5 rounded text-blue-600">
+            <div>
+              <span class="font-black text-[#12131a] block">Mots classiques</span>
+              <span class="text-[11px] text-slate-500 font-normal">Paires officielles équilibrées (Pomme / Poire, etc.)</span>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-2.5 p-2 bg-[#f8fafc] border-2 border-slate-200 rounded-xl cursor-pointer">
+            <input type="checkbox" id="settingCustomWords" checked onchange="updateSalonSettings()" class="w-4 h-4 mt-0.5 rounded text-blue-600">
+            <div>
+              <span class="font-black text-[#12131a] block">Mots de la promo</span>
+              <span class="text-[11px] text-slate-500 font-normal">Paires personnalisées ajoutées par la classe</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Mini accordéon pour ajouter un mot promo -->
+        <div class="mt-3 pt-3 border-t border-slate-200">
+          <span class="text-[10px] font-black uppercase text-slate-400 block mb-1">Ajouter une nouvelle paire pour tout le monde :</span>
+          <div class="flex gap-1.5">
+            <input type="text" id="addWordComplice" placeholder="Complice (ex: Kebab)" class="flex-1 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2 py-1 text-xs font-bold">
+            <input type="text" id="addWordInfiltre" placeholder="Infiltré (ex: Tacos)" class="flex-1 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2 py-1 text-xs font-bold">
+            <button onclick="submitNewPromoPair()" class="neo-btn bg-[#fed72d] text-[#12131a] px-3 py-1 rounded-xl text-xs font-black">
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bouton Lancer la partie pour l'hôte -->
+      <div id="hostLaunchContainer" class="w-full">
+        <button onclick="launchMissionGame()" id="btnHostStart" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2">
+          <span>🚀</span>
+          <span>Lancer la mission (Min 3 joueurs)</span>
+        </button>
+      </div>
+
+      <div id="guestWaitingNotice" class="hidden text-xs font-bold text-white text-center py-2 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.6)]">
+        ⏳ En attente du lancement par l'hôte du salon...
+      </div>
+
+    </div>
+
+    <!-- ================= ÉCRAN 3 : PARTIE EN COURS ================= -->
+    <div id="screenPartie" class="w-full max-w-4xl hidden flex flex-col items-center py-2 space-y-4">
+      
+      <!-- Bandeau central de rôle secret -->
+      <div class="neo-box bg-white w-full p-4 sm:p-5 text-center relative overflow-hidden">
+        <span class="text-[10px] font-mono font-black uppercase text-slate-500 tracking-wider block mb-1">Dossier Agent Secret</span>
+        
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <span class="text-xs font-black text-slate-700">Ton mot confidentiel :</span>
+          <div class="bg-[#f0fdf4] border-2 border-emerald-600 rounded-xl px-4 py-1.5 shadow-[2px_2px_0px_#059669]">
+            <span id="displaySecretWord" class="text-xl sm:text-2xl font-black text-emerald-700 tracking-wider font-mono">????</span>
+          </div>
+        </div>
+
+        <p class="text-[11px] font-bold text-slate-500 mt-2">
+          Ne dis pas ce mot directement ! Donne un indice subtil quand c'est ton tour.
+        </p>
+      </div>
+
+      <!-- Zone de statut / Chrono de vote -->
+      <div id="partyStatusCard" class="neo-box bg-[#fed72d] w-full p-4 text-center">
+        <div id="partyRoundBadge" class="text-[10px] font-mono font-black uppercase bg-white border border-[#12131a] px-3 py-0.5 rounded-full inline-block mb-1">
+          Tour 1 / 2
+        </div>
+        <h3 id="partyActiveTurnText" class="text-base sm:text-lg font-black text-[#12131a] leading-tight">
+          C'est au tour de ... de donner un indice !
+        </h3>
+
+        <!-- Chrono Vote 60s -->
+        <div id="votingTimerBox" class="hidden mt-2">
+          <span class="text-[11px] font-bold text-rose-900 uppercase block">Temps pour voter et éliminer l'infiltré :</span>
+          <div id="votingCountdownText" class="text-4xl font-mono font-black text-rose-700 animate-pulse mt-0.5">
+            60s
+          </div>
+        </div>
+      </div>
+
+      <!-- Saisie de l'indice (Visible uniquement pour le joueur actif) -->
+      <div id="myClueSubmissionBox" class="neo-box bg-white w-full p-4 hidden">
+        <form onsubmit="handleClueSubmit(event)" class="flex flex-col sm:flex-row gap-2">
+          <input type="text" id="inputClueWord" required placeholder="Tape ton indice (1 seul mot)..." class="flex-1 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold focus:outline-none focus:bg-white">
+          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-5 py-2 rounded-xl text-xs sm:text-sm font-black">
+            Valider mon indice ➔
+          </button>
+        </form>
+      </div>
+
+      <!-- Grille des Agents dans la partie -->
+      <div class="w-full">
+        <h4 class="text-white font-black text-sm uppercase tracking-wide mb-2 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.6)]">
+          Agents autour du salon :
+        </h4>
+        <div id="partySeatsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <!-- Injecté dynamiquement -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= ÉCRAN 4 : RÉVÉLATION & FIN DE PARTIE ================= -->
+    <div id="screenVictoire" class="w-full max-w-lg hidden flex flex-col items-center py-4">
+      <div class="neo-box bg-white w-full p-6 sm:p-8 text-center space-y-4">
+        <div id="victoryIcon" class="text-6xl">🏆</div>
+        <h2 id="victoryTitle" class="text-2xl sm:text-3xl font-black italic tracking-tight uppercase text-[#12131a]">
+          Partie Terminée !
+        </h2>
+        
+        <p id="victoryDesc" class="text-sm font-bold text-slate-700 leading-relaxed bg-[#f8fafc] p-3 rounded-2xl border-2 border-[#12131a]">
+          Rapport de mission...
+        </p>
+
+        <div class="grid grid-cols-2 gap-2 text-left text-xs p-3 bg-amber-50 rounded-2xl border border-amber-300">
+          <div>
+            <span class="text-slate-500 font-bold block text-[10px] uppercase">Mot des Complices :</span>
+            <strong id="revealCompliceWord" class="font-mono text-emerald-700 text-sm">Pomme</strong>
+          </div>
+          <div>
+            <span class="text-slate-500 font-bold block text-[10px] uppercase">Mot de l'Infiltré :</span>
+            <strong id="revealInfiltreWord" class="font-mono text-rose-700 text-sm">Poire</strong>
+          </div>
+        </div>
+
+        <button onclick="returnToWaitingSalon()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-2xl text-sm font-black">
+          🔄 Relancer un salon
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= BOUTON FLOTTANT DU CHAT (EN BAS À DROITE) ================= -->
+  <div class="fixed bottom-5 right-5 z-50">
+    <button onclick="toggleChatDrawer()" id="btnFloatingChat" class="w-14 h-14 rounded-full bg-[#fed72d] hover:bg-[#eec418] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-2xl transition-transform active:scale-95 relative cursor-pointer">
+      <span>💬</span>
+      <span id="chatUnreadDot" class="hidden absolute top-0 right-0 w-4 h-4 bg-rose-500 border-2 border-[#12131a] rounded-full"></span>
+    </button>
+  </div>
+
+  <!-- ================= TIROIR / POPUP DU CHAT DÉDIÉ ================= -->
+  <div id="chatFloatingDrawer" class="closed fixed bottom-22 right-4 sm:right-6 z-50 w-[340px] sm:w-[380px] max-h-[500px] h-[480px] bg-white neo-box flex flex-col overflow-hidden shadow-[6px_8px_0px_#12131a]">
+    
+    <!-- Header Chat avec Onglets -->
+    <div class="bg-[#fed72d] p-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between">
+      <div class="flex items-center gap-1.5">
+        <button onclick="switchChatTab('salon')" id="btnTabChatSalon" class="neo-btn bg-white text-[#12131a] text-[11px] px-2.5 py-1 rounded-xl">
+          Salon actuel
+        </button>
+        <button onclick="switchChatTab('promo')" id="btnTabChatPromo" class="bg-transparent text-slate-700 font-extrabold text-[11px] px-2.5 py-1 rounded-xl">
+          Général Promo
+        </button>
+      </div>
+      <button onclick="toggleChatDrawer()" class="w-7 h-7 rounded-xl bg-white border-2 border-[#12131a] font-black text-xs flex items-center justify-center">
+        ✕
+      </button>
+    </div>
+
+    <!-- Messages du Chat -->
+    <div id="chatMessagesList" class="flex-1 p-3 overflow-y-auto space-y-2 text-xs custom-scrollbar bg-[#f8fafc]">
+      <p class="text-slate-400 font-bold text-center py-6 text-[11px]">Chargement des messages...</p>
+    </div>
+
+    <!-- Formulaire d'envoi -->
+    <form onsubmit="handleSendDrawerMessage(event)" class="p-2.5 bg-white border-t-[3px] border-[#12131a] flex gap-2">
+      <input type="text" id="inputChatMessage" autocomplete="off" placeholder="Écris un mot..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+      <button type="submit" class="neo-btn bg-[#fed72d] text-[#12131a] px-3.5 py-1.5 rounded-xl text-xs font-black">
+        ➔
+      </button>
+    </form>
+
+  </div>
+
+  <!-- ================= MODALE RÈGLES ================= -->
+  <div id="modalRules" class="hidden fixed inset-0 z-50 bg-[#121422]/90 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[92vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between border-b-2 border-[#12131a] pb-3 mb-4">
+        <h3 class="text-lg font-black text-[#12131a] flex items-center gap-2">
+          <span>📖</span>
+          <span>Règles de Mission: Undercover</span>
+        </h3>
+        <button onclick="closeRulesModal()" class="text-xl font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs font-bold text-slate-700 leading-relaxed">
+        <p><strong>1. But du jeu :</strong> Démasquer l'Agent Infiltré caché parmi les Complices.</p>
+        <p><strong>2. Les Mots :</strong> Les Complices reçoivent le même mot secret. L'Infiltré en reçoit un très proche (ex: <em>Pomme</em> vs <em>Poire</em>). Personne ne connaît son propre statut !</p>
+        <p><strong>3. Les Tours :</strong> Chacun donne 1 seul mot indice à chaque tour pour prouver qu'il a le bon mot sans trop aider l'infiltré.</p>
+        <p><strong>4. Le Vote :</strong> Après 2 tours (ou 1 seul à 3 joueurs), vous avez 60 secondes pour voter et éliminer le suspect numéro 1.</p>
+      </div>
+
+      <button onclick="closeRulesModal()" class="w-full mt-5 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2.5 rounded-xl text-xs font-black">
+        C'est compris !
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= TOAST ================= -->
+  <div id="toastNotification" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#fed72d] border-[2.5px] border-[#12131a] shadow-[3px_4px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform -translate-y-2">
+    <span id="toastIcon">💬</span>
+    <span id="toastMsg">Notification</span>
+  </div>
+
+  <script>
+    /* =========================================================
+       CONFIGURATION FIREBASE
+       ========================================================= */
+    const firebaseConfig = {
+      apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
+      authDomain: "imb-game-center.firebaseapp.com",
+      databaseURL: "https://imb-game-center-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "imb-game-center",
+      storageBucket: "imb-game-center.firebasestorage.app",
+      messagingSenderId: "571101212396",
+      appId: "1:571101212396:web:3c66a1de5dbf8032007fc9"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const STORAGE_AUTH_SESSION = 'imb_session_v4';
+    let currentUser = null;
+
+    let currentRoomCode = null;
+    let roomListener = null;
+    let currentGameState = null;
+    let currentChatTab = 'salon'; // 'salon' ou 'promo'
+    let chatDrawerListener = null;
+    let voteTimerInterval = null;
+    let serverClockOffset = 0;
+
+    const DEFAULT_WORD_PAIRS = [
+      { complice: 'Pomme', infiltre: 'Poire' },
+      { complice: 'Thé', infiltre: 'Café' },
+      { complice: 'Guitare', infiltre: 'Violon' },
+      { complice: 'Avion', infiltre: 'Fusée' },
+      { complice: 'Plage', infiltre: 'Piscine' },
+      { complice: 'Chat', infiltre: 'Chien' },
+      { complice: 'Stylo', infiltre: 'Crayon' },
+      { complice: 'Soleil', infiltre: 'Lune' },
+      { complice: 'Pizza', infiltre: 'Burger' },
+      { complice: 'Kebab', infiltre: 'Tacos' }
+    ];
+
+    // Synchronisation horloge Firebase pour le chrono
+    db.ref('.info/serverTimeOffset').on('value', snap => {
+      serverClockOffset = snap.val() || 0;
+    });
+    function getNow() { return Date.now() + serverClockOffset; }
+
+    /* ---------------- DÉMARRAGE ---------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      initSession();
+      listenToOnlineCount();
+      checkUrlSalonParam();
+    });
+
+    function initSession() {
+      const stored = localStorage.getItem(STORAGE_AUTH_SESSION);
+      if (stored) {
+        currentUser = JSON.parse(stored);
+      } else {
+        const randId = Math.floor(100 + Math.random() * 900);
+        currentUser = {
+          nickname: `Agent_${randId}`,
+          tag: `agent_${randId}`,
+          avatarEmoji: '🕵️‍♂️',
+          flagEmoji: '🇫🇷'
+        };
+      }
+
+      document.getElementById('navUserNick').textContent = currentUser.nickname;
+      document.getElementById('navUserAvatar').textContent = `${currentUser.avatarEmoji || '🍺'} ${currentUser.flagEmoji || '🇫🇷'}`;
+      document.getElementById('lobbyGreetingNick').textContent = currentUser.nickname;
+    }
+
+    function checkUrlSalonParam() {
+      const params = new URLSearchParams(window.location.search);
+      const roomParam = params.get('room');
+      if (roomParam) {
+        joinSalon(roomParam.toUpperCase());
+      }
+    }
+
+    function listenToOnlineCount() {
+      db.ref('users').on('value', snapshot => {
+        const users = snapshot.val();
+        document.getElementById('navOnlineCount').textContent = users ? Object.keys(users).length : 1;
+      });
+    }
+
+    /* ---------------- CRÉATION & ENTRÉE DANS UN SALON ---------------- */
+    async function createSalon() {
+      const btn = document.getElementById('btnActionCreate');
+      btn.disabled = true;
+
+      // Génération code de 4 lettres stylé façon Président (ex: JYHR)
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      for (let i = 0; i < 4; i++) {
+        code += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+      }
+
+      try {
+        await db.ref(`rooms_imposteur/${code}`).set({
+          status: 'waiting',
+          hostTag: currentUser.tag,
+          hostNick: currentUser.nickname,
+          settings: {
+            classic: true,
+            custom: true
+          },
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        joinSalon(code);
+        showToast(`Salon ${code} créé !`, '🎲');
+      } catch (err) {
+        showToast('Erreur création salon', '❌');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function joinSalonFromInput() {
+      const input = document.getElementById('inputJoinSalonCode');
+      const code = input.value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      if (!code) {
+        showToast('Entre le code du salon !', '⚠️');
+        return;
+      }
+      joinSalon(code);
+    }
+
+    async function joinSalon(code) {
+      leaveCurrentSalon();
+      currentRoomCode = code;
+
+      try {
+        const snap = await db.ref(`rooms_imposteur/${code}`).get();
+        if (!snap.exists()) {
+          showToast(`Salon ${code} introuvable !`, '❌');
+          currentRoomCode = null;
+          return;
+        }
+      } catch (e) {
+        showToast('Impossible de joindre le salon', '❌');
+        return;
+      }
+
+      // MAJ URL propre
+      const url = new URL(window.location);
+      url.searchParams.set('room', code);
+      window.history.replaceState({}, '', url);
+
+      // Inscription du joueur
+      const playerRef = db.ref(`rooms_imposteur/${code}/players/${currentUser.tag}`);
+      playerRef.onDisconnect().remove();
+
+      const existingData = (await db.ref(`rooms_imposteur/${code}`).get()).val() || {};
+      const isAlreadyPlaying = ['playing', 'voting', 'resolving'].includes(existingData.status);
+
+      await playerRef.set({
+        tag: currentUser.tag,
+        nickname: currentUser.nickname,
+        avatar: currentUser.avatarEmoji || '🍺',
+        flag: currentUser.flagEmoji || '🇫🇷',
+        isAlive: !isAlreadyPlaying,
+        isSpectator: isAlreadyPlaying,
+        votedFor: null,
+        joinedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      // Écoute de l'état du salon
+      roomListener = db.ref(`rooms_imposteur/${code}`).on('value', snapshot => {
+        const data = snapshot.val();
+        currentGameState = data;
+        if (!data) {
+          showToast('Ce salon a été fermé.', '⚠️');
+          leaveCurrentSalon();
+          showScreen('accueil');
+          return;
+        }
+        renderGameState(data);
+      });
+
+      // Écoute du chat
+      listenChatMessages();
+    }
+
+    function leaveCurrentSalon() {
+      if (currentRoomCode) {
+        db.ref(`rooms_imposteur/${currentRoomCode}/players/${currentUser.tag}`).remove();
+        if (roomListener) db.ref(`rooms_imposteur/${currentRoomCode}`).off('value', roomListener);
+      }
+      currentRoomCode = null;
+      roomListener = null;
+      currentGameState = null;
+      if (voteTimerInterval) clearInterval(voteTimerInterval);
+      voteTimerInterval = null;
+    }
+
+    /* ---------------- MACHINE D'ÉTATS & AFFICHAGE ---------------- */
+    function showScreen(screen) {
+      document.getElementById('screenAccueil').classList.add('hidden');
+      document.getElementById('screenSalon').classList.add('hidden');
+      document.getElementById('screenPartie').classList.add('hidden');
+      document.getElementById('screenVictoire').classList.add('hidden');
+
+      if (screen === 'accueil') document.getElementById('screenAccueil').classList.remove('hidden');
+      if (screen === 'salon') document.getElementById('screenSalon').classList.remove('hidden');
+      if (screen === 'partie') document.getElementById('screenPartie').classList.remove('hidden');
+      if (screen === 'victoire') document.getElementById('screenVictoire').classList.remove('hidden');
+    }
+
+    function renderGameState(data) {
+      const players = data.players ? Object.values(data.players) : [];
+      const isHost = data.hostTag === currentUser.tag;
+
+      // 1. Écran de préparation du Salon
+      if (!data.status || data.status === 'waiting') {
+        showScreen('salon');
+        document.getElementById('displaySalonCode').textContent = currentRoomCode;
+        document.getElementById('badgeSalonCount').textContent = `${players.length}/8`;
+
+        // Liste des joueurs
+        const listContainer = document.getElementById('salonPlayersList');
+        listContainer.innerHTML = players.map(p => `
+          <div class="flex items-center justify-between p-2.5 bg-[#f8fafc] border-2 border-[#12131a] rounded-2xl">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-xl">${p.avatar} ${p.flag}</span>
+              <span class="font-black text-xs text-[#12131a] truncate">${escapeHtml(p.nickname)}</span>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              ${data.hostTag === p.tag ? '<span class="text-[10px] font-black bg-[#fed72d] border border-[#12131a] px-2 py-0.5 rounded-md">👑 hôte</span>' : ''}
+              ${p.tag === currentUser.tag ? '<span class="text-[10px] font-black bg-slate-200 border border-[#12131a] px-2 py-0.5 rounded-md">toi</span>' : ''}
+            </div>
+          </div>
+        `).join('');
+
+        // Hôte vs Invité
+        if (isHost) {
+          document.getElementById('hostLaunchContainer').classList.remove('hidden');
+          document.getElementById('guestWaitingNotice').classList.add('hidden');
+          const canLaunch = players.length >= 3;
+          document.getElementById('btnHostStart').disabled = !canLaunch;
+          document.getElementById('btnHostStart').className = `w-full neo-btn py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 ${canLaunch ? 'bg-[#fed72d] hover:bg-[#eec418] text-[#12131a]' : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-80'}`;
+        } else {
+          document.getElementById('hostLaunchContainer').classList.add('hidden');
+          document.getElementById('guestWaitingNotice').classList.remove('hidden');
+        }
+
+        // Réglages
+        if (data.settings) {
+          document.getElementById('settingClassicWords').checked = data.settings.classic !== false;
+          document.getElementById('settingCustomWords').checked = data.settings.custom !== false;
+        }
+        return;
+      }
+
+      // 2. Écran de jeu en cours (playing, voting, resolving)
+      if (['playing', 'voting', 'resolving'].includes(data.status)) {
+        showScreen('partie');
+        const me = data.players ? data.players[currentUser.tag] : null;
+
+        // Affichage mot secret
+        if (me && me.word) {
+          document.getElementById('displaySecretWord').textContent = me.word;
+        }
+
+        // Tour par tour & Statut
+        const activeTag = data.turnOrder ? data.turnOrder[data.currentTurnIndex || 0] : null;
+        const activePlayer = activeTag && data.players ? data.players[activeTag] : null;
+
+        document.getElementById('partyRoundBadge').textContent = `Tour ${data.currentRound || 1} / ${data.totalRounds || 2}`;
+
+        if (data.status === 'playing') {
+          document.getElementById('votingTimerBox').classList.add('hidden');
+          document.getElementById('partyActiveTurnText').textContent = activePlayer
+            ? `C'est au tour de ${activePlayer.nickname} de donner son indice !`
+            : "En attente...";
+
+          // Afficher la boîte de saisie si c'est notre tour
+          if (me && me.isAlive && activeTag === currentUser.tag) {
+            document.getElementById('myClueSubmissionBox').classList.remove('hidden');
+          } else {
+            document.getElementById('myClueSubmissionBox').classList.add('hidden');
+          }
+        } else {
+          // Phase de vote
+          document.getElementById('myClueSubmissionBox').classList.add('hidden');
+          document.getElementById('partyActiveTurnText').textContent = "🚨 Votez pour démasquer l'infiltré !";
+          document.getElementById('votingTimerBox').classList.remove('hidden');
+          syncVotingTimer(data);
+        }
+
+        // Rendu des sièges de la partie
+        renderPartySeats(data);
+        return;
+      }
+
+      // 3. Écran Victoire / Fin
+      if (data.status === 'ended') {
+        showScreen('victoire');
+        document.getElementById('victoryDesc').textContent = data.winnerText || 'Partie terminée !';
+        document.getElementById('revealCompliceWord').textContent = data.secretCompliceWord || '???';
+        document.getElementById('revealInfiltreWord').textContent = data.secretInfiltreWord || '???';
+      }
+    }
+
+    function renderPartySeats(data) {
+      const seatsContainer = document.getElementById('partySeatsGrid');
+      const players = data.players ? Object.values(data.players) : [];
+      const activeTag = data.turnOrder ? data.turnOrder[data.currentTurnIndex || 0] : null;
+      const me = data.players ? data.players[currentUser.tag] : null;
+
+      seatsContainer.innerHTML = players.map(p => {
+        const isCurrent = data.status === 'playing' && activeTag === p.tag;
+        const isMe = p.tag === currentUser.tag;
+        const canVote = data.status === 'voting' && p.isAlive && !isMe && me && me.isAlive;
+        const clues = p.clues ? Object.values(p.clues) : [];
+
+        return `
+          <div onclick="handleSeatVote('${p.tag}')" class="neo-box bg-white p-3 flex flex-col justify-between text-center transition-all ${isCurrent ? 'ring-4 ring-[#fed72d] scale-102 shadow-[4px_6px_0px_#12131a]' : ''} ${!p.isAlive ? 'opacity-40 grayscale' : ''} ${canVote ? 'cursor-pointer hover:bg-rose-50 hover:border-rose-600' : ''}">
+            <div>
+              <span class="text-2xl">${p.avatar} ${p.flag}</span>
+              <h5 class="text-xs font-black text-[#12131a] truncate mt-1">
+                ${data.hostTag === p.tag ? '👑 ' : ''}${escapeHtml(p.nickname)} ${isMe ? '(Moi)' : ''}
+              </h5>
+              <span class="text-[9px] font-mono text-slate-500 block">
+                ${isCurrent ? '🗣️ Parle...' : (p.isAlive ? (data.status === 'voting' && p.votedFor ? 'A voté ✅' : 'En jeu') : 'Éliminé')}
+              </span>
+            </div>
+
+            <div class="mt-2 space-y-1">
+              ${clues.length ? clues.map((c, i) => `
+                <div class="bg-[#fed72d]/30 border border-[#12131a] rounded px-1.5 py-0.5 text-[11px] font-black text-[#12131a]">
+                  <span class="text-[8px] text-slate-600 mr-1">#${i + 1}</span>« ${escapeHtml(c)} »
+                </div>
+              `).join('') : '<span class="text-[10px] text-slate-400 italic">Aucun indice</span>'}
+            </div>
+
+            ${canVote ? `
+              <span class="mt-2 text-[10px] font-black bg-rose-600 text-white rounded-lg py-1 block shadow-[1px_1.5px_0px_#12131a]">
+                ${me.votedFor === p.tag ? 'Ton vote 🎯' : 'Voter contre ➔'}
+              </span>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* ---------------- ACTIONS DE JEU ---------------- */
+    async function launchMissionGame() {
+      if (!currentRoomCode || !currentGameState) return;
+      const players = Object.values(currentGameState.players || {});
+      if (players.length < 3) {
+        showToast('Minimum 3 joueurs requis !', '⚠️');
+        return;
+      }
+
+      const settings = currentGameState.settings || { classic: true, custom: true };
+      let pool = [];
+      if (settings.classic) pool = pool.concat(DEFAULT_WORD_PAIRS);
+      if (settings.custom) {
+        const snap = await db.ref('promo_words').get();
+        if (snap.exists()) pool = pool.concat(Object.values(snap.val()).filter(p => p.complice && p.infiltre));
+      }
+      if (!pool.length) pool = [...DEFAULT_WORD_PAIRS];
+
+      const chosenPair = pool[Math.floor(Math.random() * pool.length)];
+      const order = shuffle([...players.map(p => p.tag)]);
+      const infiltratorTag = order[Math.floor(Math.random() * order.length)];
+
+      const updatedPlayers = {};
+      players.forEach(p => {
+        const isInfiltrator = p.tag === infiltratorTag;
+        updatedPlayers[p.tag] = {
+          ...p,
+          word: isInfiltrator ? chosenPair.infiltre : chosenPair.complice,
+          isUndercover: isInfiltrator,
+          isAlive: true,
+          clues: null,
+          votedFor: null
+        };
+      });
+
+      await db.ref(`rooms_imposteur/${currentRoomCode}`).update({
+        status: 'playing',
+        players: updatedPlayers,
+        turnOrder: order,
+        infiltratorTag: infiltratorTag,
+        currentTurnIndex: 0,
+        currentRound: 1,
+        totalRounds: players.length === 3 ? 1 : 2,
+        secretCompliceWord: chosenPair.complice,
+        secretInfiltreWord: chosenPair.infiltre,
+        winnerText: null,
+        votingStartedAt: null
+      });
+
+      sendRoomChat("🎲 La partie commence ! Consultez votre mot secret.", "Système");
+    }
+
+    function handleClueSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('inputClueWord');
+      const clue = input.value.trim();
+      if (!clue || !currentGameState) return;
+
+      const order = currentGameState.turnOrder || [];
+      const idx = currentGameState.currentTurnIndex || 0;
+      if (order[idx] !== currentUser.tag) return;
+
+      const p = currentGameState.players[currentUser.tag];
+      const clues = p.clues ? [...Object.values(p.clues), clue] : [clue];
+
+      let nextIdx = idx + 1;
+      let nextRound = currentGameState.currentRound || 1;
+      let nextStatus = 'playing';
+
+      if (nextIdx >= order.length) {
+        nextIdx = 0;
+        nextRound++;
+        if (nextRound > (currentGameState.totalRounds || 2)) {
+          nextStatus = 'voting';
+        }
+      }
+
+      const updates = {
+        [`players/${currentUser.tag}/clues`]: clues,
+        status: nextStatus,
+        currentTurnIndex: nextIdx,
+        currentRound: nextRound
+      };
+
+      if (nextStatus === 'voting') {
+        updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
+      }
+
+      db.ref(`rooms_imposteur/${currentRoomCode}`).update(updates);
+      input.value = '';
+      sendRoomChat(`${currentUser.nickname} a dit : « ${clue} »`);
+    }
+
+    function handleSeatVote(targetTag) {
+      if (!currentGameState || currentGameState.status !== 'voting') return;
+      if (targetTag === currentUser.tag) {
+        showToast('Tu ne peux pas voter contre toi-même !', '⚠️');
+        return;
+      }
+      db.ref(`rooms_imposteur/${currentRoomCode}/players/${currentUser.tag}/votedFor`).set(targetTag);
+      showToast('Vote enregistré !', '🎯');
+    }
+
+    function syncVotingTimer(data) {
+      if (voteTimerInterval) return;
+      const display = document.getElementById('votingCountdownText');
+
+      const tick = () => {
+        if (!currentGameState || currentGameState.status !== 'voting') {
+          clearInterval(voteTimerInterval);
+          voteTimerInterval = null;
+          return;
+        }
+        const endsAt = (data.votingStartedAt || 0) + 60 * 1000;
+        const leftSec = Math.max(0, Math.ceil((endsAt - getNow()) / 1000));
+        display.textContent = `${leftSec}s`;
+
+        if (leftSec <= 0) {
+          clearInterval(voteTimerInterval);
+          voteTimerInterval = null;
+          resolveVotes();
+        }
+      };
+      tick();
+      voteTimerInterval = setInterval(tick, 1000);
+    }
+
+    function resolveVotes() {
+      db.ref(`rooms_imposteur/${currentRoomCode}/status`).transaction(st => (st === 'voting' ? 'resolving' : undefined), (err, committed) => {
+        if (!committed) return;
+
+        db.ref(`rooms_imposteur/${currentRoomCode}`).get().then(snap => {
+          const data = snap.val();
+          if (!data || !data.players) return;
+
+          const players = Object.values(data.players);
+          const alive = players.filter(p => p.isAlive);
+          const tally = {};
+
+          alive.forEach(p => {
+            if (p.votedFor) tally[p.votedFor] = (tally[p.votedFor] || 0) + 1;
+          });
+
+          let maxVotes = -1;
+          let mostVotedTag = alive[0].tag;
+          for (let t in tally) {
+            if (tally[t] > maxVotes) {
+              maxVotes = tally[t];
+              mostVotedTag = t;
+            }
+          }
+
+          const eliminated = data.players[mostVotedTag];
+          sendRoomChat(`📢 Vote clos ! ${eliminated.nickname} a été désigné !`, 'Système');
+
+          if (eliminated.isUndercover) {
+            db.ref(`rooms_imposteur/${currentRoomCode}`).update({
+              status: 'ended',
+              winnerText: `🎉 VICTOIRE DES COMPLICES ! L'infiltré était bien ${eliminated.nickname} (mot : ${data.secretInfiltreWord}).`
+            });
+            return;
+          }
+
+          const remainingAlive = alive.filter(p => p.tag !== mostVotedTag);
+          if (remainingAlive.length <= 3) {
+            db.ref(`rooms_imposteur/${currentRoomCode}`).update({
+              status: 'ended',
+              winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Les complices ont éliminé un innocent.`
+            });
+            return;
+          }
+
+          // Nouveau round sans l'éliminé
+          const updates = {
+            [`players/${mostVotedTag}/isAlive`]: false,
+            status: 'playing',
+            currentTurnIndex: 0,
+            currentRound: 1,
+            votingStartedAt: null
+          };
+          players.forEach(p => { updates[`players/${p.tag}/votedFor`] = null; });
+          db.ref(`rooms_imposteur/${currentRoomCode}`).update(updates);
+          sendRoomChat(`❌ ${eliminated.nickname} était innocent ! La traque continue...`, 'Système');
+        });
+      });
+    }
+
+    function returnToWaitingSalon() {
+      if (!currentRoomCode) return;
+      db.ref(`rooms_imposteur/${currentRoomCode}`).update({
+        status: 'waiting',
+        turnOrder: null,
+        votingStartedAt: null,
+        winnerText: null
+      });
+    }
+
+    /* ---------------- CHAT FLOTTANT (SALON + PROMO) ---------------- */
+    function toggleChatDrawer() {
+      const drawer = document.getElementById('chatFloatingDrawer');
+      drawer.classList.toggle('closed');
+      document.getElementById('chatUnreadDot').classList.add('hidden');
+    }
+
+    function switchChatTab(tab) {
+      currentChatTab = tab;
+      const btnSalon = document.getElementById('btnTabChatSalon');
+      const btnPromo = document.getElementById('btnTabChatPromo');
+
+      if (tab === 'salon') {
+        btnSalon.className = 'neo-btn bg-white text-[#12131a] text-[11px] px-2.5 py-1 rounded-xl';
+        btnPromo.className = 'bg-transparent text-slate-700 font-extrabold text-[11px] px-2.5 py-1 rounded-xl';
+      } else {
+        btnPromo.className = 'neo-btn bg-white text-[#12131a] text-[11px] px-2.5 py-1 rounded-xl';
+        btnSalon.className = 'bg-transparent text-slate-700 font-extrabold text-[11px] px-2.5 py-1 rounded-xl';
+      }
+      listenChatMessages();
+    }
+
+    function listenChatMessages() {
+      const list = document.getElementById('chatMessagesList');
+      if (chatDrawerListener) chatDrawerListener.off();
+
+      const path = (currentChatTab === 'salon' && currentRoomCode) 
+        ? `rooms_imposteur/${currentRoomCode}/chat` 
+        : 'chat';
+
+      chatDrawerListener = db.ref(path).limitToLast(40);
+      chatDrawerListener.on('value', snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+          list.innerHTML = `<p class="text-slate-400 font-bold text-center py-6 text-[11px]">Aucun message pour le moment.</p>`;
+          return;
+        }
+
+        const msgs = Object.values(data);
+        list.innerHTML = msgs.map(m => `
+          <div class="neo-box-sm bg-white p-2">
+            <div class="flex items-center justify-between text-[10px] font-black mb-0.5">
+              <span>${m.authorAvatar || '🍺'} ${escapeHtml(m.authorNick || m.author)}</span>
+              <span class="font-mono text-slate-400">${m.time || ''}</span>
+            </div>
+            <p class="text-[11px] font-bold text-slate-800 break-words">${escapeHtml(m.text)}</p>
+          </div>
+        `).join('');
+
+        list.scrollTop = list.scrollHeight;
+      });
+    }
+
+    function handleSendDrawerMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('inputChatMessage');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const timeStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+      if (currentChatTab === 'salon' && currentRoomCode) {
+        db.ref(`rooms_imposteur/${currentRoomCode}/chat`).push({
+          authorNick: currentUser.nickname,
+          authorAvatar: currentUser.avatarEmoji || '🍺',
+          text: text,
+          time: timeStr,
+          timestamp: Date.now()
+        });
+      } else {
+        db.ref('chat').push({
+          authorNick: currentUser.nickname,
+          authorTag: currentUser.tag,
+          authorAvatar: currentUser.avatarEmoji || '🍺',
+          authorFlag: currentUser.flagEmoji || '🇫🇷',
+          isInvite: false,
+          text: text,
+          time: timeStr,
+          timestamp: Date.now()
+        });
+      }
+
+      input.value = '';
+    }
+
+    function sendRoomChat(text, author = currentUser ? currentUser.nickname : 'Système') {
+      if (!currentRoomCode) return;
+      db.ref(`rooms_imposteur/${currentRoomCode}/chat`).push({
+        authorNick: author,
+        authorAvatar: '📢',
+        text: text,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      });
+    }
+
+    function announceCurrentSalonInChat() {
+      if (!currentRoomCode) {
+        showToast("Tu n'es pas dans un salon !", '⚠️');
+        return;
+      }
+      db.ref('chat').push({
+        authorNick: currentUser.nickname,
+        authorTag: currentUser.tag,
+        authorAvatar: currentUser.avatarEmoji || '🕵️‍♂️',
+        authorFlag: currentUser.flagEmoji || '🇫🇷',
+        isInvite: true,
+        gameTitle: "Mission: Undercover",
+        roomUrl: `${window.location.origin}/imposteur.html?room=${currentRoomCode}`,
+        internalGame: 'imposteur',
+        internalRoom: currentRoomCode,
+        text: `Rejoignez mon salon Undercover ! Code : ${currentRoomCode}`,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      });
+      showToast('Invitation postée dans le Général Promo !', '📣');
+    }
+
+    /* ---------------- OUTILS & RÈGLAGES ---------------- */
+    function updateSalonSettings() {
+      if (!currentRoomCode) return;
+      const classic = document.getElementById('settingClassicWords').checked;
+      const custom = document.getElementById('settingCustomWords').checked;
+      db.ref(`rooms_imposteur/${currentRoomCode}/settings`).set({ classic, custom });
+    }
+
+    function submitNewPromoPair() {
+      const c = document.getElementById('addWordComplice').value.trim();
+      const i = document.getElementById('addWordInfiltre').value.trim();
+      if (!c || !i) {
+        showToast('Remplis les 2 mots !', '⚠️');
+        return;
+      }
+      db.ref('promo_words').push({
+        complice: c,
+        infiltre: i,
+        addedBy: currentUser.nickname
+      });
+      document.getElementById('addWordComplice').value = '';
+      document.getElementById('addWordInfiltre').value = '';
+      showToast('Paire de mots enregistrée pour toute la promo !', '✅');
+    }
+
+    function copySalonCode() {
+      if (!currentRoomCode) return;
+      navigator.clipboard.writeText(currentRoomCode).then(() => {
+        showToast(`Code ${currentRoomCode} copié !`, '📋');
+      });
+    }
+
+    function openRulesModal() { document.getElementById('modalRules').classList.remove('hidden'); }
+    function closeRulesModal() { document.getElementById('modalRules').classList.add('hidden'); }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function showToast(msg, icon = '💬') {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMsg').textContent = msg;
+      document.getElementById('toastIcon').textContent = icon;
+      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 3000);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
