@@ -56,6 +56,7 @@
       transform: translate(2px, 2px);
       box-shadow: 1px 1px 0px var(--border-dark) !important;
     }
+
     /* Animation mascotte au survol */
     .mascotte-container {
       position: relative;
@@ -122,6 +123,7 @@
       transform: translate(2px, 3px) scale(0.97) rotate(1deg);
       box-shadow: 1px 1px 0px var(--border-dark) !important;
     }
+
     .neo-tag {
       border: 2px solid var(--border-dark);
       box-shadow: 2px 2.5px 0px var(--border-dark);
@@ -129,12 +131,7 @@
       transition: all 0.15s ease;
     }
 
-    .neo-tag:active {
-      transform: translate(1px, 1.5px);
-      box-shadow: 1px 1px 0px var(--border-dark);
-    }
-
-    /* Carte de jeu style capture */
+    /* Carte de jeu */
     .game-card {
       border: 3px solid var(--border-dark);
       box-shadow: 4px 5px 0px var(--border-dark);
@@ -155,14 +152,6 @@
     .game-card:active {
       transform: translate(2px, 2px);
       box-shadow: 2px 2px 0px var(--border-dark);
-    }
-
-    /* Tapis de poker */
-    .poker-table {
-      background: radial-gradient(circle, #228b22 0%, #155715 80%, #0d380d 100%);
-      border: 8px solid #5a3818;
-      box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 4px 6px 0px #12131a;
-      border-radius: 4rem;
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -387,19 +376,18 @@
             </div>
           </div>
 
-          <!-- Carte L'Imposteur -->
-          <!-- Carte L'Imposteur -->
+          <!-- Carte L'Imposteur : OUVRE LA NOUVELLE APPLICATION DÉDIÉE -->
           <div onclick="window.open('/imposteur.html', '_blank')" class="game-card">
             <div class="w-full h-32 bg-[#06d6a0] flex items-center justify-center border-b-[3px] border-[#12131a]">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
             </div>
             <div class="p-4 flex flex-col justify-between flex-1">
               <div>
-                <h4 class="text-lg font-black text-[#12131a]">L'Imposteur (Undercover)</h4>
-                <p class="text-xs font-bold text-slate-500 mt-1">Trouve l'infiltré qui ne sait même pas qu'il l'est ! Table de poker en direct.</p>
+                <h4 class="text-lg font-black text-[#12131a]">Mission: Undercover</h4>
+                <p class="text-xs font-bold text-slate-500 mt-1">Trouve l'infiltré qui ignore son propre statut ! Salon & partie en direct.</p>
               </div>
               <div class="flex items-center gap-2 mt-3">
-                <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Jeu Interne</span>
+                <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Page dédiée</span>
                 <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
               </div>
             </div>
@@ -439,7 +427,7 @@
           </div>
         </div>
 
-        <div id="chatMessagesContainer" class="flex-1 p-3.5 overflow-y-auto space-y-reverse space-y-3 custom-scrollbar bg-[#f8fafc] flex flex-col-reverse">
+        <div id="chatMessagesContainer" class="flex-1 p-3.5 pb-2 overflow-y-auto space-y-reverse space-y-3 custom-scrollbar bg-[#f8fafc] flex flex-col-reverse min-h-0">
           <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement du chat...</p>
         </div>
 
@@ -514,194 +502,6 @@
         <button onclick="announceMorpionInChat()" id="btnAnnounceMorpion" class="w-full neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-2 rounded-xl text-xs font-bold">
           📢 Partager ma salle dans le chat
         </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ================= L'IMPOSTEUR — PAGE 1 : CRÉER / REJOINDRE UN SALON ================= -->
-  <div id="modalImposteurLobby" class="hidden fixed inset-0 z-50 bg-[#121422]/95 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-    <div class="neo-box bg-white max-w-3xl w-full p-4 sm:p-6 relative max-h-[96vh] overflow-y-auto custom-scrollbar">
-
-      <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">🕵️‍♂️</span>
-          <div>
-            <h3 class="text-xl font-black text-[#12131a] leading-none">L'IMPOSTEUR</h3>
-            <span class="text-[10px] font-mono font-bold text-slate-500 block mt-0.5">Crée ton salon ou rejoins celui d'un camarade</span>
-          </div>
-        </div>
-        <button onclick="closeImposteurLobby()" class="text-xl font-bold">✕</button>
-      </div>
-
-      <div class="bg-[#f0f4ff] border-2 border-[#12131a] rounded-2xl p-3 mb-4 text-xs">
-        <strong class="font-black block uppercase text-[11px] text-[#12131a] mb-1">Règles Rapides</strong>
-        <p class="text-slate-600 font-bold leading-snug">
-          3 joueurs minimum. Les Complices reçoivent le même mot secret, l'Infiltré en reçoit un très proche. Personne ne sait quel mot est le bon ! Chacun donne 1 mot par tour. Après 2 tours (ou 1 seul à 3 joueurs), vous avez 60 secondes pour voter et éliminer l'infiltré.
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <!-- Créer un salon -->
-        <div class="md:col-span-3 bg-white border-2 border-[#12131a] rounded-2xl p-4 shadow-[2px_3px_0px_#12131a]">
-          <div class="text-sm font-black text-[#12131a] mb-1 uppercase">1. Créer un salon</div>
-          <p class="text-[11px] font-bold text-slate-500 mb-3">Choisis les mots de la partie : tu recevras un numéro de salle à envoyer dans le chat.</p>
-
-          <div class="flex flex-col gap-2 text-xs font-bold mb-3">
-            <label class="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" id="chkWordsClassic" checked class="w-4 h-4 rounded text-blue-600">
-              <span>Mots classiques <span class="text-slate-400 font-normal">(Pomme/Poire, Thé/Café...)</span></span>
-            </label>
-            <label class="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" id="chkWordsCustom" checked class="w-4 h-4 rounded text-blue-600">
-              <span>Mots personnalisés <span class="text-slate-400 font-normal">(Proposés par les gens de la classe !)</span></span>
-            </label>
-          </div>
-
-          <div class="pt-3 border-t border-slate-200 mb-4">
-            <span class="block text-[10px] font-black uppercase text-slate-500 mb-1">Ajouter une nouvelle paire pour toute la promo :</span>
-            <div class="flex flex-wrap sm:flex-nowrap gap-2">
-              <input type="text" id="inputCustomWord1" placeholder="Mot Complice (ex: Kebab)" class="flex-1 min-w-0 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2.5 py-1.5 text-xs font-bold">
-              <input type="text" id="inputCustomWord2" placeholder="Mot Infiltré (ex: Tacos)" class="flex-1 min-w-0 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2.5 py-1.5 text-xs font-bold">
-              <button onclick="addCustomWordPairToPromo()" class="neo-btn bg-white text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
-                Ajouter
-              </button>
-            </div>
-          </div>
-
-          <button onclick="createImposteurRoom()" id="btnCreateImposteurRoom" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm font-black">
-            🎲 Créer le salon
-          </button>
-        </div>
-
-        <!-- Rejoindre un salon -->
-        <div class="md:col-span-2 bg-[#06d6a0]/20 border-2 border-[#12131a] rounded-2xl p-4 shadow-[2px_3px_0px_#12131a] flex flex-col">
-          <div class="text-sm font-black text-[#12131a] mb-1 uppercase">2. Rejoindre un salon</div>
-          <p class="text-[11px] font-bold text-slate-600 mb-3">Entre le numéro de salle donné par l'hôte (ou clique sur son invitation dans le chat).</p>
-          <input type="text" id="imposteurJoinCodeInput" placeholder="IMPO-1234" class="w-full bg-white border-2 border-[#12131a] rounded-xl px-3 py-2.5 text-center font-mono font-black text-sm uppercase mb-3">
-          <button onclick="joinImposteurRoomFromInput()" class="w-full mt-auto neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-3 rounded-2xl text-sm font-black">
-            Rejoindre ➔
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ================= L'IMPOSTEUR — PAGE 2 : LA SALLE DE JEU ================= -->
-  <div id="modalImposteur" class="hidden fixed inset-0 z-50 bg-[#121422]/95 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-    <div class="neo-box bg-white max-w-7xl w-full p-4 sm:p-6 relative max-h-[98vh] overflow-y-auto custom-scrollbar flex flex-col">
-
-      <!-- Top header salle -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b-2 border-[#12131a] mb-4">
-        <div class="flex items-center gap-3">
-          <span class="text-3xl">🕵️‍♂️</span>
-          <div>
-            <h3 class="text-xl font-black text-[#12131a] leading-none">L'IMPOSTEUR</h3>
-            <span id="imposteurRoomSettingsText" class="text-[10px] font-mono font-bold text-slate-500 block mt-0.5">Mots : classiques</span>
-          </div>
-          <div class="ml-2 bg-[#fed72d] border-2 border-[#12131a] rounded-2xl px-3 py-1.5 shadow-[2px_3px_0px_#12131a] text-center">
-            <span class="block text-[9px] font-black uppercase text-[#12131a]/70 leading-none">N° de salle</span>
-            <span id="imposteurRoomBadge" class="block text-lg font-mono font-black text-[#12131a] leading-tight tracking-wider">IMPO-0000</span>
-          </div>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button onclick="copyImposteurRoomCode()" class="neo-btn bg-white text-[#12131a] px-3 py-1.5 rounded-xl text-xs">📋 Copier le code</button>
-          <button onclick="shareImposteurRoomInChat()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs">📢 Envoyer dans le chat</button>
-          <button onclick="closeImposteurModal()" class="neo-btn bg-white text-[#12131a] px-3 py-1.5 rounded-xl text-xs">Quitter</button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        <!-- Colonne gauche : table + saisie -->
-        <div class="lg:col-span-2 flex flex-col gap-4">
-
-          <!-- TABLE DE POKER DES JOUEURS -->
-          <div class="poker-table p-5 sm:p-10 min-h-[480px] flex flex-col justify-between items-center gap-6 relative">
-
-            <!-- Centre de table : Statut & Décompte -->
-            <div class="bg-white/95 border-2 border-[#12131a] rounded-3xl p-4 sm:p-5 text-center shadow-[3px_4px_0px_#12131a] max-w-md w-full z-10">
-              <div id="imposteurPhaseBadge" class="text-[10px] font-mono font-black uppercase tracking-wider text-black bg-[#fed72d] border border-[#12131a] px-2.5 py-0.5 rounded-full inline-block mb-1">
-                En attente des joueurs
-              </div>
-
-              <h4 id="imposteurCenterTitle" class="text-lg sm:text-xl font-black text-[#12131a] leading-tight">
-                1 Joueur(s)
-              </h4>
-
-              <p id="imposteurCenterDesc" class="text-sm font-bold text-slate-600 mt-1">
-                Minimum 3 joueurs pour lancer.
-              </p>
-
-              <!-- Chrono vote 60s -->
-              <div id="imposteurTimerContainer" class="hidden mt-2">
-                <div class="text-3xl font-black font-mono text-rose-600 animate-pulse" id="imposteurTimerDisplay">
-                  60s
-                </div>
-              </div>
-
-              <!-- Secret Word Badge (Visible uniquement par le joueur) -->
-              <div id="imposteurMyWordCard" class="hidden mt-3 p-2.5 bg-[#f0fdf4] border-2 border-emerald-600 rounded-xl">
-                <span class="text-[10px] font-bold text-emerald-800 uppercase block">Ton mot secret :</span>
-                <span id="imposteurSecretWordText" class="text-xl font-black text-emerald-700 tracking-wider">???</span>
-              </div>
-
-              <!-- Bouton Lancer la partie pour l'hôte -->
-              <div id="imposteurHostControls" class="mt-3">
-                <button onclick="startImposteurGame()" id="btnStartImposteur" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-5 py-2.5 rounded-xl text-sm font-black">
-                  🚀 Lancer la partie
-                </button>
-              </div>
-            </div>
-
-            <!-- Sièges des joueurs autour de la table -->
-            <div id="imposteurSeatsContainer" class="w-full grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 z-10"></div>
-
-          </div>
-
-          <!-- Action Tour par Tour : Entrée du mot indice -->
-          <div id="imposteurTurnInputArea" class="hidden bg-[#fed72d] border-2 border-[#12131a] rounded-2xl p-3 shadow-[2px_3px_0px_#12131a]">
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs font-black text-[#12131a]">C'EST TON TOUR ! DONNE UN MOT EN RAPPORT :</span>
-              <span class="text-[10px] font-mono font-bold text-slate-800">1 seul mot !</span>
-            </div>
-            <form onsubmit="event.preventDefault(); submitImposteurClue();" class="flex gap-2">
-              <input type="text" id="imposteurClueInput" autocomplete="off" placeholder="Ex : Pépin..." class="flex-1 bg-white border-2 border-[#12131a] rounded-xl px-3 py-2 text-sm font-bold">
-              <button type="submit" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2 rounded-xl text-xs font-black">
-                Envoyer l'indice
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Colonne droite : indices + chat -->
-        <div class="flex flex-col gap-4">
-
-          <!-- Tableau des indices donnés -->
-          <div class="border-2 border-[#12131a] rounded-2xl bg-white overflow-hidden shadow-[2px_3px_0px_#12131a]">
-            <div class="bg-[#fed72d] px-3 py-2 border-b-2 border-[#12131a]">
-              <span class="text-sm font-black text-[#12131a]">🗣️ Indices donnés</span>
-            </div>
-            <div id="imposteurCluesBoard" class="p-3 space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar"></div>
-          </div>
-
-          <!-- Chat Dédié Spécifique à la table -->
-          <div class="border-2 border-[#12131a] rounded-2xl bg-white overflow-hidden shadow-[2px_3px_0px_#12131a] flex flex-col">
-            <div class="bg-[#f1f3f9] px-3 py-1.5 border-b-2 border-[#12131a] flex items-center justify-between">
-              <span class="text-xs font-black text-[#12131a]">💬 Chat de la Table</span>
-              <span class="text-[10px] font-mono text-slate-500">Seuls les joueurs voient ceci</span>
-            </div>
-            <div id="imposteurTableChatMessages" class="h-56 overflow-y-auto p-2.5 space-y-1.5 text-xs custom-scrollbar bg-slate-50"></div>
-            <form onsubmit="handleSendTableChatMessage(event)" class="p-2 border-t border-slate-200 flex gap-2">
-              <input type="text" id="tableChatInput" autocomplete="off" placeholder="Parler aux joueurs de la table..." class="flex-1 min-w-0 bg-white border border-[#12131a] rounded-xl px-2.5 py-1.5 text-xs font-bold">
-              <button type="submit" class="neo-btn bg-[#fed72d] px-3 py-1.5 rounded-xl text-xs font-black">
-                Envoyer
-              </button>
-            </form>
-          </div>
-        </div>
-
       </div>
 
     </div>
@@ -827,7 +627,6 @@
       '🇯🇵', '🇹🇭', '🇮🇳'                     // Asie
     ];
 
-    // CATALOGUE COMPLET DES JEUX EXTERNES (AVEC LES 4 NOUVEAUX)
     const GAMES_CATALOG = [
       {
         id: 'codenames',
@@ -929,8 +728,6 @@
       listenToLiveUsersCount();
     });
 
-    window.addEventListener('hashchange', checkImposteurRoomFromHash);
-
     function checkAuthSession() {
       const stored = localStorage.getItem(STORAGE_AUTH_SESSION);
       const overlay = document.getElementById('authOverlay');
@@ -939,7 +736,6 @@
         currentUser = JSON.parse(stored);
         overlay.classList.add('hidden');
         updateUserUI();
-        checkImposteurRoomFromHash();
       } else {
         overlay.classList.remove('hidden');
       }
@@ -953,7 +749,7 @@
       document.getElementById('heroGreeting').textContent = `SALUT ${currentUser.nickname} !`;
     }
 
-    /* ---------------- GESTION AUTH (100% SANS EMAIL) ---------------- */
+    /* ---------------- GESTION AUTH ---------------- */
     function switchAuthTab(tab) {
       hideAuthError();
       const formReg = document.getElementById('formRegister');
@@ -1085,6 +881,7 @@
       }
     }
 
+    /* ---------------- CHAT TEMPS RÉEL (PROMO) ---------------- */
     function listenToLiveChat() {
       const container = document.getElementById('chatMessagesContainer');
       db.ref('chat').limitToLast(50).on('value', snapshot => {
@@ -1153,22 +950,21 @@
       });
     }
 
-    // Codes de salle : uniquement lettres, chiffres et tirets (sûrs dans le HTML et les chemins Firebase)
     function safeRoomCode(code) {
       return String(code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
     }
 
-    // Invitation d'un jeu interne dans le chat : ouvre directement la bonne salle
+    // Ouvre la bonne salle (Morpion en modale ou Undercover sur sa page dédiée)
     function openInternalInvite(game, code) {
-      if (!currentUser || !code) return;
+      if (!code) return;
       if (game === 'MORPION') {
-      openMorpionModal();
-      setMorpionMode('online');
-      document.getElementById('morpionInputRoom').value = code;
-      joinMorpionOnlineRoom();
-    } else if (game === 'IMPOSTEUR') {
-      window.open(`/imposteur.html?room=${encodeURIComponent(code)}`, '_blank');
-    }
+        openMorpionModal();
+        setMorpionMode('online');
+        document.getElementById('morpionInputRoom').value = code;
+        joinMorpionOnlineRoom();
+      } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
+        window.open(`/imposteur.html?room=${encodeURIComponent(code)}`, '_blank');
+      }
     }
 
     function listenToLiveUsersCount() {
@@ -1224,7 +1020,6 @@
 
       const sectionInternes = document.getElementById('sectionInternes');
 
-      // Gestion de l'affichage de la section Jeux Internes
       if (currentFilter === 'externe' || currentFilter === 'favoris') {
         sectionInternes.classList.add('hidden');
         container.parentElement.classList.remove('hidden');
@@ -1233,7 +1028,6 @@
         container.parentElement.classList.add('hidden');
         return;
       } else {
-        // "all" : on affiche les deux sections
         sectionInternes.classList.remove('hidden');
         container.parentElement.classList.remove('hidden');
       }
@@ -1340,18 +1134,16 @@
     }
 
     /* =========================================================
-       1. MORPION (LOCAL & EN LIGNE TEMPS RÉEL SYNCHRONISÉ)
+       MORPION (LOCAL & EN LIGNE TEMPS RÉEL SYNCHRONISÉ)
        ========================================================= */
-    let morpionMode = 'local'; // 'local' ou 'online'
-    // Cases vides = '' (Firebase supprime les valeurs null, ce qui cassait la grille en ligne)
+    let morpionMode = 'local';
     let morpionBoard = Array(9).fill('');
     let morpionTurn = 'X';
     let morpionScoreX = 0;
     let morpionScoreO = 0;
     let morpionRoomCode = null;
-    let morpionMySymbol = 'X'; // 'X' pour créateur, 'O' pour invité
+    let morpionMySymbol = 'X';
 
-    // Reconstruit toujours une grille de 9 cases, quel que soit le format renvoyé par Firebase
     function normalizeMorpionBoard(raw) {
       const board = Array(9).fill('');
       if (raw) {
@@ -1441,7 +1233,6 @@
         }
         renderMorpionBoard();
       } else {
-        // En Ligne : vérifier que c'est bien son tour et son symbole
         if (!morpionRoomCode) {
           showToast('Crée ou rejoins une salle d\'abord !', '⚠️');
           return;
@@ -1543,7 +1334,7 @@
 
         leaveMorpionRoom();
         morpionRoomCode = code;
-        morpionMySymbol = 'O'; // L'invité prend les O
+        morpionMySymbol = 'O';
 
         db.ref(`rooms_morpion/${code}`).update({
           playerO: currentUser ? currentUser.nickname : 'Invité'
@@ -1566,7 +1357,6 @@
         morpionScoreX = data.scoreX || 0;
         morpionScoreO = data.scoreO || 0;
 
-        // Chaque joueur voit le pseudo de son adversaire (l'hôte comme l'invité)
         setMorpionPlayerNames(data.playerX, data.playerO);
         const opponent = morpionMySymbol === 'X' ? data.playerO : data.playerX;
         const mySign = morpionMySymbol === 'X' ? '❌' : '⭕';
@@ -1576,7 +1366,6 @@
 
         renderMorpionBoard();
 
-        // Annonce une seule fois par manche (pas à chaque mise à jour)
         if (previousBoard === morpionBoard.join(',')) return;
         const winner = checkMorpionWinner(morpionBoard);
         if (winner) {
@@ -1607,867 +1396,6 @@
         timestamp: Date.now()
       });
       showToast('Défi Morpion envoyé dans le chat !', '📣');
-    }
-
-    /* =========================================================
-       2. L'IMPOSTEUR (UNDERCOVER TEMPS RÉEL SALON & TABLE POKER)
-       ========================================================= */
-    const DEFAULT_CLASSIC_PAIRS = [
-      { complice: 'Pomme', infiltre: 'Poire' },
-      { complice: 'Thé', infiltre: 'Café' },
-      { complice: 'Guitare', infiltre: 'Violon' },
-      { complice: 'Avion', infiltre: 'Fusée' },
-      { complice: 'Plage', infiltre: 'Piscine' },
-      { complice: 'Chat', infiltre: 'Chien' },
-      { complice: 'Stylo', infiltre: 'Crayon' },
-      { complice: 'Soleil', infiltre: 'Lune' },
-      { complice: 'Cinéma', infiltre: 'Théâtre' },
-      { complice: 'Pizza', infiltre: 'Burger' }
-    ];
-
-    let imposteurRoomId = null;
-    let currentImposteurState = null;
-    let imposteurTimerInterval = null;
-    let imposteurRoomListener = null;
-    let imposteurChatQuery = null;
-    let imposteurServerOffset = 0;
-    const IMPOSTEUR_VOTE_SECONDS = 60;
-    const IMPOSTEUR_IN_GAME = ['playing', 'voting', 'resolving'];
-    const IMPOSTEUR_HASH_PREFIX = '#imposteur=';
-
-    // Décalage horloge locale / serveur Firebase : tout le monde voit le même chrono
-    db.ref('.info/serverTimeOffset').on('value', snap => { imposteurServerOffset = snap.val() || 0; });
-    function imposteurNow() { return Date.now() + imposteurServerOffset; }
-
-    function imposteurRef(path = '') {
-      return db.ref(`rooms_imposteur/${imposteurRoomId}${path ? '/' + path : ''}`);
-    }
-
-    function shuffleArray(arr) {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    }
-
-    /* ---------- Page 1 : création / accès au salon ---------- */
-    function openImposteurModal() {
-      // Déjà dans une salle : on y retourne directement
-      if (imposteurRoomId) {
-        document.getElementById('modalImposteur').classList.remove('hidden');
-        return;
-      }
-      document.getElementById('modalImposteurLobby').classList.remove('hidden');
-    }
-
-    function closeImposteurLobby() {
-      document.getElementById('modalImposteurLobby').classList.add('hidden');
-    }
-
-    async function createImposteurRoom() {
-      if (!currentUser) return;
-      const classic = document.getElementById('chkWordsClassic').checked;
-      const custom = document.getElementById('chkWordsCustom').checked;
-      if (!classic && !custom) {
-        showToast('Coche au moins un type de mots !', '⚠️');
-        return;
-      }
-
-      const btn = document.getElementById('btnCreateImposteurRoom');
-      btn.disabled = true;
-      try {
-        // Numéro de salle libre
-        let code = null;
-        for (let i = 0; i < 10 && !code; i++) {
-          const candidate = 'IMPO-' + Math.floor(1000 + Math.random() * 9000);
-          if (!(await db.ref(`rooms_imposteur/${candidate}`).get()).exists()) code = candidate;
-        }
-        if (!code) throw new Error('no-code');
-
-        await db.ref(`rooms_imposteur/${code}`).set({
-          status: 'waiting',
-          hostTag: currentUser.tag,
-          hostNick: currentUser.nickname,
-          settings: { classic, custom },
-          createdAt: firebase.database.ServerValue.TIMESTAMP
-        });
-
-        await enterImposteurRoom(code);
-        showToast(`Salon ${code} créé ! Envoie le numéro dans le chat.`, '🎲');
-      } catch (err) {
-        showToast('Impossible de créer le salon, réessaie !', '❌');
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function joinImposteurRoomFromInput() {
-      const code = safeRoomCode(document.getElementById('imposteurJoinCodeInput').value.trim());
-      if (!code) {
-        showToast('Entre un numéro de salle !', '⚠️');
-        return;
-      }
-      enterImposteurRoom(code);
-    }
-
-    /* ---------- Page 2 : la salle de jeu ---------- */
-    async function enterImposteurRoom(rawCode) {
-      if (!currentUser) return;
-      const code = safeRoomCode(rawCode);
-      if (!code) return;
-
-      if (imposteurRoomId === code) {
-        closeImposteurLobby();
-        document.getElementById('modalImposteur').classList.remove('hidden');
-        return;
-      }
-
-      try {
-        const snap = await db.ref(`rooms_imposteur/${code}`).get();
-        if (!snap.exists()) {
-          showToast(`Salle ${code} introuvable !`, '❌');
-          clearImposteurHash();
-          return;
-        }
-      } catch (err) {
-        showToast('Connexion au salon impossible, réessaie !', '❌');
-        return;
-      }
-
-      if (imposteurRoomId) leaveImposteurRoom();
-      imposteurRoomId = code;
-
-      document.getElementById('imposteurRoomBadge').textContent = code;
-      document.getElementById('imposteurCluesBoard').innerHTML = '';
-      document.getElementById('imposteurTableChatMessages').innerHTML = '';
-      closeImposteurLobby();
-      document.getElementById('modalImposteur').classList.remove('hidden');
-      if (location.hash !== IMPOSTEUR_HASH_PREFIX + code) {
-        history.replaceState(null, '', location.pathname + location.search + IMPOSTEUR_HASH_PREFIX + code);
-      }
-
-      await joinImposteurRoom();
-    }
-
-    function clearImposteurHash() {
-      if (location.hash.startsWith(IMPOSTEUR_HASH_PREFIX)) {
-        history.replaceState(null, '', location.pathname + location.search);
-      }
-    }
-
-    // Lien direct vers une salle (#imposteur=IMPO-1234)
-    function checkImposteurRoomFromHash() {
-      if (!currentUser || !location.hash.startsWith(IMPOSTEUR_HASH_PREFIX)) return;
-      enterImposteurRoom(location.hash.slice(IMPOSTEUR_HASH_PREFIX.length));
-    }
-
-    function leaveImposteurRoom() {
-      if (!imposteurRoomId) return;
-      if (currentUser) {
-        // Retirer le joueur de la table (les autres continuent la partie sans lui)
-        const playerRef = imposteurRef(`players/${currentUser.tag}`);
-        playerRef.onDisconnect().cancel();
-        playerRef.remove();
-      }
-      if (imposteurRoomListener) imposteurRef().off('value', imposteurRoomListener);
-      if (imposteurChatQuery) imposteurChatQuery.off();
-      imposteurRoomListener = null;
-      imposteurChatQuery = null;
-      currentImposteurState = null;
-      imposteurRoomId = null;
-      stopImposteurTimer();
-    }
-
-    function closeImposteurModal() {
-      document.getElementById('modalImposteur').classList.add('hidden');
-      leaveImposteurRoom();
-      clearImposteurHash();
-    }
-
-    function copyImposteurRoomCode() {
-      if (!imposteurRoomId) return;
-      const code = imposteurRoomId;
-      (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject())
-        .then(() => showToast(`Code ${code} copié !`, '📋'))
-        .catch(() => showToast(`Code de la salle : ${code}`, '📋'));
-    }
-
-    function shareImposteurRoomInChat() {
-      if (!imposteurRoomId || !currentUser) return;
-      db.ref('chat').push({
-        authorNick: currentUser.nickname,
-        authorTag: currentUser.tag,
-        authorAvatar: currentUser.avatarEmoji || '🕵️‍♂️',
-        authorFlag: currentUser.flagEmoji || '🇫🇷',
-        isInvite: true,
-        gameTitle: "L'Imposteur",
-        roomUrl: '#',
-        internalGame: 'imposteur',
-        internalRoom: imposteurRoomId,
-        text: `Qui vient démasquer l'infiltré ? Salle n° ${imposteurRoomId}`,
-        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      });
-      showToast('Invitation envoyée dans le chat !', '📣');
-    }
-
-    // Connexion à la salle courante
-    async function joinImposteurRoom() {
-      if (!currentUser || !imposteurRoomId) return;
-      const roomId = imposteurRoomId;
-
-      const playerRef = imposteurRef(`players/${currentUser.tag}`);
-      let status = null;
-      try {
-        const roomSnap = await imposteurRef().get();
-        const room = roomSnap.val() || {};
-        status = room.status || null;
-        // Nettoyage des joueurs fantômes enregistrés avant la détection des déconnexions
-        const ghosts = {};
-        Object.entries(room.players || {}).forEach(([tag, p]) => {
-          if (tag !== currentUser.tag && (!p || !p.joinedAt)) ghosts[`players/${tag}`] = null;
-        });
-        if (Object.keys(ghosts).length) await imposteurRef().update(ghosts);
-      } catch (err) {
-        showToast('Connexion au salon impossible, réessaie !', '❌');
-        return;
-      }
-      if (imposteurRoomId !== roomId) return;
-      // Arrivé pendant une partie : spectateur jusqu'à la prochaine
-      const inGame = IMPOSTEUR_IN_GAME.includes(status);
-
-      // Si l'onglet est fermé ou la connexion perdue, le joueur quitte la table
-      playerRef.onDisconnect().remove();
-      await playerRef.set({
-        tag: currentUser.tag,
-        nickname: currentUser.nickname,
-        avatar: currentUser.avatarEmoji || '🍺',
-        flag: currentUser.flagEmoji || '🇫🇷',
-        isAlive: !inGame,
-        isSpectator: inGame,
-        votedFor: null,
-        joinedAt: firebase.database.ServerValue.TIMESTAMP
-      });
-      if (imposteurRoomId !== roomId) return;
-
-      // Écouter l'état du salon (une seule fois)
-      if (!imposteurRoomListener) {
-        imposteurRoomListener = imposteurRef().on('value', snapshot => {
-          const data = snapshot.val();
-          currentImposteurState = data;
-          if (!data) {
-            showToast("Cette salle n'existe plus.", '⚠️');
-            closeImposteurModal();
-            return;
-          }
-          if (imposteurGameIsBroken(data)) {
-            resetImposteurRoom('⚠️ Plus assez de joueurs à la table, la partie est annulée. Relancez quand vous êtes prêts !');
-          } else {
-            handleImposteurDepartures(data);
-          }
-          renderImposteurTable(data);
-        });
-      }
-
-      // Écouter le chat de table
-      listenToTableChat();
-    }
-
-    // Partie impossible à continuer (ordre de parole perdu)
-    function imposteurGameIsBroken(data) {
-      if (!data || !IMPOSTEUR_IN_GAME.includes(data.status)) return false;
-      return !data.turnOrder || data.turnOrder.length === 0;
-    }
-
-    // Un joueur a quitté pendant la partie : on le retire de l'ordre de parole et on continue.
-    // La transaction sur turnOrder garantit qu'un seul client applique la suite.
-    function handleImposteurDepartures(data) {
-      if (!['playing', 'voting'].includes(data.status)) return;
-      const players = data.players || {};
-      const order = data.turnOrder || [];
-      const missing = order.filter(tag => !players[tag]);
-      if (missing.length === 0) return;
-
-      imposteurRef('turnOrder').transaction(current => {
-        if (!current) return undefined;
-        const kept = current.filter(tag => players[tag]);
-        return kept.length === current.length ? undefined : kept;
-      }, (err, committed, snap) => {
-        if (err || !committed) return;
-        applyImposteurDepartures(data, order, snap.val() || [], missing);
-      }, false);
-    }
-
-    function applyImposteurDepartures(data, oldOrder, newOrder, missing) {
-      const players = data.players || {};
-      const roster = data.roster || {};
-      const leftNames = missing.map(tag => roster[tag] || `@${tag}`).join(', ');
-      const alive = newOrder.filter(tag => players[tag] && players[tag].isAlive);
-      const infiltratorTag = data.infiltratorTag || null;
-
-      // L'infiltré est parti : les complices gagnent
-      if (infiltratorTag && missing.includes(infiltratorTag)) {
-        imposteurRef().update({
-          status: 'ended',
-          votingStartedAt: null,
-          winnerText: `🏃 L'infiltré (${roster[infiltratorTag] || '@' + infiltratorTag}, mot : ${data.secretInfiltreWord}) a quitté la partie. VICTOIRE DES COMPLICES !`
-        });
-        sendTableChat(`🏃 ${leftNames} a quitté la table.`);
-        return;
-      }
-
-      // Moins de 3 joueurs en jeu : l'infiltré a survécu jusqu'au bout
-      if (alive.length < 3) {
-        const infiltratorName = infiltratorTag ? (roster[infiltratorTag] || '@' + infiltratorTag) : "L'infiltré";
-        imposteurRef().update({
-          status: 'ended',
-          votingStartedAt: null,
-          winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Il ne reste plus assez de joueurs. ${infiltratorName} (mot : ${data.secretInfiltreWord}) a gagné !`
-        });
-        sendTableChat(`🏃 ${leftNames} a quitté la table.`);
-        return;
-      }
-
-      const updates = {};
-      if (data.status === 'playing') {
-        const idx = data.currentTurnIndex || 0;
-        const activeTag = oldOrder[idx];
-        if (players[activeTag]) {
-          updates.currentTurnIndex = newOrder.indexOf(activeTag);
-        } else {
-          // Le joueur qui devait parler est parti : on passe au suivant
-          const startIdx = oldOrder.slice(0, idx).filter(tag => players[tag]).length;
-          const next = nextImposteurTurn({ ...data, turnOrder: newOrder }, startIdx, data.currentRound || 1);
-          if (next.status === 'playing') {
-            updates.currentTurnIndex = next.index;
-            updates.currentRound = next.round;
-          } else {
-            updates.status = 'voting';
-            updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
-          }
-        }
-      } else {
-        // Vote en cours : ceux qui avaient voté contre le joueur parti peuvent revoter
-        Object.values(players).forEach(p => {
-          if (p.votedFor && missing.includes(p.votedFor)) updates[`players/${p.tag}/votedFor`] = null;
-        });
-      }
-
-      if (Object.keys(updates).length) imposteurRef().update(updates);
-      sendTableChat(`🏃 ${leftNames} a quitté la table, la partie continue !`);
-    }
-
-    // Remet le salon en attente (la transaction garantit qu'un seul client le fait)
-    function resetImposteurRoom(message) {
-      imposteurRef('status').transaction(st => (IMPOSTEUR_IN_GAME.includes(st) ? 'waiting' : undefined), (err, committed) => {
-        if (err || !committed) return;
-        imposteurRef('players').get().then(snap => {
-          const updates = {
-            turnOrder: null,
-            currentTurnIndex: 0,
-            currentRound: 1,
-            votingStartedAt: null,
-            secretCompliceWord: null,
-            secretInfiltreWord: null,
-            infiltratorTag: null,
-            roster: null
-          };
-          Object.keys(snap.val() || {}).forEach(tag => {
-            updates[`players/${tag}/isAlive`] = true;
-            updates[`players/${tag}/isSpectator`] = null;
-            updates[`players/${tag}/isUndercover`] = null;
-            updates[`players/${tag}/word`] = null;
-            updates[`players/${tag}/clues`] = null;
-            updates[`players/${tag}/votedFor`] = null;
-          });
-          imposteurRef().update(updates);
-          if (message) sendTableChat(message);
-        });
-      }, false);
-    }
-
-    // Prochain joueur vivant qui doit parler (ou passage au vote)
-    function nextImposteurTurn(data, fromIndex, round) {
-      const order = data.turnOrder || [];
-      const totalRounds = data.totalRounds || 2;
-      let idx = fromIndex;
-      let r = round;
-      for (let guard = 0; guard < order.length * (totalRounds + 1) + 1; guard++) {
-        if (idx >= order.length) {
-          idx = 0;
-          r++;
-        }
-        if (r > totalRounds) break;
-        const p = data.players && data.players[order[idx]];
-        if (p && p.isAlive) return { status: 'playing', index: idx, round: r };
-        idx++;
-      }
-      return { status: 'voting' };
-    }
-
-    // L'hôte lance la partie ; s'il a quitté la salle, n'importe quel joueur peut le faire
-    function canStartImposteur(data) {
-      if (!currentUser || !data) return false;
-      const players = data.players || {};
-      return !data.hostTag || data.hostTag === currentUser.tag || !players[data.hostTag];
-    }
-
-    function renderImposteurTable(data) {
-      if (!data) return;
-
-      const players = data.players ? Object.values(data.players) : [];
-      const playerCount = players.length;
-      const me = currentUser && data.players ? data.players[currentUser.tag] : null;
-      const seatsContainer = document.getElementById('imposteurSeatsContainer');
-      const centerTitle = document.getElementById('imposteurCenterTitle');
-      const centerDesc = document.getElementById('imposteurCenterDesc');
-      const phaseBadge = document.getElementById('imposteurPhaseBadge');
-      const hostControls = document.getElementById('imposteurHostControls');
-      const myWordCard = document.getElementById('imposteurMyWordCard');
-      const turnInputArea = document.getElementById('imposteurTurnInputArea');
-      const timerContainer = document.getElementById('imposteurTimerContainer');
-      const canStart = canStartImposteur(data);
-      const hostName = data.hostNick || "l'hôte";
-
-      const settings = data.settings || { classic: true, custom: true };
-      const wordTypes = [settings.classic ? 'classiques' : null, settings.custom ? 'de la promo' : null].filter(Boolean).join(' + ');
-      document.getElementById('imposteurRoomSettingsText').textContent = `Hôte : ${hostName} · Mots ${wordTypes || 'classiques'}`;
-
-      centerTitle.textContent = `${playerCount} Joueur(s)`;
-      const activePlayerTag = data.turnOrder ? data.turnOrder[data.currentTurnIndex || 0] : null;
-
-      // En attente
-      if (!data.status || data.status === 'waiting' || data.status === 'starting') {
-        phaseBadge.textContent = data.status === 'starting' ? 'Distribution des mots...' : 'En attente des joueurs';
-        if (playerCount < 3) {
-          centerDesc.textContent = `Encore ${3 - playerCount} joueur(s) minimum... Envoie le numéro de salle dans le chat !`;
-        } else {
-          centerDesc.textContent = canStart ? 'Prêt à lancer !' : `Prêt ! En attente du lancement par ${hostName}...`;
-        }
-        hostControls.classList.toggle('hidden', !canStart || playerCount < 3 || data.status === 'starting');
-        myWordCard.classList.add('hidden');
-        turnInputArea.classList.add('hidden');
-        timerContainer.classList.add('hidden');
-      }
-
-      // En cours de jeu
-      if (data.status === 'playing') {
-        phaseBadge.textContent = `MANCHE EN COURS (Tour ${data.currentRound || 1}/${data.totalRounds || 2})`;
-        hostControls.classList.add('hidden');
-        timerContainer.classList.add('hidden');
-
-        if (activePlayerTag && data.players[activePlayerTag]) {
-          centerDesc.textContent = `C'est au tour de ${data.players[activePlayerTag].nickname} de donner un mot !`;
-        }
-
-        if (me && me.isAlive && activePlayerTag === currentUser.tag) {
-          turnInputArea.classList.remove('hidden');
-        } else {
-          turnInputArea.classList.add('hidden');
-        }
-      }
-
-      // Phase de vote (60 secondes)
-      if (data.status === 'voting' || data.status === 'resolving') {
-        phaseBadge.textContent = `🚨 PHASE DE VOTE (${IMPOSTEUR_VOTE_SECONDS} SECONDES)`;
-        centerDesc.textContent = data.status === 'resolving' ? 'Dépouillement des votes...' : 'Clique sur le joueur que tu soupçonnes d\'être l\'infiltré !';
-        hostControls.classList.add('hidden');
-        turnInputArea.classList.add('hidden');
-        timerContainer.classList.remove('hidden');
-      }
-
-      // Mot secret : visible pendant la partie par les joueurs qui en ont un
-      if (IMPOSTEUR_IN_GAME.includes(data.status)) {
-        if (me && me.word) {
-          myWordCard.classList.remove('hidden');
-          document.getElementById('imposteurSecretWordText').textContent = me.word;
-        } else {
-          myWordCard.classList.add('hidden');
-          if (me && me.isSpectator) centerDesc.textContent += ' (Tu es spectateur, tu joueras à la prochaine partie.)';
-        }
-      }
-
-      // Fin de partie
-      if (data.status === 'ended') {
-        phaseBadge.textContent = 'PARTIE TERMINÉE';
-        centerDesc.textContent = data.winnerText || 'Victoire !';
-        turnInputArea.classList.add('hidden');
-        timerContainer.classList.add('hidden');
-        myWordCard.classList.add('hidden');
-        hostControls.classList.toggle('hidden', !canStart || playerCount < 3);
-      }
-
-      syncImposteurTimer(data);
-
-      // Tous les joueurs en vie ont voté : on dépouille sans attendre la fin du chrono
-      if (data.status === 'voting') {
-        const voters = players.filter(p => p.isAlive);
-        if (voters.length > 0 && voters.every(p => p.votedFor)) resolveImposteurVotes();
-      }
-
-      // Rendu des sièges des joueurs autour du tapis
-      seatsContainer.innerHTML = players.map(p => {
-        const isCurrentTurn = data.status === 'playing' && activePlayerTag === p.tag;
-        const isMe = currentUser && currentUser.tag === p.tag;
-        const isHost = data.hostTag === p.tag;
-        const canBeVoted = data.status === 'voting' && p.isAlive && !isMe && me && me.isAlive;
-        const clues = p.clues ? Object.values(p.clues) : [];
-        const lastClue = clues.length > 0 ? clues[clues.length - 1] : null;
-        const stateText = p.isSpectator ? 'Spectateur' : (p.isAlive ? (data.status === 'voting' && p.votedFor ? 'A voté ✅' : 'En jeu') : 'Éliminé');
-
-        return `
-          <div onclick="handleImposteurVote('${escapeHtml(p.tag)}')" class="bg-white border-2 border-[#12131a] rounded-2xl p-3 flex flex-col justify-between text-center transition-all ${isCurrentTurn ? 'ring-4 ring-[#fed72d] scale-105 shadow-[2px_3px_0px_#12131a]' : 'opacity-95'} ${!p.isAlive ? 'opacity-40 grayscale' : ''} ${canBeVoted ? 'cursor-pointer hover:bg-rose-50 hover:border-rose-600' : ''}">
-            <div>
-              <span class="text-3xl">${p.avatar} ${p.flag}</span>
-              <h5 class="text-sm font-black text-[#12131a] truncate mt-1">${isHost ? '👑 ' : ''}${escapeHtml(p.nickname)} ${isMe ? '(Moi)' : ''}</h5>
-              <span class="text-[10px] font-mono text-slate-500">${isCurrentTurn ? '🗣️ Parle...' : stateText}</span>
-            </div>
-
-            <!-- Dernier indice donné par le joueur -->
-            <div class="mt-2 ${lastClue ? 'bg-[#fed72d]/40 border-[#12131a]' : 'bg-[#f8fafc] border-slate-200'} border rounded-lg px-2 py-1.5">
-              <span class="text-sm font-black ${lastClue ? 'text-[#12131a]' : 'text-slate-400 font-bold'} italic block break-words">${lastClue ? `« ${escapeHtml(lastClue)} »` : 'Aucun indice'}</span>
-            </div>
-
-            ${canBeVoted ? `
-              <span class="mt-1.5 text-[10px] font-black bg-rose-500 text-white rounded py-0.5 block">${me.votedFor === p.tag ? 'Ton vote ✅' : 'Voter contre'}</span>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-
-      renderImposteurCluesBoard(data);
-    }
-
-    // Historique complet des indices, dans l'ordre de parole
-    function renderImposteurCluesBoard(data) {
-      const board = document.getElementById('imposteurCluesBoard');
-      const playersMap = data.players || {};
-      const order = (data.turnOrder || []).filter(tag => playersMap[tag]);
-
-      if (order.length === 0) {
-        board.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Les indices de chaque joueur s'afficheront ici pendant la partie.</p>`;
-        return;
-      }
-
-      board.innerHTML = order.map(tag => {
-        const p = playersMap[tag];
-        const clues = p.clues ? Object.values(p.clues) : [];
-        const chips = clues.length > 0
-          ? clues.map((c, i) => `<span class="inline-block bg-[#fed72d] border-2 border-[#12131a] rounded-lg px-2 py-0.5 text-sm font-black text-[#12131a] shadow-[1px_1.5px_0px_#12131a]"><span class="text-[9px] font-mono text-[#12131a]/60 mr-1">${i + 1}</span>${escapeHtml(c)}</span>`).join(' ')
-          : `<span class="text-xs font-bold text-slate-400 italic">Pas encore d'indice</span>`;
-        return `
-          <div class="${p.isAlive ? '' : 'opacity-50'}">
-            <div class="text-xs font-black text-[#12131a] mb-1">${p.avatar} ${escapeHtml(p.nickname)}${p.isAlive ? '' : ' <span class="text-rose-600">(éliminé)</span>'}</div>
-            <div class="flex flex-wrap gap-1.5">${chips}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Lancer la partie
-    async function startImposteurGame() {
-      if (!currentImposteurState || !currentImposteurState.players) return;
-      if (!canStartImposteur(currentImposteurState)) {
-        showToast("Seul l'hôte peut lancer la partie !", '⚠️');
-        return;
-      }
-      const players = Object.values(currentImposteurState.players);
-      if (players.length < 3) {
-        showToast('Minimum 3 joueurs requis !', '⚠️');
-        return;
-      }
-
-      // Verrou : empêche deux joueurs de lancer la partie en même temps
-      const lock = await imposteurRef('status').transaction(
-        st => (!st || st === 'waiting' || st === 'ended' ? 'starting' : undefined),
-        null,
-        false
-      );
-      if (!lock.committed) return;
-
-      try {
-        // Sélection de la paire de mots selon les réglages choisis à la création du salon
-        const settings = currentImposteurState.settings || { classic: true, custom: true };
-        let wordPairs = [];
-        if (settings.classic) {
-          wordPairs = wordPairs.concat(DEFAULT_CLASSIC_PAIRS);
-        }
-        if (settings.custom) {
-          const customSnap = await db.ref('promo_words').get();
-          if (customSnap.exists()) {
-            wordPairs = wordPairs.concat(Object.values(customSnap.val()).filter(w => w && w.complice && w.infiltre));
-          }
-        }
-        if (wordPairs.length === 0) wordPairs = [...DEFAULT_CLASSIC_PAIRS];
-
-        const selectedPair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
-
-        // Joueurs encore présents au moment du lancement
-        const freshPlayers = Object.values((await imposteurRef('players').get()).val() || {});
-        if (freshPlayers.length < 3) throw new Error('not-enough-players');
-
-        // Ordre de parole aléatoire et infiltré tiré au sort indépendamment
-        const turnOrder = shuffleArray(freshPlayers.map(p => p.tag));
-        const infiltratorTag = turnOrder[Math.floor(Math.random() * turnOrder.length)];
-
-        const updatedPlayers = {};
-        const roster = {};
-        freshPlayers.forEach(p => {
-          const isUndercover = p.tag === infiltratorTag;
-          roster[p.tag] = p.nickname;
-          updatedPlayers[p.tag] = {
-            tag: p.tag,
-            nickname: p.nickname,
-            avatar: p.avatar,
-            flag: p.flag,
-            joinedAt: p.joinedAt || firebase.database.ServerValue.TIMESTAMP,
-            word: isUndercover ? selectedPair.infiltre : selectedPair.complice,
-            isUndercover: isUndercover,
-            isAlive: true
-          };
-        });
-
-        await imposteurRef().update({
-          status: 'playing',
-          players: updatedPlayers,
-          turnOrder: turnOrder,
-          roster: roster,
-          infiltratorTag: infiltratorTag,
-          currentTurnIndex: 0,
-          currentRound: 1,
-          totalRounds: freshPlayers.length === 3 ? 1 : 2, // À 3 joueurs : 1 seul tour
-          votingStartedAt: null,
-          winnerText: null,
-          secretCompliceWord: selectedPair.complice,
-          secretInfiltreWord: selectedPair.infiltre
-        });
-
-        sendTableChat("🎲 La partie commence ! Regardez bien votre mot secret au centre.");
-      } catch (err) {
-        imposteurRef('status').set('waiting');
-        showToast(err.message === 'not-enough-players' ? 'Minimum 3 joueurs requis !' : 'Impossible de lancer la partie, réessaie !', '⚠️');
-      }
-    }
-
-    // Soumettre son indice
-    function submitImposteurClue() {
-      const input = document.getElementById('imposteurClueInput');
-      const clue = input.value.trim();
-      const data = currentImposteurState;
-      if (!clue || !data || !currentUser || data.status !== 'playing') return;
-
-      const order = data.turnOrder || [];
-      const player = data.players && data.players[currentUser.tag];
-      if (!player || order[data.currentTurnIndex || 0] !== currentUser.tag) {
-        showToast("Ce n'est pas ton tour !", '⏳');
-        return;
-      }
-
-      const clues = player.clues ? [...Object.values(player.clues), clue] : [clue];
-      const next = nextImposteurTurn(data, (data.currentTurnIndex || 0) + 1, data.currentRound || 1);
-
-      const updates = {
-        [`players/${currentUser.tag}/clues`]: clues,
-        status: next.status
-      };
-      if (next.status === 'playing') {
-        updates.currentTurnIndex = next.index;
-        updates.currentRound = next.round;
-      } else {
-        // Début de la phase de vote : horodatage serveur partagé par tous
-        updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
-      }
-
-      imposteurRef().update(updates);
-
-      input.value = '';
-      sendTableChat(`${currentUser.nickname} a dit : « ${clue} »`);
-    }
-
-    function stopImposteurTimer() {
-      if (imposteurTimerInterval) clearInterval(imposteurTimerInterval);
-      imposteurTimerInterval = null;
-    }
-
-    // Chrono de vote synchronisé sur l'heure de début enregistrée dans Firebase
-    function syncImposteurTimer(data) {
-      if (!data || data.status !== 'voting') {
-        stopImposteurTimer();
-        return;
-      }
-      if (imposteurTimerInterval) return;
-
-      const display = document.getElementById('imposteurTimerDisplay');
-      const tick = () => {
-        const st = currentImposteurState;
-        if (!st || st.status !== 'voting') {
-          stopImposteurTimer();
-          return;
-        }
-        const endsAt = (st.votingStartedAt || 0) + IMPOSTEUR_VOTE_SECONDS * 1000;
-        const secondsLeft = Math.max(0, Math.ceil((endsAt - imposteurNow()) / 1000));
-        display.textContent = `${secondsLeft}s`;
-        if (secondsLeft <= 0) {
-          stopImposteurTimer();
-          resolveImposteurVotes();
-        }
-      };
-      tick();
-      imposteurTimerInterval = setInterval(tick, 1000);
-    }
-
-    // Vote pour un joueur
-    function handleImposteurVote(targetTag) {
-      const data = currentImposteurState;
-      if (!data || data.status !== 'voting' || !currentUser || !data.players) return;
-      const me = data.players[currentUser.tag];
-      const target = data.players[targetTag];
-      if (!me || !me.isAlive) {
-        showToast('Seuls les joueurs encore en jeu peuvent voter !', '⚠️');
-        return;
-      }
-      if (targetTag === currentUser.tag) {
-        showToast('Tu ne peux pas voter contre toi-même !', '⚠️');
-        return;
-      }
-      if (!target || !target.isAlive) return;
-
-      imposteurRef(`players/${currentUser.tag}/votedFor`).set(targetTag);
-      showToast(`Vote enregistré contre @${targetTag} !`, '🗳️');
-    }
-
-    // Résolution des votes (un seul client dépouille grâce à la transaction)
-    function resolveImposteurVotes() {
-      imposteurRef('status').transaction(st => (st === 'voting' ? 'resolving' : undefined), (err, committed) => {
-        if (err || !committed) return;
-
-        imposteurRef().get().then(snap => {
-          const data = snap.val();
-          if (!data || !data.players) return;
-
-          const players = Object.values(data.players);
-          const living = players.filter(p => p.isAlive);
-          const voteCounts = {};
-
-          living.forEach(p => {
-            if (p.votedFor && data.players[p.votedFor] && data.players[p.votedFor].isAlive) {
-              voteCounts[p.votedFor] = (voteCounts[p.votedFor] || 0) + 1;
-            }
-          });
-
-          // Trouver le plus voté
-          let mostVotedTag = null;
-          let maxVotes = -1;
-          for (let tag in voteCounts) {
-            if (voteCounts[tag] > maxVotes) {
-              maxVotes = voteCounts[tag];
-              mostVotedTag = tag;
-            }
-          }
-
-          if (!mostVotedTag) {
-            mostVotedTag = living[0].tag; // Cas où personne n'a voté
-          }
-
-          const eliminatedPlayer = data.players[mostVotedTag];
-          sendTableChat(`📢 Le vote est clos ! ${eliminatedPlayer.nickname} a été désigné !`);
-
-          if (eliminatedPlayer.isUndercover) {
-            // L'infiltré est démasqué ! Victoire des complices
-            imposteurRef().update({
-              status: 'ended',
-              winnerText: `🎉 VICTOIRE DES COMPLICES ! L'infiltré était bien ${eliminatedPlayer.nickname} (Son mot : ${data.secretInfiltreWord}).`
-            });
-            return;
-          }
-
-          // Un complice a été éliminé à tort !
-          const remainingLiving = living.filter(p => p.tag !== mostVotedTag);
-          const infiltrator = players.find(p => p.isUndercover);
-
-          if (remainingLiving.length <= 3) {
-            // Règle des 3 derniers joueurs : Victoire de l'infiltré !
-            imposteurRef().update({
-              status: 'ended',
-              winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Les complices ont éliminé un innocent. ${infiltrator ? infiltrator.nickname + ' (mot : ' + data.secretInfiltreWord + ')' : "L'infiltré"} a gagné !`
-            });
-            return;
-          }
-
-          // La manche continue sans l'éliminé : nouveaux tours de parole, votes remis à zéro
-          const updates = {
-            [`players/${mostVotedTag}/isAlive`]: false,
-            votingStartedAt: null,
-            status: 'playing'
-          };
-          players.forEach(p => { updates[`players/${p.tag}/votedFor`] = null; });
-          const next = nextImposteurTurn(
-            { ...data, players: { ...data.players, [mostVotedTag]: { ...eliminatedPlayer, isAlive: false } } },
-            0,
-            1
-          );
-          updates.currentTurnIndex = next.index || 0;
-          updates.currentRound = 1;
-
-          imposteurRef().update(updates);
-          sendTableChat(`❌ ${eliminatedPlayer.nickname} était innocent ! La partie continue...`);
-        });
-      }, false);
-    }
-
-    // Ajout d'une paire personnalisée pour la promo
-    function addCustomWordPairToPromo() {
-      const w1 = document.getElementById('inputCustomWord1').value.trim();
-      const w2 = document.getElementById('inputCustomWord2').value.trim();
-      if (!w1 || !w2) {
-        showToast('Remplis les 2 mots !', '⚠️');
-        return;
-      }
-
-      db.ref('promo_words').push({
-        complice: w1,
-        infiltre: w2,
-        addedBy: currentUser ? currentUser.nickname : 'Promo'
-      });
-
-      document.getElementById('inputCustomWord1').value = '';
-      document.getElementById('inputCustomWord2').value = '';
-      showToast('Paire de mots ajoutée avec succès !', '✅');
-    }
-
-    // Chat de la table
-    function listenToTableChat() {
-      const box = document.getElementById('imposteurTableChatMessages');
-      if (imposteurChatQuery) imposteurChatQuery.off();
-      imposteurChatQuery = imposteurRef('chat').limitToLast(30);
-      imposteurChatQuery.on('value', snap => {
-        const msgs = snap.val() ? Object.values(snap.val()) : [];
-        box.innerHTML = msgs.map(m => `
-          <div><strong class="font-black text-[#12131a]">${escapeHtml(m.author)}:</strong> <span class="text-slate-700">${escapeHtml(m.text)}</span></div>
-        `).join('');
-        box.scrollTop = box.scrollHeight;
-      });
-    }
-
-    function handleSendTableChatMessage(e) {
-      e.preventDefault();
-      const input = document.getElementById('tableChatInput');
-      const text = input.value.trim();
-      if (!text || !currentUser) return;
-
-      sendTableChat(text, currentUser.nickname);
-      input.value = '';
-    }
-
-    function sendTableChat(text, author = 'Système') {
-      if (!imposteurRoomId) return;
-      db.ref(`rooms_imposteur/${imposteurRoomId}/chat`).push({
-        author,
-        text,
-        timestamp: Date.now()
-      });
     }
 
     /* ---------------- PROFIL & MODALE ---------------- */
