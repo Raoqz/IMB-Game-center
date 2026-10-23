@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Undercover — IMB Game Center</title>
+  <title>Opération Undercover — IMB Game Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
@@ -15,18 +15,23 @@
 
   <style>
     :root {
-      --bg-blue: #1e3cfa;
-      --yellow-main: #fed72d;
-      --yellow-hover: #eec418;
-      --border-dark: #12131a;
-      --card-shadow: 5px 6px 0px #12131a;
-      --btn-shadow: 3px 4px 0px #12131a;
+      --bg-night: #0b1021;
+      -- spy-emerald: #00e599;
+      --spy-emerald-dark: #059669;
+      --dossier-yellow: #fed72d;
+      --alert-red: #ff2a5f;
+      --border-dark: #090a0f;
+      --card-shadow: 5px 6px 0px #090a0f;
+      --btn-shadow: 3px 4px 0px #090a0f;
     }
 
     body {
-      background-color: var(--bg-blue);
-      background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.5px, transparent 1.5px);
-      background-size: 22px 22px;
+      background-color: var(--bg-night);
+      background-image:
+        radial-gradient(circle at 50% 20%, rgba(0, 229, 153, 0.12) 0%, transparent 55%),
+        linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
       font-family: 'Plus Jakarta Sans', sans-serif;
       color: #11141f;
       min-height: 100vh;
@@ -36,13 +41,13 @@
     .neo-box {
       border: 3px solid var(--border-dark);
       box-shadow: var(--card-shadow);
-      border-radius: 1.5rem;
+      border-radius: 1.4rem;
     }
 
     .neo-box-sm {
       border: 2.5px solid var(--border-dark);
-      box-shadow: 2px 3px 0px var(--border-dark);
-      border-radius: 1.1rem;
+      box-shadow: 3px 4px 0px var(--border-dark);
+      border-radius: 1rem;
     }
 
     .neo-btn {
@@ -53,7 +58,7 @@
     }
 
     .neo-btn:hover {
-      transform: translateY(-1px);
+      transform: translateY(-1.5px);
     }
 
     .neo-btn:active {
@@ -61,389 +66,499 @@
       box-shadow: 1px 1px 0px var(--border-dark) !important;
     }
 
-    /* Titre Cartoon Néo-Brutaliste style Président */
-    .cartoon-title {
-      color: var(--yellow-main);
-      -webkit-text-stroke: 3px #12131a;
-      text-shadow: 4px 5px 0px #12131a;
-      letter-spacing: 0.02em;
+    /* Titre Espionnage Néo-Brutaliste */
+    .spy-title {
+      color: #00e599;
+      -webkit-text-stroke: 3px #090a0f;
+      text-shadow: 5px 6px 0px #090a0f;
+      letter-spacing: 0.03em;
     }
 
-    /* Éventail de 4 cartes au-dessus du titre */
-    .fan-cards {
+    /* Radar / Badge Espion animé */
+    .spy-emblem {
       position: relative;
-      height: 82px;
-      width: 190px;
-      margin: 0 auto 4px auto;
+      width: 112px;
+      height: 112px;
+      margin: 0 auto 12px auto;
     }
 
-    .playing-card {
-      position: absolute;
-      width: 54px;
-      height: 76px;
-      background: #ffffff;
-      border: 2.5px solid #12131a;
-      border-radius: 0.55rem;
-      box-shadow: 2px 3px 0px #12131a;
+    .radar-circle {
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      background: radial-gradient(circle, #064e3b 0%, #022c22 75%);
+      border: 3.5px solid #090a0f;
+      box-shadow: 4px 5px 0px #090a0f, 0 0 0 4px #00e599;
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 4px 6px;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-weight: 900;
-      user-select: none;
-      transform-origin: bottom center;
-      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .fan-cards:hover .card-1 { transform: translateX(-52px) rotate(-24deg) translateY(-4px); }
-    .fan-cards:hover .card-2 { transform: translateX(-18px) rotate(-8deg) translateY(-8px); }
-    .fan-cards:hover .card-3 { transform: translateX(18px) rotate(8deg) translateY(-8px); }
-    .fan-cards:hover .card-4 { transform: translateX(52px) rotate(24deg) translateY(-4px); }
+    .spy-emblem:hover .radar-circle {
+      transform: scale(1.07) rotate(-4deg);
+    }
 
-    .card-1 { left: 68px; transform: translateX(-44px) rotate(-18deg); z-index: 1; }
-    .card-2 { left: 68px; transform: translateX(-15px) rotate(-6deg); z-index: 2; }
-    .card-3 { left: 68px; transform: translateX(15px) rotate(6deg); z-index: 3; }
-    .card-4 { left: 68px; transform: translateX(44px) rotate(18deg); z-index: 4; }
+    .radar-sweep {
+      position: absolute;
+      inset: 0;
+      background: conic-gradient(from 0deg, transparent 70%, rgba(0, 229, 153, 0.45) 100%);
+      animation: radarSpin 4s linear infinite;
+      border-radius: 9999px;
+    }
 
-    /* Tapis de poker */
-    .poker-table {
-      background: radial-gradient(circle, #228b22 0%, #155715 80%, #0d380d 100%);
-      border: 8px solid #5a3818;
-      box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 4px 6px 0px #12131a;
-      border-radius: 3.5rem;
+    @keyframes radarSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .stamp-badge {
+      position: absolute;
+      bottom: -6px;
+      right: -18px;
+      background: #ff2a5f;
+      color: #ffffff;
+      border: 2.5px solid #090a0f;
+      box-shadow: 2px 3px 0px #090a0f;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      transform: rotate(-8deg);
+      z-index: 10;
+      text-transform: uppercase;
+    }
+
+    /* Mur d'enquête (remplace la table de poker) */
+    .investigation-board {
+      background-color: #161f38;
+      background-image: radial-gradient(rgba(0, 229, 153, 0.18) 1.5px, transparent 1.5px);
+      background-size: 20px 20px;
+      border: 3.5px solid #090a0f;
+      box-shadow: 6px 7px 0px #090a0f;
+      border-radius: 1.5rem;
+    }
+
+    /* Fiche de suspect */
+    .suspect-card {
+      background: #ffffff;
+      border: 3px solid #090a0f;
+      box-shadow: 4px 5px 0px #090a0f;
+      border-radius: 1.25rem;
+      position: relative;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .suspect-card-active {
+      background: #fffbeb;
+      border-color: #090a0f;
+      box-shadow: 0 0 0 4px #fed72d, 6px 7px 0px #090a0f;
+      transform: translateY(-3px);
+    }
+
+    .suspect-pin {
+      width: 14px;
+      height: 14px;
+      border-radius: 9999px;
+      border: 2.5px solid #090a0f;
+      box-shadow: 1px 2px 0px #090a0f;
+      margin: -10px auto 6px auto;
     }
 
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f4fb;
+      background: #e2e8f0;
       border-radius: 4px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #c3cbdf;
+      background: #64748b;
       border-radius: 4px;
-      border: 1px solid #12131a;
+      border: 1px solid #090a0f;
     }
   </style>
 </head>
 <body class="flex flex-col min-h-screen">
 
-  <!-- ================= TOP NAVBAR (STYLE CAPTURE PRÉSIDENT) ================= -->
-  <header id="topNavbar" class="bg-[#121526] border-b-[3px] border-[#fed72d] sticky top-0 z-40 text-white transition-all">
-    <div class="max-w-[1440px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+  <!-- ================= TOP NAVBAR (HEADER TACTIQUE) ================= -->
+  <header id="topNavbar" class="bg-[#090d1a] border-b-[3px] border-[#00e599] sticky top-0 z-40 text-white">
+    <div class="max-w-[1440px] mx-auto px-3 sm:px-5 h-15 py-2.5 flex items-center justify-between gap-2">
       
-      <!-- Gauche : Bouton Retour vers index.html + Nom du jeu -->
+      <!-- Gauche : Bouton Retour vers index.html + Titre Agence -->
       <div class="flex items-center gap-3">
-        <a href="index.html" onclick="window.location.href='index.html'" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 no-underline">
+        <a href="index.html" onclick="window.location.href='index.html'" class="neo-btn bg-white hover:bg-slate-100 text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 no-underline">
           <span>←</span>
-          <span>Retour</span>
+          <span>Retour au Hub</span>
         </a>
-        <h1 class="font-black text-base sm:text-lg tracking-tight text-white">Undercover</h1>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#00e599] animate-ping"></span>
+          <h1 class="font-black text-sm sm:text-base tracking-wider uppercase font-mono text-[#00e599]">Dossier // Undercover</h1>
+        </div>
       </div>
 
-      <!-- Droite : Annoncer ma partie, En ligne, Plein écran, Nouvel onglet, Flèche -->
+      <!-- Droite : Annoncer ma partie, En ligne, Plein écran, Nouvel onglet -->
       <div class="flex items-center gap-2">
-        <button onclick="announcePartyFromHeader()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+        <button onclick="announcePartyFromHeader()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#090a0f] px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
           <span>📣</span>
-          <span class="hidden sm:inline">Annoncer ma partie</span>
+          <span class="hidden sm:inline">Annoncer ma mission</span>
         </button>
 
-        <div class="hidden sm:flex items-center gap-1.5 bg-white text-[#12131a] px-3 py-1.5 rounded-xl border-[2.5px] border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a]">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
+        <div class="hidden sm:flex items-center gap-1.5 bg-[#161f38] text-white px-3 py-1.5 rounded-xl border-[2.5px] border-[#00e599] font-mono font-bold text-xs shadow-[2px_3px_0px_#090a0f]">
+          <span class="w-2 h-2 rounded-full bg-[#00e599]"></span>
           <span id="navOnlineCount">1</span>
-          <span>en ligne</span>
+          <span>agent(s)</span>
         </div>
 
-        <button onclick="toggleFullScreen()" class="hidden md:flex neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black items-center gap-1.5">
+        <button onclick="toggleFullScreen()" class="hidden md:flex neo-btn bg-white hover:bg-slate-100 text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black items-center gap-1.5">
           <span>⛶</span>
           <span>Plein écran</span>
         </button>
 
-        <button onclick="openInNewTab()" class="hidden lg:flex neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black items-center gap-1.5">
+        <button onclick="openInNewTab()" class="hidden lg:flex neo-btn bg-white hover:bg-slate-100 text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black items-center gap-1.5">
           <span>↗</span>
           <span>Nouvel onglet</span>
-        </button>
-
-        <button onclick="scrollToTopOrToggleHero()" title="Haut de page" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center">
-          ▲
         </button>
       </div>
 
     </div>
   </header>
 
-  <!-- ================= VUE 1 : LOBBY CENTRAL (STYLE CAPTURE PRÉSIDENT) ================= -->
+  <!-- ================= VUE 1 : LOBBY D'INFILTRATION ================= -->
   <main id="viewLobby" class="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
     
-    <!-- Éventail de 4 cartes identique à la capture -->
-    <div class="fan-cards">
-      <div class="playing-card card-1 text-rose-600">
-        <div class="text-xs leading-none">D<br><span class="text-[10px]">♥</span></div>
-        <div class="text-center text-base">♥</div>
+    <!-- Emblème Radar & Dossier Top Secret -->
+    <div class="spy-emblem">
+      <div class="radar-circle">
+        <div class="radar-sweep"></div>
+        <span class="text-5xl relative z-10 select-none">🕵️‍♂️</span>
       </div>
-      <div class="playing-card card-2 text-[#12131a]">
-        <div class="text-xs leading-none">2<br><span class="text-[10px]">♠</span></div>
-        <div class="text-center text-base">♠</div>
-      </div>
-      <div class="playing-card card-3 text-[#12131a]">
-        <div class="text-xs leading-none">A<br><span class="text-[10px]">♠</span></div>
-        <div class="text-center text-base">♠</div>
-      </div>
-      <div class="playing-card card-4 text-[#12131a]">
-        <div class="text-xs leading-none">D<br><span class="text-[10px]">♣</span></div>
-        <div class="text-center text-base">♣</div>
-      </div>
+      <span class="stamp-badge">CONFIDENTIEL</span>
     </div>
 
-    <!-- Grand Titre Jaune Cartoon -->
-    <h2 class="cartoon-title text-5xl sm:text-6xl md:text-7xl font-black uppercase text-center leading-none select-none">
+    <!-- Tag Opération -->
+    <div class="bg-[#161f38] border-2 border-[#00e599] text-[#00e599] font-mono font-extrabold text-[11px] uppercase tracking-widest px-3.5 py-1 rounded-full mb-2 shadow-[2px_3px_0px_#090a0f]">
+      Cellule de Contre-Espionnage IMB
+    </div>
+
+    <!-- Grand Titre Cartoon Espionnage -->
+    <h2 class="spy-title text-5xl sm:text-6xl md:text-7xl font-black uppercase text-center leading-none select-none">
       UNDERCOVER
     </h2>
 
-    <!-- Sous-titre humoristique -->
-    <p class="text-white font-extrabold text-sm sm:text-base mt-2 mb-7 text-center drop-shadow-[1px_2px_0px_#12131a]">
-      Démasque l'infiltré... ou bluffe toute la promo 🕵️‍♂️
+    <!-- Sous-titre -->
+    <p class="text-slate-300 font-bold text-sm sm:text-base mt-2.5 mb-7 text-center max-w-md">
+      3 mots pour prouver ton alibi. Un seul infiltré parmi vous. Qui bluffe la promo ?
     </p>
 
-    <!-- Carte Blanche Centrale (Créer / Rejoindre / Revenir) -->
-    <div class="neo-box bg-white max-w-lg w-full p-5 sm:p-6 space-y-4">
+    <!-- Dossier Central (Créer / Rejoindre / Revenir) -->
+    <div class="neo-box bg-white max-w-lg w-full overflow-hidden">
       
-      <p class="text-xs sm:text-sm font-bold text-slate-700">
-        Salut <strong id="lobbyUserGreeting" class="font-black text-[#12131a]">Joueur</strong> 👋 Crée une salle ou rejoins tes potes.
-      </p>
-
-      <!-- Bouton principal Créer une salle -->
-      <button onclick="createImposteurRoom()" id="btnCreateImposteurRoom" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-xl text-sm sm:text-base font-black flex items-center justify-center gap-2">
-        <span>🃏</span>
-        <span>Créer une salle</span>
-      </button>
-
-      <!-- Séparateur "ou" -->
-      <div class="flex items-center gap-3 py-0.5">
-        <div class="flex-1 h-px bg-slate-200"></div>
-        <span class="text-xs font-bold text-slate-400">ou</span>
-        <div class="flex-1 h-px bg-slate-200"></div>
+      <!-- Bandeau supérieur façon Dossier Classifié -->
+      <div class="bg-[#fed72d] border-b-[3px] border-[#090a0f] px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-base">📁</span>
+          <span class="font-mono font-black text-xs uppercase tracking-wider text-[#090a0f]">Accès Cellule d'Enquête</span>
+        </div>
+        <span class="bg-[#090a0f] text-[#00e599] font-mono text-[10px] font-extrabold px-2 py-0.5 rounded">NIV. ACCRÉDITÉ</span>
       </div>
 
-      <!-- Champ CODE + Bouton Rejoindre -->
-      <form onsubmit="event.preventDefault(); joinImposteurRoomFromInput();" class="flex gap-2.5">
-        <input type="text" id="imposteurJoinCodeInput" placeholder="C O D E" maxlength="12" class="flex-1 min-w-0 bg-white border-[2.5px] border-[#12131a] rounded-xl px-3 py-2.5 text-center font-mono font-black text-sm uppercase tracking-[0.2em] placeholder-slate-400 focus:outline-none focus:bg-[#fffdf0]">
-        <button type="submit" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black">
-          Rejoindre
-        </button>
-      </form>
+      <div class="p-5 sm:p-6 space-y-4">
+        <p class="text-xs sm:text-sm font-bold text-slate-700">
+          Agent <strong id="lobbyUserGreeting" class="font-black text-[#090a0f] underline decoration-[#00e599] decoration-2">Joueur</strong>, ouvre une nouvelle enquête ou rejoins une cellule existante.
+        </p>
 
-      <!-- Bouton Revenir dans la dernière salle -->
-      <button id="btnReturnLastRoom" onclick="rejoinLastImposteurRoom()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5">
-        <span>↩</span>
-        <span id="returnLastRoomText">Revenir dans la salle JYHR</span>
-      </button>
+        <!-- Bouton principal Créer une salle -->
+        <button onclick="createImposteurRoom()" id="btnCreateImposteurRoom" class="w-full neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] py-3.5 rounded-xl text-sm sm:text-base font-black flex items-center justify-center gap-2">
+          <span>🔍</span>
+          <span>Ouvrir une nouvelle cellule (Créer)</span>
+        </button>
+
+        <!-- Séparateur -->
+        <div class="flex items-center gap-3 py-0.5">
+          <div class="flex-1 h-px bg-slate-200"></div>
+          <span class="text-[11px] font-mono font-bold uppercase text-slate-400">ou code d'accès</span>
+          <div class="flex-1 h-px bg-slate-200"></div>
+        </div>
+
+        <!-- Champ CODE + Bouton Rejoindre -->
+        <form onsubmit="event.preventDefault(); joinImposteurRoomFromInput();" class="flex gap-2.5">
+          <input type="text" id="imposteurJoinCodeInput" placeholder="C O D E" maxlength="12" class="flex-1 min-w-0 bg-[#f8fafc] border-[2.5px] border-[#090a0f] rounded-xl px-3 py-2.5 text-center font-mono font-black text-sm uppercase tracking-[0.2em] placeholder-slate-400 focus:outline-none focus:bg-[#fffdf0]">
+          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#090a0f] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black">
+            Infiltrer ➔
+          </button>
+        </form>
+
+        <!-- Bouton Revenir dans la dernière salle -->
+        <button id="btnReturnLastRoom" onclick="rejoinLastImposteurRoom()" class="hidden w-full neo-btn bg-slate-100 hover:bg-slate-200 text-[#090a0f] py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5">
+          <span>↩</span>
+          <span id="returnLastRoomText">Revenir dans la cellule</span>
+        </button>
+      </div>
 
     </div>
 
-    <!-- Bouton "Les règles" sous la carte -->
-    <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
-      <button onclick="openRulesModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
-        <span>📖</span>
-        <span>Les règles</span>
+    <!-- Boutons sous le dossier : Protocole & Boîte à mots -->
+    <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
+      <button onclick="openRulesModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#090a0f] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5">
+        <span>📋</span>
+        <span>Protocole & Règles (3 mots + Vote)</span>
       </button>
-      <button onclick="openCustomWordsModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+      <button onclick="openCustomWordsModal()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#090a0f] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5">
         <span>✨</span>
-        <span>Mots de la promo</span>
+        <span>Alimenter la base de mots Promo</span>
       </button>
     </div>
 
   </main>
 
-  <!-- ================= VUE 2 : SALON DE JEU & TABLE DE POKER ================= -->
-  <section id="viewRoom" class="hidden flex-1 max-w-[1440px] w-full mx-auto p-3 sm:p-6 flex flex-col gap-4">
+  <!-- ================= VUE 2 : CELLULE D'ENQUÊTE & MUR DES SUSPECTS ================= -->
+  <section id="viewRoom" class="hidden flex-1 max-w-[1440px] w-full mx-auto p-3 sm:p-6 flex flex-col gap-5">
 
-    <!-- Barre supérieure du salon -->
+    <!-- Barre de contrôle de la cellule -->
     <div class="neo-box bg-white p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <button onclick="returnToLobbyView()" class="neo-btn bg-[#f1f3f9] hover:bg-slate-200 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1">
+        <button onclick="returnToLobbyView()" class="neo-btn bg-slate-100 hover:bg-slate-200 text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1">
           <span>←</span>
           <span>Lobby</span>
         </button>
-        <div class="bg-[#fed72d] border-2 border-[#12131a] rounded-2xl px-3.5 py-1 shadow-[2px_3px_0px_#12131a] text-center">
-          <span class="block text-[9px] font-black uppercase text-[#12131a]/70 leading-none">Salle</span>
-          <span id="imposteurRoomBadge" class="block text-base sm:text-lg font-mono font-black text-[#12131a] leading-tight tracking-wider">JYHR</span>
+        <div class="bg-[#00e599] border-2 border-[#090a0f] rounded-2xl px-3.5 py-1 shadow-[2px_3px_0px_#090a0f] text-center">
+          <span class="block text-[9px] font-mono font-black uppercase text-[#090a0f]/80 leading-none">Cellule</span>
+          <span id="imposteurRoomBadge" class="block text-base sm:text-lg font-mono font-black text-[#090a0f] leading-tight tracking-wider">XXXX</span>
         </div>
         <div>
-          <h3 class="text-sm sm:text-base font-black text-[#12131a] leading-tight">Salon Undercover</h3>
-          <span id="imposteurRoomSettingsText" class="text-[11px] font-mono font-bold text-slate-500 block">Hôte : ... · Mots classiques + promo</span>
+          <h3 class="text-sm sm:text-base font-black text-[#090a0f] leading-tight">Salle d'Interrogatoire</h3>
+          <span id="imposteurRoomSettingsText" class="text-[11px] font-mono font-bold text-slate-500 block">Chef de cellule : ...</span>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button onclick="copyImposteurRoomCode()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+        <button onclick="copyImposteurRoomCode()" class="neo-btn bg-white hover:bg-slate-100 text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black">
           📋 Copier le code
         </button>
-        <button onclick="shareImposteurRoomInChat()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
-          📣 Inviter dans le chat
+        <button onclick="shareImposteurRoomInChat()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black">
+          📣 Recruter dans le chat
         </button>
         <button onclick="leaveRoomCompletely()" class="neo-btn bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl text-xs font-black">
-          Quitter la table
+          Quitter l'enquête
         </button>
       </div>
     </div>
 
-    <!-- Grille principale : Table de jeu (8 cols) + Panneau récapitulatif du salon (4 cols) -->
+    <!-- Grille principale : Mur d'Enquête (8 cols) + Dossier de Renseignement (4 cols) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-      <!-- COLONNE GAUCHE : TABLE DE POKER & SAISIE D'INDICE (8 COLS) -->
+      <!-- COLONNE GAUCHE : CENTRE DE COMMANDEMENT & MUR DES SUSPECTS (8 COLS) -->
       <div class="lg:col-span-8 flex flex-col gap-4">
 
-        <!-- Action Tour par Tour : Entrée du mot indice -->
-        <div id="imposteurTurnInputArea" class="hidden neo-box-sm bg-[#fed72d] p-3.5">
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-xs sm:text-sm font-black text-[#12131a] flex items-center gap-1.5">
-              <span>🗣️</span>
-              <span>C'EST TON TOUR ! DONNE UN MOT INDICE :</span>
+        <!-- Zone de saisie d'indice (apparaît uniquement quand c'est le tour du joueur) -->
+        <div id="imposteurTurnInputArea" class="hidden neo-box bg-[#00e599] p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <span class="text-xs sm:text-sm font-black text-[#090a0f] flex items-center gap-2 uppercase">
+              <span class="text-lg">🎙️</span>
+              <span id="turnPromptLabel">INTERROGATOIRE : DONNE TON INDICE !</span>
             </span>
-            <span class="text-[10px] font-mono font-extrabold bg-white border border-[#12131a] px-2 py-0.5 rounded-full text-[#12131a]">1 seul mot</span>
+            <span class="text-[10px] font-mono font-extrabold bg-[#090a0f] text-[#00e599] px-2.5 py-0.5 rounded-full">1 seul mot autorisé</span>
           </div>
           <form onsubmit="event.preventDefault(); submitImposteurClue();" class="flex gap-2">
-            <input type="text" id="imposteurClueInput" autocomplete="off" placeholder="Tape ton indice ici (ex : Pépin)..." class="flex-1 bg-white border-2 border-[#12131a] rounded-xl px-3.5 py-2 text-sm font-bold text-[#12131a] focus:outline-none">
-            <button type="submit" class="neo-btn bg-[#12131a] hover:bg-slate-800 text-[#fed72d] px-5 py-2 rounded-xl text-xs sm:text-sm font-black">
-              Valider ➔
+            <input type="text" id="imposteurClueInput" autocomplete="off" placeholder="Tape ton mot-indice ici..." class="flex-1 bg-white border-[2.5px] border-[#090a0f] rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#090a0f] focus:outline-none">
+            <button type="submit" class="neo-btn bg-[#090a0f] hover:bg-slate-800 text-[#00e599] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black">
+              Transmettre ➔
             </button>
           </form>
         </div>
 
-        <!-- TABLE DE POKER DES JOUEURS -->
-        <div class="poker-table p-5 sm:p-8 min-h-[500px] flex flex-col justify-between items-center gap-6 relative">
+        <!-- TABLEAU D'ENQUÊTE CRIMINELLE (REMPLACE LA TABLE DE POKER) -->
+        <div class="investigation-board p-4 sm:p-6 flex flex-col gap-6 min-h-[540px]">
 
-          <!-- Centre de table : Statut, Mot Secret & Décompte -->
-          <div class="bg-white/95 border-[3px] border-[#12131a] rounded-3xl p-4 sm:p-5 text-center shadow-[4px_5px_0px_#12131a] max-w-md w-full z-10">
-            <div id="imposteurPhaseBadge" class="text-[10px] font-mono font-black uppercase tracking-wider text-[#12131a] bg-[#fed72d] border-2 border-[#12131a] px-3 py-0.5 rounded-full inline-block mb-1.5 shadow-[1px_1.5px_0px_#12131a]">
-              En attente des joueurs
-            </div>
+          <!-- Bandeau Supérieur : Console d'État de l'Enquête + Dossier Mot Secret -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
 
-            <h4 id="imposteurCenterTitle" class="text-lg sm:text-xl font-black text-[#12131a] leading-tight">
-              1 Joueur(s) autour de la table
-            </h4>
+            <!-- Console d'état (Statut, Progression des mots, Chrono Vote, Bouton Lancer) -->
+            <div class="md:col-span-7 bg-white border-[3px] border-[#090a0f] rounded-2xl p-4 shadow-[4px_5px_0px_#090a0f] flex flex-col justify-between">
+              <div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <span id="imposteurPhaseBadge" class="text-[10px] font-mono font-black uppercase tracking-wider text-[#090a0f] bg-[#fed72d] border-2 border-[#090a0f] px-2.5 py-0.5 rounded-full shadow-[1px_1.5px_0px_#090a0f]">
+                    En attente d'agents
+                  </span>
+                  <span id="imposteurStepBadge" class="hidden text-[10px] font-mono font-extrabold bg-[#090a0f] text-[#00e599] px-2.5 py-0.5 rounded-full">
+                    Tour 1 · Mot 1/3
+                  </span>
+                </div>
 
-            <p id="imposteurCenterDesc" class="text-xs sm:text-sm font-bold text-slate-600 mt-1">
-              Minimum 3 joueurs pour lancer la partie.
-            </p>
+                <h4 id="imposteurCenterTitle" class="text-lg sm:text-xl font-black text-[#090a0f] leading-tight">
+                  Cellule en préparation
+                </h4>
 
-            <!-- Chrono vote 60s -->
-            <div id="imposteurTimerContainer" class="hidden mt-2">
-              <div class="inline-flex items-center gap-1.5 bg-rose-50 border-2 border-rose-600 px-3.5 py-1 rounded-2xl">
-                <span>⏱️</span>
-                <span class="text-2xl font-black font-mono text-rose-600 animate-pulse" id="imposteurTimerDisplay">60s</span>
+                <p id="imposteurCenterDesc" class="text-xs sm:text-sm font-bold text-slate-600 mt-1">
+                  Minimum 3 agents requis pour ouvrir les dossiers secrets.
+                </p>
+
+                <!-- Barre visuelle de progression des passages de mots avant le vote -->
+                <div id="wordPassProgressContainer" class="hidden mt-3 pt-2.5 border-t border-slate-200">
+                  <div class="flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 mb-1">
+                    <span id="wordPassProgressLabel">Passages d'indices avant le vote :</span>
+                    <span id="wordPassProgressRatio" class="text-[#090a0f] font-black">1 / 3</span>
+                  </div>
+                  <div id="wordPassStepsGrid" class="grid grid-cols-3 gap-1.5"></div>
+                </div>
+              </div>
+
+              <!-- Chrono Vote 60 secondes -->
+              <div id="imposteurTimerContainer" class="hidden mt-3 p-2.5 bg-rose-50 border-2 border-[#ff2a5f] rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">🚨</span>
+                  <div class="text-left leading-tight">
+                    <span class="text-[10px] font-mono font-black uppercase text-rose-800 block">Vote d'élimination</span>
+                    <span class="text-[11px] font-bold text-rose-600">Clique sur un suspect ci-dessous !</span>
+                  </div>
+                </div>
+                <span class="text-2xl font-black font-mono text-[#ff2a5f] animate-pulse" id="imposteurTimerDisplay">60s</span>
+              </div>
+
+              <!-- Bouton Lancer / Relancer pour l'hôte -->
+              <div id="imposteurHostControls" class="mt-3">
+                <button onclick="startImposteurGame()" id="btnStartImposteur" class="w-full neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] py-2.5 rounded-xl text-xs sm:text-sm font-black">
+                  🚀 Distribuer les dossiers & Lancer l'enquête
+                </button>
               </div>
             </div>
 
-            <!-- Carte du Mot Secret (Visible uniquement par le joueur) -->
-            <div id="imposteurMyWordCard" class="hidden mt-3 p-3 bg-[#f0fdf4] border-2 border-emerald-600 rounded-2xl relative">
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-[10px] font-black text-emerald-800 uppercase tracking-wider">🤫 Ton mot secret :</span>
-                <button type="button" onclick="toggleSecretWordVisibility()" class="text-[10px] font-mono font-bold text-emerald-700 underline">
+            <!-- Dossier Classifié : Le Mot Secret du Joueur -->
+            <div class="md:col-span-5 bg-[#fef3c7] border-[3px] border-[#090a0f] rounded-2xl p-4 shadow-[4px_5px_0px_#090a0f] flex flex-col justify-between relative overflow-hidden">
+              <div class="flex items-center justify-between border-b-2 border-[#090a0f]/20 pb-2">
+                <span class="font-mono font-black text-[10px] uppercase tracking-wider text-[#090a0f] flex items-center gap-1">
+                  <span>🗂️</span>
+                  <span>DOSSIER PERSONNEL</span>
+                </span>
+                <button type="button" id="btnToggleSecretWord" onclick="toggleSecretWordVisibility()" class="hidden bg-[#090a0f] text-[#fed72d] font-mono text-[10px] font-bold px-2 py-0.5 rounded hover:opacity-90">
                   <span id="btnToggleWordText">Masquer</span>
                 </button>
               </div>
-              <span id="imposteurSecretWordText" class="text-xl sm:text-2xl font-black text-emerald-700 tracking-wide block">???</span>
-              <span class="text-[10px] font-bold text-emerald-800/80 block mt-0.5">Complice ou Infiltré ? Sois subtil dans tes indices !</span>
+
+              <!-- État avant le début de partie -->
+              <div id="secretWordEmptyState" class="py-5 text-center">
+                <span class="text-2xl block mb-1">🔒</span>
+                <span class="text-xs font-black text-[#090a0f] block uppercase">Mot de code verrouillé</span>
+                <span class="text-[11px] font-bold text-amber-900/70 block mt-0.5">Ton mot s'affichera ici dès le lancement.</span>
+              </div>
+
+              <!-- Mot secret actif pendant la partie -->
+              <div id="imposteurMyWordCard" class="hidden py-3 text-center">
+                <span class="text-[10px] font-mono font-bold uppercase text-amber-900/80 block">Ton mot de code :</span>
+                <span id="imposteurSecretWordText" class="text-2xl sm:text-3xl font-black text-[#090a0f] tracking-tight block my-1 break-words">???</span>
+                <span class="inline-block bg-[#ff2a5f] text-white font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded border border-[#090a0f]">
+                  Statut inconnu : Agent ou Infiltré ?
+                </span>
+              </div>
+
+              <div class="text-[10px] font-mono font-bold text-amber-950/70 border-t border-[#090a0f]/15 pt-1.5 flex items-center justify-between">
+                <span>NE DIVULGUE JAMAIS CE MOT</span>
+                <span>// IMB-SEC</span>
+              </div>
             </div>
 
-            <!-- Bouton Lancer la partie pour l'hôte -->
-            <div id="imposteurHostControls" class="mt-3.5">
-              <button onclick="startImposteurGame()" id="btnStartImposteur" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-6 py-2.5 rounded-xl text-sm font-black">
-                🚀 Lancer la partie
-              </button>
-            </div>
           </div>
 
-          <!-- Sièges des joueurs autour de la table -->
-          <div id="imposteurSeatsContainer" class="w-full grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3.5 z-10"></div>
+          <!-- En-tête du Mur des Suspects -->
+          <div class="flex items-center justify-between border-b-2 border-white/10 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-base">📌</span>
+              <h4 class="text-xs sm:text-sm font-mono font-black uppercase tracking-wider text-white">
+                Mur des Suspects & Alibis (<span id="boardSuspectsCount">1</span>)
+              </h4>
+            </div>
+            <span class="text-[11px] font-mono text-[#00e599] font-bold">
+              Ordre des interrogatoires de gauche à droite
+            </span>
+          </div>
+
+          <!-- Grille des Fiches Suspects -->
+          <div id="imposteurSeatsContainer" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
 
         </div>
 
       </div>
 
-      <!-- COLONNE DROITE : PANNEAU RÉCAPITULATIF DU SALON (JOUEURS, RÔLES, INDICES & RÈGLES) (4 COLS) -->
+      <!-- COLONNE DROITE : BRIEFING DE MISSION, JOURNAL DES INDICES & RADIO (4 COLS) -->
       <div class="lg:col-span-4 flex flex-col gap-4">
 
-        <!-- Carte 1 : Récapitulatif du Salon (Joueurs, Rôles & Règles) -->
+        <!-- Carte 1 : Briefing & Paramètres de la Cellule -->
         <div class="neo-box bg-white overflow-hidden">
-          <div class="bg-[#fed72d] px-4 py-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between">
-            <span class="text-xs sm:text-sm font-black text-[#12131a] uppercase tracking-tight">📋 Récapitulatif du Salon</span>
-            <span id="summaryPlayersCountBadge" class="text-[11px] font-mono font-black bg-white border-2 border-[#12131a] px-2 py-0.5 rounded-full">1 joueur</span>
+          <div class="bg-[#00e599] px-4 py-2.5 border-b-[3px] border-[#090a0f] flex items-center justify-between">
+            <span class="text-xs sm:text-sm font-black text-[#090a0f] uppercase tracking-tight">📡 Briefing de la Cellule</span>
+            <span id="summaryPlayersCountBadge" class="text-[11px] font-mono font-black bg-white border-2 border-[#090a0f] px-2 py-0.5 rounded-full">1 agent</span>
           </div>
 
           <div class="p-3.5 space-y-3">
             <!-- Répartition des rôles -->
             <div class="grid grid-cols-3 gap-2 text-center">
-              <div class="bg-[#f0fdf4] border-2 border-[#12131a] rounded-xl p-2 shadow-[1.5px_2px_0px_#12131a]">
-                <span class="text-base block">🤝</span>
-                <span id="summaryComplicesCount" class="text-sm font-black text-[#12131a] block">2+</span>
-                <span class="text-[10px] font-bold text-slate-600 block">Complices</span>
+              <div class="bg-[#ecfdf5] border-2 border-[#090a0f] rounded-xl p-2 shadow-[1.5px_2px_0px_#090a0f]">
+                <span class="text-base block">🛡️</span>
+                <span id="summaryComplicesCount" class="text-sm font-black text-[#090a0f] block">2+</span>
+                <span class="text-[10px] font-bold text-slate-600 block">Agents</span>
               </div>
-              <div class="bg-rose-50 border-2 border-[#12131a] rounded-xl p-2 shadow-[1.5px_2px_0px_#12131a]">
+              <div class="bg-rose-50 border-2 border-[#090a0f] rounded-xl p-2 shadow-[1.5px_2px_0px_#090a0f]">
                 <span class="text-base block">🕵️‍♂️</span>
-                <span id="summaryInfiltreCount" class="text-sm font-black text-[#12131a] block">1</span>
-                <span class="text-[10px] font-bold text-slate-600 block">Infiltré</span>
+                <span id="summaryInfiltreCount" class="text-sm font-black text-[#090a0f] block">1</span>
+                <span class="text-[10px] font-bold text-slate-600 block">Imposteur</span>
               </div>
-              <div class="bg-[#f0f4ff] border-2 border-[#12131a] rounded-xl p-2 shadow-[1.5px_2px_0px_#12131a]">
-                <span class="text-base block">🔄</span>
-                <span id="summaryRoundsCount" class="text-sm font-black text-[#12131a] block">2 tours</span>
-                <span class="text-[10px] font-bold text-slate-600 block">Avant vote</span>
+              <div class="bg-[#fef3c7] border-2 border-[#090a0f] rounded-xl p-2 shadow-[1.5px_2px_0px_#090a0f]">
+                <span class="text-base block">⏱️</span>
+                <span id="summaryRoundsCount" class="text-sm font-black text-[#090a0f] block">60 sec</span>
+                <span class="text-[10px] font-bold text-slate-600 block">Par vote</span>
               </div>
             </div>
 
+            <!-- Rappel du déroulé spécifique demandé -->
+            <div class="bg-[#0b1021] text-white border-2 border-[#090a0f] rounded-xl p-3 text-[11px] space-y-1">
+              <div class="font-mono font-black text-[#00e599] uppercase text-[10px]">⚡ Déroulé des tours :</div>
+              <p class="font-bold text-slate-200 leading-snug">
+                • <strong>Tour 1 :</strong> Chacun donne son <strong>1er mot</strong>, puis son <strong>2ème mot</strong>, puis son <strong>3ème mot</strong> (sans vote entre eux), puis <strong>Vote (60s)</strong>.
+              </p>
+              <p class="font-bold text-slate-200 leading-snug">
+                • <strong>Tour 2, 3... :</strong> Si l'imposteur survit, chacun donne <strong>1 nouveau mot</strong> (4ème mot, 5ème mot...) suivi d'un <strong>Vote (60s)</strong> jusqu'à ce qu'il soit démasqué ou qu'il ne reste plus que <strong>3 joueurs</strong> !
+              </p>
+            </div>
+
             <!-- Choix des packs de mots -->
-            <div class="bg-[#f8fafc] border-2 border-[#12131a] rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
+            <div class="bg-[#f8fafc] border-2 border-[#090a0f] rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
               <div class="flex items-center gap-3">
                 <label class="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" id="chkWordsClassic" checked onchange="updateRoomSettings()" class="w-3.5 h-3.5 accent-[#12131a] rounded">
+                  <input type="checkbox" id="chkWordsClassic" checked onchange="updateRoomSettings()" class="w-3.5 h-3.5 accent-[#090a0f] rounded">
                   <span>Mots classiques</span>
                 </label>
                 <label class="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" id="chkWordsCustom" checked onchange="updateRoomSettings()" class="w-3.5 h-3.5 accent-[#12131a] rounded">
+                  <input type="checkbox" id="chkWordsCustom" checked onchange="updateRoomSettings()" class="w-3.5 h-3.5 accent-[#090a0f] rounded">
                   <span>Mots promo</span>
                 </label>
               </div>
-              <button type="button" onclick="openCustomWordsModal()" class="text-blue-600 hover:underline font-black text-[11px]">
+              <button type="button" onclick="openCustomWordsModal()" class="text-emerald-700 hover:underline font-black text-[11px]">
                 + Ajouter un mot
               </button>
             </div>
 
             <!-- Liste synthétique des joueurs présents -->
             <div>
-              <span class="text-[10px] font-mono font-extrabold uppercase text-slate-400 block mb-1">Joueurs dans le salon</span>
+              <span class="text-[10px] font-mono font-extrabold uppercase text-slate-400 block mb-1">Agents connectés</span>
               <div id="summaryPlayersList" class="flex flex-wrap gap-1.5"></div>
             </div>
-
-            <!-- Rappel des règles clés -->
-            <div class="bg-[#f8fafc] border-2 border-[#12131a] rounded-xl p-2.5 text-[11px] font-bold text-slate-600 leading-snug">
-              💡 <strong class="text-[#12131a]">Règle d'or :</strong> Personne ne sait s'il est Complice ou Infiltré ! Après les tours d'indices, vous avez <strong class="text-[#12131a]">60s</strong> pour voter. S'il ne reste que 3 joueurs dont l'Infiltré, l'Infiltré gagne !
-            </div>
           </div>
         </div>
 
-        <!-- Carte 2 : Tableau des indices donnés -->
-        <div class="neo-box bg-white overflow-hidden">
-          <div class="bg-[#06d6a0] px-4 py-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between">
-            <span class="text-xs sm:text-sm font-black text-[#12131a] uppercase tracking-tight">🗣️ Indices donnés</span>
-            <span class="text-[10px] font-mono font-bold text-[#12131a]/80">Ordre de parole</span>
-          </div>
-          <div id="imposteurCluesBoard" class="p-3.5 space-y-2.5 max-h-64 overflow-y-auto custom-scrollbar"></div>
-        </div>
-
-        <!-- Carte 3 : Chat de la Table intégré -->
+        <!-- Carte 2 : Canal Radio de la Cellule (Chat de la salle) -->
         <div class="neo-box bg-white overflow-hidden flex flex-col">
-          <div class="bg-[#f1f3f9] px-4 py-2 border-b-[3px] border-[#12131a] flex items-center justify-between">
-            <span class="text-xs font-black text-[#12131a] uppercase">💬 Chat de la Table</span>
-            <span class="text-[10px] font-mono font-bold text-slate-500">Salon privé</span>
+          <div class="bg-[#fed72d] px-4 py-2.5 border-b-[3px] border-[#090a0f] flex items-center justify-between">
+            <span class="text-xs font-black text-[#090a0f] uppercase">📻 Canal Radio & Journal</span>
+            <span class="text-[10px] font-mono font-bold text-[#090a0f]/80">Fréquence privée</span>
           </div>
-          <div id="imposteurTableChatMessages" class="h-44 overflow-y-auto p-3 space-y-1.5 text-xs custom-scrollbar bg-[#f8fafc]"></div>
-          <form onsubmit="handleSendTableChatMessage(event)" class="p-2.5 bg-white border-t-2 border-[#12131a] flex gap-2">
-            <input type="text" id="tableChatInput" autocomplete="off" placeholder="Message à la table..." class="flex-1 min-w-0 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:bg-white">
-            <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+          <div id="imposteurTableChatMessages" class="h-56 overflow-y-auto p-3 space-y-1.5 text-xs custom-scrollbar bg-[#f8fafc]"></div>
+          <form onsubmit="handleSendTableChatMessage(event)" class="p-2.5 bg-white border-t-2 border-[#090a0f] flex gap-2">
+            <input type="text" id="tableChatInput" autocomplete="off" placeholder="Parler sur la fréquence du salon..." class="flex-1 min-w-0 bg-[#f8fafc] border-2 border-[#090a0f] rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:bg-white">
+            <button type="submit" class="neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black">
               Envoyer
             </button>
           </form>
@@ -455,48 +570,47 @@
 
   </section>
 
-  <!-- ================= BOUTON FLOTTANT MESSAGERIE INSTANTANÉE (BAS DROITE STYLE CAPTURE) ================= -->
+  <!-- ================= BOUTON FLOTTANT MESSAGERIE INSTANTANÉE (BAS DROITE) ================= -->
   <div class="fixed bottom-5 right-5 z-40 flex flex-col items-end">
     
-    <!-- Tiroir / Popover de messagerie instantanée -->
+    <!-- Tiroir de messagerie instantanée -->
     <div id="floatingChatDrawer" class="hidden mb-3 w-[340px] sm:w-[380px] h-[470px] neo-box bg-white flex flex-col overflow-hidden">
       
-      <!-- Header avec onglets Général Promo / Chat Salon -->
-      <div class="bg-[#fed72d] p-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between gap-2">
+      <div class="bg-[#00e599] p-2.5 border-b-[3px] border-[#090a0f] flex items-center justify-between gap-2">
         <div class="flex items-center gap-1.5 flex-1">
-          <button type="button" onclick="switchFloatingChatTab('promo')" id="tabChatPromo" class="neo-btn bg-[#12131a] text-white px-3 py-1 rounded-xl text-xs font-black">
+          <button type="button" onclick="switchFloatingChatTab('promo')" id="tabChatPromo" class="neo-btn bg-[#090a0f] text-white px-3 py-1 rounded-xl text-xs font-black">
             📢 Général Promo
           </button>
-          <button type="button" onclick="switchFloatingChatTab('table')" id="tabChatTable" class="bg-white/80 hover:bg-white text-[#12131a] border-2 border-[#12131a] px-3 py-1 rounded-xl text-xs font-black transition-all">
-            🕵️‍♂️ Salon
+          <button type="button" onclick="switchFloatingChatTab('table')" id="tabChatTable" class="bg-white/80 hover:bg-white text-[#090a0f] border-2 border-[#090a0f] px-3 py-1 rounded-xl text-xs font-black transition-all">
+            📻 Radio Cellule
           </button>
         </div>
-        <button type="button" onclick="toggleFloatingChat()" class="w-7 h-7 rounded-xl bg-white border-2 border-[#12131a] font-black text-xs flex items-center justify-center">
+        <button type="button" onclick="toggleFloatingChat()" class="w-7 h-7 rounded-xl bg-white border-2 border-[#090a0f] font-black text-xs flex items-center justify-center">
           ✕
         </button>
       </div>
 
-      <!-- Contenu Onglet 1 : Chat Général Promo -->
+      <!-- Onglet 1 : Chat Général Promo -->
       <div id="floatingPromoChatPanel" class="flex-1 flex flex-col min-h-0">
         <div id="floatingPromoMessages" class="flex-1 p-3 overflow-y-auto space-y-reverse space-y-2.5 custom-scrollbar bg-[#f8fafc] flex flex-col-reverse">
           <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement du chat promo...</p>
         </div>
-        <form onsubmit="handleSendPromoChat(event)" class="p-2.5 bg-white border-t-[3px] border-[#12131a] flex gap-2">
-          <input type="text" id="floatingPromoInput" autocomplete="off" placeholder="Écris à toute la promo..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+        <form onsubmit="handleSendPromoChat(event)" class="p-2.5 bg-white border-t-[3px] border-[#090a0f] flex gap-2">
+          <input type="text" id="floatingPromoInput" autocomplete="off" placeholder="Écris à toute la promo..." class="flex-1 bg-[#f1f3f9] border-2 border-[#090a0f] rounded-xl px-3 py-1.5 text-xs font-bold text-[#090a0f] focus:outline-none focus:bg-white">
+          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black">
             Envoyer
           </button>
         </form>
       </div>
 
-      <!-- Contenu Onglet 2 : Chat de la Salle -->
+      <!-- Onglet 2 : Chat de la Cellule -->
       <div id="floatingTableChatPanel" class="hidden flex-1 flex-col min-h-0">
         <div id="floatingTableMessages" class="flex-1 p-3 overflow-y-auto space-y-2 custom-scrollbar bg-[#f8fafc] text-xs">
-          <p class="text-xs font-bold text-slate-400 text-center py-8">Rejoins ou crée une salle pour discuter avec la table.</p>
+          <p class="text-xs font-bold text-slate-400 text-center py-8">Rejoins ou ouvre une cellule pour discuter ici.</p>
         </div>
-        <form onsubmit="handleSendFloatingTableChat(event)" class="p-2.5 bg-white border-t-[3px] border-[#12131a] flex gap-2">
-          <input type="text" id="floatingTableInput" autocomplete="off" placeholder="Message aux joueurs du salon..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+        <form onsubmit="handleSendFloatingTableChat(event)" class="p-2.5 bg-white border-t-[3px] border-[#090a0f] flex gap-2">
+          <input type="text" id="floatingTableInput" autocomplete="off" placeholder="Message aux agents..." class="flex-1 bg-[#f1f3f9] border-2 border-[#090a0f] rounded-xl px-3 py-1.5 text-xs font-bold text-[#090a0f] focus:outline-none focus:bg-white">
+          <button type="submit" class="neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] px-3 py-1.5 rounded-xl text-xs font-black">
             Envoyer
           </button>
         </form>
@@ -504,92 +618,93 @@
 
     </div>
 
-    <!-- Bouton Rond Jaune Flottant (identique à la capture d'écran) -->
-    <button onclick="toggleFloatingChat()" id="btnFloatingChat" title="Messagerie instantanée" class="relative w-14 h-14 rounded-full bg-[#fed72d] hover:bg-[#eec418] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-2xl transition-transform active:translate-x-0.5 active:translate-y-0.5">
+    <!-- Bouton Rond Flottant -->
+    <button onclick="toggleFloatingChat()" id="btnFloatingChat" title="Messagerie instantanée" class="relative w-14 h-14 rounded-full bg-[#00e599] hover:bg-[#00cc88] border-[3px] border-[#090a0f] shadow-[3px_4px_0px_#090a0f] flex items-center justify-center text-2xl transition-transform active:translate-x-0.5 active:translate-y-0.5">
       <span>💬</span>
-      <span id="chatUnreadBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-600 border-2 border-[#12131a] text-white text-[10px] font-mono font-black flex items-center justify-center">!</span>
+      <span id="chatUnreadBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#ff2a5f] border-2 border-[#090a0f] text-white text-[10px] font-mono font-black flex items-center justify-center">!</span>
     </button>
 
   </div>
 
-  <!-- ================= MODALE : LES RÈGLES DU JEU ================= -->
-  <div id="modalRules" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+  <!-- ================= MODALE : PROTOCOLE & RÈGLES DU JEU ================= -->
+  <div id="modalRules" class="hidden fixed inset-0 z-50 bg-[#090d1a]/85 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-lg w-full p-6 relative max-h-[92vh] overflow-y-auto custom-scrollbar">
-      <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
-        <h3 class="text-xl font-black text-[#12131a] flex items-center gap-2">
-          <span>📖</span>
-          <span>RÈGLES D'UNDERCOVER</span>
+      <div class="flex items-center justify-between pb-3 border-b-2 border-[#090a0f] mb-4">
+        <h3 class="text-xl font-black text-[#090a0f] flex items-center gap-2">
+          <span>📋</span>
+          <span>PROTOCOLE UNDERCOVER</span>
         </h3>
         <button onclick="closeRulesModal()" class="text-xl font-bold">✕</button>
       </div>
 
       <div class="space-y-3.5 text-xs font-bold text-slate-700 leading-relaxed">
-        <div class="p-3 bg-[#f0fdf4] border-2 border-[#12131a] rounded-xl">
-          <strong class="text-sm font-black text-[#12131a] block mb-1">1. Distribution secrète des rôles 🎭</strong>
-          Au lancement (3 joueurs minimum), tout le monde reçoit un mot secret. Les <strong>Complices</strong> reçoivent tous exactement le même mot (ex : <em>Kebab</em>), tandis que l'<strong>Infiltré</strong> reçoit un mot très proche (ex : <em>Tacos</em>). <strong>Personne ne sait s'il est Complice ou Infiltré !</strong>
+        <div class="p-3 bg-[#ecfdf5] border-2 border-[#090a0f] rounded-xl">
+          <strong class="text-sm font-black text-[#090a0f] block mb-1">1. Dossiers secrets & Infiltration 🕵️‍♂️</strong>
+          Tous les Agents (Complices) reçoivent exactement le même mot secret (ex : <em>Kebab</em>), tandis que l'<strong>Imposteur</strong> reçoit un mot très proche (ex : <em>Tacos</em>). <strong>Personne ne sait s'il détient le mot des Agents ou celui de l'Imposteur !</strong>
         </div>
 
-        <div class="p-3 bg-[#fffdf0] border-2 border-[#12131a] rounded-xl">
-          <strong class="text-sm font-black text-[#12131a] block mb-1">2. Tours de parole & Indices 🗣️</strong>
-          Chacun son tour, chaque joueur donne <strong>un seul mot indice</strong> en rapport avec son mot secret. Sois assez précis pour prouver aux autres que tu as le bon mot, mais pas trop évident pour ne pas aider l'Infiltré !
+        <div class="p-3 bg-[#fef3c7] border-2 border-[#090a0f] rounded-xl">
+          <strong class="text-sm font-black text-[#090a0f] block mb-1">2. Tour 1 : 3 mots chacun avant le premier vote 🎙️</strong>
+          Au <strong>Tour 1</strong>, chaque joueur donne son <strong>1er mot</strong> dans l'ordre, puis tout le monde enchaîne sans vote sur son <strong>2ème mot</strong>, puis sur son <strong>3ème mot</strong>.
+          Une fois les 3 mots donnés par chaque suspect, vous avez <strong>60 secondes</strong> pour voter.
         </div>
 
-        <div class="p-3 bg-rose-50 border-2 border-[#12131a] rounded-xl">
-          <strong class="text-sm font-black text-[#12131a] block mb-1">3. Phase de vote (60 secondes) 🗳️</strong>
-          Après 2 tours de table (ou 1 seul tour à 3 joueurs), vous avez <strong>60 secondes</strong> pour débattre et cliquer sur le joueur que vous soupçonnez.
-          <ul class="list-disc list-inside mt-1 space-y-1">
-            <li>Si l'Infiltré est éliminé : <strong>Victoire immédiate des Complices ! 🎉</strong></li>
-            <li>Si un Complice est éliminé par erreur : la partie continue, mais s'il ne reste plus que 3 joueurs en vie, <strong>l'Infiltré remporte la partie ! 😈</strong></li>
+        <div class="p-3 bg-rose-50 border-2 border-[#090a0f] rounded-xl">
+          <strong class="text-sm font-black text-[#090a0f] block mb-1">3. Tours suivants (Tour 2, Tour 3...) & Fin de mission 🎯</strong>
+          <ul class="list-disc list-inside space-y-1">
+            <li>Si l'Imposteur est éliminé au vote : <strong>Victoire immédiate des Agents ! 🎉</strong></li>
+            <li>Si l'Imposteur n'est pas éliminé : on passe au <strong>Tour 2</strong> (chacun donne un <strong>4ème mot</strong> puis <strong>Vote de 60s</strong>), puis au <strong>Tour 3</strong> (<strong>5ème mot</strong> + <strong>Vote de 60s</strong>), et ainsi de suite.</li>
+            <li>S'il ne reste plus que <strong>3 joueurs en vie</strong> et que l'Imposteur est toujours parmi eux, <strong>l'Imposteur remporte la victoire ! 😈</strong></li>
           </ul>
         </div>
       </div>
 
-      <button onclick="closeRulesModal()" class="w-full mt-5 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black">
-        J'ai compris, place au bluff !
+      <button onclick="closeRulesModal()" class="w-full mt-5 neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] py-3 rounded-xl text-xs font-black">
+        Parfait, lancer l'opération !
       </button>
     </div>
   </div>
 
   <!-- ================= MODALE : BOÎTE À MOTS DE LA PROMO ================= -->
-  <div id="modalCustomWords" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+  <div id="modalCustomWords" class="hidden fixed inset-0 z-50 bg-[#090d1a]/85 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 relative">
-      <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
-        <h3 class="text-lg font-black text-[#12131a] flex items-center gap-2">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-[#090a0f] mb-4">
+        <h3 class="text-lg font-black text-[#090a0f] flex items-center gap-2">
           <span>✨</span>
-          <span>BOÎTE À MOTS DE LA PROMO</span>
+          <span>ARCHIVES DE MOTS PROMO</span>
         </h3>
         <button onclick="closeCustomWordsModal()" class="text-xl font-bold">✕</button>
       </div>
 
       <p class="text-xs font-bold text-slate-600 mb-4 leading-snug">
-        Ajoute une paire de mots proches ou un délire de la promo IMB ! Elle sera automatiquement tirée au sort dans les prochaines parties.
+        Ajoute une paire de mots proches ou un délire de la promo IMB ! Elle sera automatiquement intégrée aux prochains tirages.
       </p>
 
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot des Complices *</label>
-          <input type="text" id="inputCustomWord1" placeholder="Ex : Kebab" class="w-full bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold">
+          <label class="block text-xs font-black text-[#090a0f] mb-1">Mot des Agents (Complices) *</label>
+          <input type="text" id="inputCustomWord1" placeholder="Ex : Kebab" class="w-full bg-[#f8fafc] border-2 border-[#090a0f] rounded-xl px-3 py-2 text-xs font-bold">
         </div>
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de l'Infiltré (proche) *</label>
-          <input type="text" id="inputCustomWord2" placeholder="Ex : Tacos" class="w-full bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold">
+          <label class="block text-xs font-black text-[#090a0f] mb-1">Mot de l'Imposteur (proche) *</label>
+          <input type="text" id="inputCustomWord2" placeholder="Ex : Tacos" class="w-full bg-[#f8fafc] border-2 border-[#090a0f] rounded-xl px-3 py-2 text-xs font-bold">
         </div>
-        <button onclick="addCustomWordPairToPromo()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black">
-          ➕ Ajouter la paire pour la promo
+        <button onclick="addCustomWordPairToPromo()" class="w-full neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] py-3 rounded-xl text-xs font-black">
+          ➕ Enregistrer dans les archives
         </button>
       </div>
     </div>
   </div>
 
   <!-- ================= TOAST ================= -->
-  <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-white border-[2.5px] border-[#12131a] shadow-[3px_4px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
+  <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-white border-[2.5px] border-[#090a0f] shadow-[3px_4px_0px_#090a0f] text-[#090a0f] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
     <span id="toastIcon">💬</span>
     <span id="toastMsg">Notification</span>
   </div>
 
   <script>
     /* =========================================================
-       FIREBASE CONFIGURATION & PARTAGE DE SESSION (index.html -> undercover.html)
+       CONFIGURATION FIREBASE & SESSION PARTAGÉE
        ========================================================= */
     const firebaseConfig = {
       apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
@@ -661,7 +776,7 @@
       return a;
     }
 
-    /* ---------------- INITIALISATION SANS MOT DE PASSE ---------------- */
+    /* ---------------- INITIALISATION ---------------- */
     window.addEventListener('DOMContentLoaded', () => {
       loadSharedSession();
       listenToLiveUsersCount();
@@ -672,7 +787,6 @@
 
     window.addEventListener('hashchange', checkImposteurRoomFromHash);
 
-    // Récupère automatiquement la session créée sur index.html via localStorage
     function loadSharedSession() {
       const stored = localStorage.getItem(STORAGE_AUTH_SESSION);
       if (stored) {
@@ -683,11 +797,10 @@
         }
       }
       if (!currentUser || !currentUser.tag) {
-        // Profil invité automatique si la page est ouverte directement sans passer par index.html
         const randId = Math.floor(100 + Math.random() * 900);
         currentUser = {
-          nickname: 'Joueur ' + randId,
-          tag: 'joueur_' + randId,
+          nickname: 'Agent ' + randId,
+          tag: 'agent_' + randId,
           avatarEmoji: '🕵️‍♂️',
           flagEmoji: '🇫🇷'
         };
@@ -695,7 +808,7 @@
       document.getElementById('lobbyUserGreeting').textContent = currentUser.nickname;
     }
 
-    /* ---------------- BARRE SUPÉRIEURE ACTIONS ---------------- */
+    /* ---------------- BARRE SUPÉRIEURE ---------------- */
     function listenToLiveUsersCount() {
       db.ref('users').on('value', snapshot => {
         const users = snapshot.val();
@@ -715,10 +828,6 @@
       window.open(window.location.href, '_blank');
     }
 
-    function scrollToTopOrToggleHero() {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
     function announcePartyFromHeader() {
       if (imposteurRoomId) {
         shareImposteurRoomInChat();
@@ -728,13 +837,13 @@
           imposteurRoomId = lastCode;
           shareImposteurRoomInChat();
         } else {
-          showToast("Crée d'abord une salle pour l'annoncer dans le chat !", '📣');
+          showToast("Ouvre d'abord une cellule pour l'annoncer dans le chat !", '📣');
         }
       }
     }
 
-    /* ---------------- BOUTON "REVENIR DANS LA SALLE" ---------------- */
-    async function checkLastSavedRoomButton() {
+    /* ---------------- BOUTON "REVENIR DANS LA CELLULE" ---------------- */
+    function checkLastSavedRoomButton() {
       const savedCode = localStorage.getItem(STORAGE_LAST_IMPO_ROOM);
       const btn = document.getElementById('btnReturnLastRoom');
       const txt = document.getElementById('returnLastRoomText');
@@ -742,7 +851,7 @@
         btn.classList.add('hidden');
         return;
       }
-      txt.textContent = `Revenir dans la salle ${savedCode}`;
+      txt.textContent = `Revenir dans la cellule ${savedCode}`;
       btn.classList.remove('hidden');
     }
 
@@ -751,11 +860,11 @@
       if (savedCode) {
         enterImposteurRoom(savedCode);
       } else {
-        showToast("Aucune salle récente enregistrée !", '⚠️');
+        showToast("Aucune cellule récente enregistrée !", '⚠️');
       }
     }
 
-    /* ---------------- CRÉATION & CONNEXION AU SALON ---------------- */
+    /* ---------------- CRÉATION & CONNEXION À LA SALLE ---------------- */
     async function createImposteurRoom() {
       if (!currentUser) loadSharedSession();
       const classic = document.getElementById('chkWordsClassic').checked;
@@ -782,9 +891,9 @@
         });
 
         await enterImposteurRoom(code);
-        showToast(`Salle ${code} créée ! Clique sur "Annoncer ma partie" pour inviter la promo.`, '🃏');
+        showToast(`Cellule ${code} ouverte ! Invite la promo depuis le bouton jaune.`, '🔍');
       } catch (err) {
-        showToast("Impossible de créer la salle, réessaie !", '❌');
+        showToast("Impossible d'ouvrir la cellule, réessaie !", '❌');
       } finally {
         btn.disabled = false;
       }
@@ -796,7 +905,7 @@
       const custom = document.getElementById('chkWordsCustom').checked;
       if (!classic && !custom) {
         document.getElementById('chkWordsClassic').checked = true;
-        showToast("Au moins un pack de mots doit rester actif !", '⚠️');
+        showToast("Au moins une base de mots doit rester active !", '⚠️');
         return;
       }
       imposteurRef('settings').set({ classic, custom });
@@ -805,7 +914,7 @@
     function joinImposteurRoomFromInput() {
       let raw = document.getElementById('imposteurJoinCodeInput').value.trim().toUpperCase();
       if (!raw) {
-        showToast('Entre un code de salle !', '⚠️');
+        showToast("Entre un code d'accès !", '⚠️');
         return;
       }
       const code = safeRoomCode(raw);
@@ -828,12 +937,12 @@
           }
         }
         if (!snap.exists()) {
-          showToast(`Salle ${code} introuvable !`, '❌');
+          showToast(`Cellule ${code} introuvable !`, '❌');
           clearImposteurHash();
           return;
         }
       } catch (err) {
-        showToast('Connexion au salon impossible, réessaie !', '❌');
+        showToast('Connexion impossible, réessaie !', '❌');
         return;
       }
 
@@ -844,10 +953,8 @@
       localStorage.setItem(STORAGE_LAST_IMPO_ROOM, code);
 
       document.getElementById('imposteurRoomBadge').textContent = code;
-      document.getElementById('imposteurCluesBoard').innerHTML = '';
       document.getElementById('imposteurTableChatMessages').innerHTML = '';
 
-      // Basculer du Lobby vers la Vue Salon
       document.getElementById('viewLobby').classList.add('hidden');
       document.getElementById('viewRoom').classList.remove('hidden');
 
@@ -871,7 +978,7 @@
       document.getElementById('viewLobby').classList.remove('hidden');
       clearImposteurHash();
       checkLastSavedRoomButton();
-      showToast('Tu as quitté la table.', '👋');
+      showToast("Tu as quitté la cellule d'enquête.", '👋');
     }
 
     function clearImposteurHash() {
@@ -907,8 +1014,8 @@
       if (!imposteurRoomId) return;
       const code = imposteurRoomId;
       (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject())
-        .then(() => showToast(`Code ${code} copié dans le presse-papier !`, '📋'))
-        .catch(() => showToast(`Code de la salle : ${code}`, '📋'));
+        .then(() => showToast(`Code ${code} copié !`, '📋'))
+        .catch(() => showToast(`Code : ${code}`, '📋'));
     }
 
     function shareImposteurRoomInChat() {
@@ -920,18 +1027,68 @@
         authorAvatar: currentUser.avatarEmoji || '🕵️‍♂️',
         authorFlag: currentUser.flagEmoji || '🇫🇷',
         isInvite: true,
-        gameTitle: "L'Imposteur (Undercover)",
+        gameTitle: "Opération Undercover",
         roomUrl: inviteUrl,
         internalGame: 'imposteur',
         internalRoom: imposteurRoomId,
-        text: `Qui vient démasquer l'infiltré ? Rejoignez la salle ${imposteurRoomId} !`,
+        text: `Enquête ouverte ! Venez démasquer l'infiltré dans la cellule ${imposteurRoomId} !`,
         time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now()
       });
-      showToast(`Invitation pour ${imposteurRoomId} envoyée dans le chat général !`, '📣');
+      showToast(`Invitation pour la cellule ${imposteurRoomId} envoyée dans le chat général !`, '📣');
     }
 
-    /* ---------------- LOGIQUE TEMPS RÉEL DE LA SALLE ---------------- */
+    /* =========================================================
+       MÉCANIQUE DES TOURS :
+       - Tour 1 : Mot #1 (tous) -> Mot #2 (tous) -> Mot #3 (tous) -> Vote 60s
+       - Tour 2 : Mot #4 (tous) -> Vote 60s
+       - Tour 3 : Mot #5 (tous) -> Vote 60s
+       - Tour k (k >= 2) : Mot #(k + 2) (tous) -> Vote 60s
+       ========================================================= */
+    function getMaxWordForTour(tourNumber) {
+      const t = tourNumber || 1;
+      return t === 1 ? 3 : (t + 2);
+    }
+
+    function getStartWordForTour(tourNumber) {
+      const t = tourNumber || 1;
+      return t === 1 ? 1 : (t + 2);
+    }
+
+    // Calcule le prochain joueur devant donner un mot dans le Tour actif, ou déclenche le vote
+    function nextImposteurTurn(data, fromIndex, currentWordNum, currentTourNum) {
+      const order = data.turnOrder || [];
+      const tour = currentTourNum || 1;
+      const maxWord = getMaxWordForTour(tour);
+      let idx = fromIndex;
+      let w = currentWordNum || getStartWordForTour(tour);
+
+      for (let guard = 0; guard < order.length * 5 + 2; guard++) {
+        if (idx >= order.length) {
+          idx = 0;
+          w++;
+        }
+        if (w > maxWord) break;
+        const p = data.players && data.players[order[idx]];
+        if (p && p.isAlive) {
+          return {
+            status: 'playing',
+            index: idx,
+            wordNumber: w,
+            tourNumber: tour
+          };
+        }
+        idx++;
+      }
+
+      return {
+        status: 'voting',
+        wordNumber: maxWord,
+        tourNumber: tour
+      };
+    }
+
+    /* ---------------- SYNCHRONISATION SALON FIREBASE ---------------- */
     async function joinImposteurRoom() {
       if (!currentUser || !imposteurRoomId) return;
       const roomId = imposteurRoomId;
@@ -959,7 +1116,7 @@
       await playerRef.set({
         tag: currentUser.tag,
         nickname: currentUser.nickname,
-        avatar: currentUser.avatarEmoji || '🍺',
+        avatar: currentUser.avatarEmoji || '🕵️‍♂️',
         flag: currentUser.flagEmoji || '🇫🇷',
         isAlive: !inGame,
         isSpectator: inGame,
@@ -973,12 +1130,12 @@
           const data = snapshot.val();
           currentImposteurState = data;
           if (!data) {
-            showToast("Cette salle a été fermée.", '⚠️');
+            showToast("Cette cellule a été fermée.", '⚠️');
             leaveRoomCompletely();
             return;
           }
           if (imposteurGameIsBroken(data)) {
-            resetImposteurRoom('⚠️ Plus assez de joueurs à la table, la partie est annulée. Relancez quand vous êtes prêts !');
+            resetImposteurRoom("⚠️ Plus assez d'agents dans la cellule, l'opération est interrompue.");
           } else {
             handleImposteurDepartures(data);
           }
@@ -1022,20 +1179,20 @@
         imposteurRef().update({
           status: 'ended',
           votingStartedAt: null,
-          winnerText: `🏃 L'infiltré (${roster[infiltratorTag] || '@' + infiltratorTag}, mot : ${data.secretInfiltreWord}) a quitté la partie. VICTOIRE DES COMPLICES !`
+          winnerText: `🏃 L'Imposteur (${roster[infiltratorTag] || '@' + infiltratorTag}, mot : « ${data.secretInfiltreWord} ») a pris la fuite ! VICTOIRE DES AGENTS !`
         });
-        sendTableChat(`🏃 ${leftNames} a quitté la table.`);
+        sendTableChat(`🏃 ${leftNames} a quitté la cellule.`);
         return;
       }
 
-      if (alive.length < 3) {
-        const infiltratorName = infiltratorTag ? (roster[infiltratorTag] || '@' + infiltratorTag) : "L'infiltré";
+      if (alive.length <= 3) {
+        const infiltratorName = infiltratorTag ? (roster[infiltratorTag] || '@' + infiltratorTag) : "L'Imposteur";
         imposteurRef().update({
           status: 'ended',
           votingStartedAt: null,
-          winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Il ne reste plus assez de joueurs. ${infiltratorName} (mot : ${data.secretInfiltreWord}) a gagné !`
+          winnerText: `😈 VICTOIRE DE L'IMPOSTEUR ! Il ne reste plus que ${alive.length} joueurs. ${infiltratorName} (mot : « ${data.secretInfiltreWord} ») a infiltré la cellule !`
         });
-        sendTableChat(`🏃 ${leftNames} a quitté la table.`);
+        sendTableChat(`🏃 ${leftNames} a quitté la cellule.`);
         return;
       }
 
@@ -1043,14 +1200,18 @@
       if (data.status === 'playing') {
         const idx = data.currentTurnIndex || 0;
         const activeTag = oldOrder[idx];
+        const w = data.wordNumber || 1;
+        const t = data.tourNumber || 1;
+
         if (players[activeTag]) {
           updates.currentTurnIndex = newOrder.indexOf(activeTag);
         } else {
           const startIdx = oldOrder.slice(0, idx).filter(tag => players[tag]).length;
-          const next = nextImposteurTurn({ ...data, turnOrder: newOrder }, startIdx, data.currentRound || 1);
+          const next = nextImposteurTurn({ ...data, turnOrder: newOrder }, startIdx, w, t);
           if (next.status === 'playing') {
             updates.currentTurnIndex = next.index;
-            updates.currentRound = next.round;
+            updates.wordNumber = next.wordNumber;
+            updates.tourNumber = next.tourNumber;
           } else {
             updates.status = 'voting';
             updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
@@ -1063,7 +1224,7 @@
       }
 
       if (Object.keys(updates).length) imposteurRef().update(updates);
-      sendTableChat(`🏃 ${leftNames} a quitté la table, la partie continue !`);
+      sendTableChat(`🏃 ${leftNames} a quitté la cellule, l'enquête continue !`);
     }
 
     function resetImposteurRoom(message) {
@@ -1073,7 +1234,8 @@
           const updates = {
             turnOrder: null,
             currentTurnIndex: 0,
-            currentRound: 1,
+            tourNumber: 1,
+            wordNumber: 1,
             votingStartedAt: null,
             secretCompliceWord: null,
             secretInfiltreWord: null,
@@ -1094,24 +1256,6 @@
       }, false);
     }
 
-    function nextImposteurTurn(data, fromIndex, round) {
-      const order = data.turnOrder || [];
-      const totalRounds = data.totalRounds || 2;
-      let idx = fromIndex;
-      let r = round;
-      for (let guard = 0; guard < order.length * (totalRounds + 1) + 1; guard++) {
-        if (idx >= order.length) {
-          idx = 0;
-          r++;
-        }
-        if (r > totalRounds) break;
-        const p = data.players && data.players[order[idx]];
-        if (p && p.isAlive) return { status: 'playing', index: idx, round: r };
-        idx++;
-      }
-      return { status: 'voting' };
-    }
-
     function canStartImposteur(data) {
       if (!currentUser || !data) return false;
       const players = data.players || {};
@@ -1124,7 +1268,7 @@
       const wordEl = document.getElementById('imposteurSecretWordText');
       if (isSecretWordHidden) {
         btnText.textContent = 'Afficher';
-        wordEl.textContent = '••••••';
+        wordEl.textContent = '••••••••';
       } else {
         btnText.textContent = 'Masquer';
         const me = currentImposteurState && currentImposteurState.players && currentUser
@@ -1134,182 +1278,269 @@
       }
     }
 
+    /* ---------------- RENDU DU MUR D'ENQUÊTE & DES FICHES SUSPECTS ---------------- */
     function renderImposteurTable(data) {
       if (!data) return;
 
-      const players = data.players ? Object.values(data.players) : [];
-      const playerCount = players.length;
-      const me = currentUser && data.players ? data.players[currentUser.tag] : null;
+      const playersMap = data.players || {};
+      const allPlayers = Object.values(playersMap);
+      const playerCount = allPlayers.length;
+      const me = currentUser && playersMap[currentUser.tag] ? playersMap[currentUser.tag] : null;
+
+      // Ordre d'affichage : ordre de parole (turnOrder) + éventuels spectateurs arrivés après
+      const orderedTags = (data.turnOrder || []).filter(tag => playersMap[tag]);
+      allPlayers.forEach(p => {
+        if (!orderedTags.includes(p.tag)) orderedTags.push(p.tag);
+      });
+      const orderedPlayers = orderedTags.map(tag => playersMap[tag]);
+
       const seatsContainer = document.getElementById('imposteurSeatsContainer');
       const centerTitle = document.getElementById('imposteurCenterTitle');
       const centerDesc = document.getElementById('imposteurCenterDesc');
       const phaseBadge = document.getElementById('imposteurPhaseBadge');
+      const stepBadge = document.getElementById('imposteurStepBadge');
       const hostControls = document.getElementById('imposteurHostControls');
       const myWordCard = document.getElementById('imposteurMyWordCard');
+      const secretEmpty = document.getElementById('secretWordEmptyState');
+      const btnToggleWord = document.getElementById('btnToggleSecretWord');
       const turnInputArea = document.getElementById('imposteurTurnInputArea');
       const timerContainer = document.getElementById('imposteurTimerContainer');
+      const progressContainer = document.getElementById('wordPassProgressContainer');
+
       const canStart = canStartImposteur(data);
-      const hostName = data.hostNick || "l'hôte";
+      const hostName = data.hostNick || "le chef de cellule";
 
       const settings = data.settings || { classic: true, custom: true };
       document.getElementById('chkWordsClassic').checked = !!settings.classic;
       document.getElementById('chkWordsCustom').checked = !!settings.custom;
       const wordTypes = [settings.classic ? 'classiques' : null, settings.custom ? 'promo' : null].filter(Boolean).join(' + ');
-      document.getElementById('imposteurRoomSettingsText').textContent = `Hôte : ${hostName} · Mots ${wordTypes || 'classiques'}`;
+      document.getElementById('imposteurRoomSettingsText').textContent = `Chef de cellule : ${hostName} · Base : ${wordTypes || 'classiques'}`;
 
-      // Mise à jour du panneau récapitulatif du salon
-      document.getElementById('summaryPlayersCountBadge').textContent = `${playerCount} joueur${playerCount > 1 ? 's' : ''}`;
+      // Mise à jour du Briefing latéral
+      document.getElementById('summaryPlayersCountBadge').textContent = `${playerCount} agent${playerCount > 1 ? 's' : ''}`;
+      document.getElementById('boardSuspectsCount').textContent = playerCount;
       document.getElementById('summaryComplicesCount').textContent = Math.max(2, playerCount - 1);
       document.getElementById('summaryInfiltreCount').textContent = '1';
-      document.getElementById('summaryRoundsCount').textContent = playerCount === 3 ? '1 tour' : '2 tours';
-      document.getElementById('summaryPlayersList').innerHTML = players.map(p => `
-        <span class="inline-flex items-center gap-1 bg-[#f1f3f9] border border-[#12131a] rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-[#12131a]">
+      document.getElementById('summaryPlayersList').innerHTML = orderedPlayers.map(p => `
+        <span class="inline-flex items-center gap-1 bg-[#f1f3f9] border border-[#090a0f] rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-[#090a0f]">
           <span>${p.avatar}</span>
           <span>${escapeHtml(p.nickname)}</span>
           ${data.hostTag === p.tag ? '<span>👑</span>' : ''}
         </span>
       `).join('');
 
-      centerTitle.textContent = `${playerCount} Joueur(s) autour de la table`;
       const activePlayerTag = data.turnOrder ? data.turnOrder[data.currentTurnIndex || 0] : null;
+      const tourNum = data.tourNumber || 1;
+      const wordNum = data.wordNumber || 1;
 
-      // En attente
+      // 1. État : En attente des joueurs
       if (!data.status || data.status === 'waiting' || data.status === 'starting') {
-        phaseBadge.textContent = data.status === 'starting' ? 'Distribution des rôles...' : 'En attente des joueurs';
+        phaseBadge.textContent = data.status === 'starting' ? 'Chiffrement des dossiers...' : 'Cellule en attente';
+        stepBadge.classList.add('hidden');
+        progressContainer.classList.add('hidden');
+        centerTitle.textContent = `${playerCount} Agent(s) dans la cellule`;
+
         if (playerCount < 3) {
-          centerDesc.textContent = `Encore ${3 - playerCount} joueur(s) minimum... Partage le code ${imposteurRoomId} !`;
+          centerDesc.textContent = `Encore ${3 - playerCount} agent(s) minimum requis. Partage le code ${imposteurRoomId} !`;
         } else {
-          centerDesc.textContent = canStart ? 'Tout le monde est prêt ! Tu peux lancer la partie.' : `Prêt ! En attente du lancement par ${hostName}...`;
+          centerDesc.textContent = canStart
+            ? 'Effectif complet ! Tu peux distribuer les dossiers secrets.'
+            : `Effectif prêt ! En attente du signal de ${hostName}...`;
         }
+
         hostControls.classList.toggle('hidden', !canStart || playerCount < 3 || data.status === 'starting');
         myWordCard.classList.add('hidden');
+        btnToggleWord.classList.add('hidden');
+        secretEmpty.classList.remove('hidden');
         turnInputArea.classList.add('hidden');
         timerContainer.classList.add('hidden');
       }
 
-      // En cours de jeu
+      // 2. État : En cours d'interrogatoire (indices)
       if (data.status === 'playing') {
-        phaseBadge.textContent = `MANCHE EN COURS (Tour ${data.currentRound || 1}/${data.totalRounds || 2})`;
+        phaseBadge.textContent = `TOUR ${tourNum} — INTERROGATOIRE`;
+        stepBadge.classList.remove('hidden');
+        stepBadge.textContent = tourNum === 1
+          ? `Tour 1 · Passage du Mot #${wordNum} / 3`
+          : `Tour ${tourNum} · Passage du Mot #${wordNum}`;
+
         hostControls.classList.add('hidden');
         timerContainer.classList.add('hidden');
 
-        if (activePlayerTag && data.players[activePlayerTag]) {
-          centerDesc.textContent = `C'est au tour de ${data.players[activePlayerTag].nickname} de donner un indice !`;
+        // Barre de progression des mots
+        progressContainer.classList.remove('hidden');
+        const stepsGrid = document.getElementById('wordPassStepsGrid');
+        if (tourNum === 1) {
+          document.getElementById('wordPassProgressLabel').textContent = 'Tour 1 (3 mots chacun avant le vote) :';
+          document.getElementById('wordPassProgressRatio').textContent = `Mot #${wordNum} / 3`;
+          stepsGrid.className = 'grid grid-cols-3 gap-1.5';
+          stepsGrid.innerHTML = [1, 2, 3].map(step => `
+            <div class="h-2.5 rounded-full border border-[#090a0f] ${step < wordNum ? 'bg-[#00e599]' : (step === wordNum ? 'bg-[#fed72d] animate-pulse' : 'bg-slate-200')}"></div>
+          `).join('');
+        } else {
+          document.getElementById('wordPassProgressLabel').textContent = `Tour ${tourNum} (1 mot supplémentaire avant le vote) :`;
+          document.getElementById('wordPassProgressRatio').textContent = `Mot #${wordNum}`;
+          stepsGrid.className = 'grid grid-cols-1 gap-1.5';
+          stepsGrid.innerHTML = `<div class="h-2.5 rounded-full border border-[#090a0f] bg-[#fed72d] animate-pulse"></div>`;
+        }
+
+        if (activePlayerTag && playersMap[activePlayerTag]) {
+          const speaker = playersMap[activePlayerTag];
+          centerTitle.textContent = `Au tour de ${speaker.nickname} (${wordNum}e mot)`;
+          centerDesc.textContent = tourNum === 1
+            ? `Passage du ${wordNum}er/ème mot sur 3 avant l'ouverture du vote.`
+            : `Tour ${tourNum} : chaque survivant donne son ${wordNum}ème mot avant le vote.`;
         }
 
         if (me && me.isAlive && activePlayerTag === currentUser.tag) {
+          document.getElementById('turnPromptLabel').textContent = `C'EST TON TOUR : DONNE TON ${wordNum}${wordNum === 1 ? 'ER' : 'ÈME'} MOT-INDICE !`;
           turnInputArea.classList.remove('hidden');
         } else {
           turnInputArea.classList.add('hidden');
         }
       }
 
-      // Phase de vote
+      // 3. État : Phase de Vote (60 secondes)
       if (data.status === 'voting' || data.status === 'resolving') {
-        phaseBadge.textContent = `🚨 PHASE DE VOTE (${IMPOSTEUR_VOTE_SECONDS} SECONDES)`;
-        centerDesc.textContent = data.status === 'resolving' ? 'Dépouillement des votes...' : "Clique sur la carte du joueur que tu soupçonnes d'être l'Infiltré !";
+        phaseBadge.textContent = `TOUR ${tourNum} — VOTE DÉCISIF`;
+        stepBadge.classList.remove('hidden');
+        stepBadge.textContent = `Après ${wordNum} mots`;
+        centerTitle.textContent = data.status === 'resolving' ? 'Dépouillement des bulletins...' : 'Qui est l\'Imposteur ?';
+        centerDesc.textContent = "Analyse les mots-indices sur chaque fiche suspecte et vote contre l'infiltré !";
         hostControls.classList.add('hidden');
         turnInputArea.classList.add('hidden');
+        progressContainer.classList.add('hidden');
         timerContainer.classList.remove('hidden');
       }
 
-      // Affichage du mot secret
+      // Affichage du dossier secret personnel
       if (IMPOSTEUR_IN_GAME.includes(data.status)) {
         if (me && me.word) {
+          secretEmpty.classList.add('hidden');
           myWordCard.classList.remove('hidden');
-          document.getElementById('imposteurSecretWordText').textContent = isSecretWordHidden ? '••••••' : me.word;
+          btnToggleWord.classList.remove('hidden');
+          document.getElementById('imposteurSecretWordText').textContent = isSecretWordHidden ? '••••••••' : me.word;
         } else {
           myWordCard.classList.add('hidden');
-          if (me && me.isSpectator) centerDesc.textContent += ' (Tu es spectateur pour cette manche.)';
+          btnToggleWord.classList.add('hidden');
+          secretEmpty.classList.remove('hidden');
+          if (me && me.isSpectator) {
+            centerDesc.textContent += ' (Tu es observateur pour cette opération.)';
+          }
         }
       }
 
-      // Fin de partie
+      // 4. État : Fin de partie
       if (data.status === 'ended') {
-        phaseBadge.textContent = 'PARTIE TERMINÉE';
-        centerDesc.textContent = data.winnerText || 'Victoire !';
+        phaseBadge.textContent = 'DOSSIER CLÔTURÉ';
+        stepBadge.classList.add('hidden');
+        progressContainer.classList.add('hidden');
+        centerTitle.textContent = 'Fin de l\'Opération';
+        centerDesc.textContent = data.winnerText || 'Opération terminée !';
         turnInputArea.classList.add('hidden');
         timerContainer.classList.add('hidden');
         myWordCard.classList.add('hidden');
+        btnToggleWord.classList.add('hidden');
+        secretEmpty.classList.remove('hidden');
         hostControls.classList.toggle('hidden', !canStart || playerCount < 3);
       }
 
       syncImposteurTimer(data);
 
-      // Si tous les joueurs vivants ont voté, résolution immédiate
+      // Si tous les joueurs en vie ont voté, dépouillement immédiat
       if (data.status === 'voting') {
-        const voters = players.filter(p => p.isAlive);
+        const voters = allPlayers.filter(p => p.isAlive);
         if (voters.length > 0 && voters.every(p => p.votedFor)) resolveImposteurVotes();
       }
 
-      // Rendu des sièges
-      seatsContainer.innerHTML = players.map(p => {
+      // Rendu des Fiches Suspects sur le Mur d'Enquête
+      seatsContainer.innerHTML = orderedPlayers.map((p, orderIdx) => {
         const isCurrentTurn = data.status === 'playing' && activePlayerTag === p.tag;
         const isMe = currentUser && currentUser.tag === p.tag;
         const isHost = data.hostTag === p.tag;
         const canBeVoted = data.status === 'voting' && p.isAlive && !isMe && me && me.isAlive;
         const clues = p.clues ? Object.values(p.clues) : [];
-        const lastClue = clues.length > 0 ? clues[clues.length - 1] : null;
-        const stateText = p.isSpectator
-          ? 'Spectateur 👀'
-          : (p.isAlive ? (data.status === 'voting' && p.votedFor ? 'A voté ✅' : 'En jeu') : 'Éliminé 💀');
+        const isMyVoteTarget = me && me.votedFor === p.tag;
+
+        // Statut badge
+        let statusBadgeHtml = '';
+        if (p.isSpectator) {
+          statusBadgeHtml = `<span class="bg-slate-200 text-slate-700 font-mono text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-[#090a0f]">OBSERVATEUR 👀</span>`;
+        } else if (!p.isAlive) {
+          statusBadgeHtml = `<span class="bg-rose-100 text-rose-800 font-mono text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-[#090a0f]">ÉLIMINÉ 💀</span>`;
+        } else if (isCurrentTurn) {
+          statusBadgeHtml = `<span class="bg-[#fed72d] text-[#090a0f] font-mono text-[10px] font-black px-2.5 py-0.5 rounded-full border border-[#090a0f] animate-bounce">🎙️ EN INTERROGATOIRE</span>`;
+        } else if (data.status === 'voting' && p.votedFor) {
+          statusBadgeHtml = `<span class="bg-[#00e599] text-[#090a0f] font-mono text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-[#090a0f]">A VOTÉ ✅</span>`;
+        } else {
+          statusBadgeHtml = `<span class="bg-slate-100 text-slate-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#090a0f]">AGENT #${orderIdx + 1}</span>`;
+        }
+
+        // Liste numérotée de tous les mots-indices du suspect
+        const cluesListHtml = clues.length > 0
+          ? clues.map((c, idx) => `
+              <div class="flex items-center justify-between bg-[#f8fafc] border-2 border-[#090a0f] rounded-lg px-2.5 py-1 shadow-[1px_1.5px_0px_#090a0f]">
+                <span class="font-mono text-[10px] font-extrabold text-slate-500">MOT #${idx + 1}</span>
+                <span class="font-black text-xs sm:text-sm text-[#090a0f] italic break-all">« ${escapeHtml(c)} »</span>
+              </div>
+            `).join('')
+          : `<div class="text-center py-3 border-2 border-dashed border-slate-300 rounded-xl text-[11px] font-bold text-slate-400 italic">Aucune déposition enregistrée</div>`;
 
         return `
-          <div onclick="handleImposteurVote('${escapeHtml(p.tag)}')" class="bg-white border-[2.5px] border-[#12131a] rounded-2xl p-3 flex flex-col justify-between text-center transition-all ${isCurrentTurn ? 'ring-4 ring-[#fed72d] scale-105 shadow-[3px_4px_0px_#12131a]' : 'shadow-[2px_3px_0px_#12131a]'} ${!p.isAlive ? 'opacity-45 grayscale' : ''} ${canBeVoted ? 'cursor-pointer hover:bg-rose-50 hover:border-rose-600 hover:-translate-y-1' : ''}">
+          <div class="suspect-card p-3.5 flex flex-col justify-between ${isCurrentTurn ? 'suspect-card-active' : ''} ${!p.isAlive && !p.isSpectator ? 'opacity-55 grayscale' : ''}">
             <div>
-              <span class="text-3xl block">${p.avatar} ${p.flag}</span>
-              <h5 class="text-xs sm:text-sm font-black text-[#12131a] truncate mt-1">${isHost ? '👑 ' : ''}${escapeHtml(p.nickname)} ${isMe ? '(Moi)' : ''}</h5>
-              <span class="text-[10px] font-mono font-bold ${isCurrentTurn ? 'text-amber-600 font-black' : 'text-slate-500'}">${isCurrentTurn ? '🗣️ En train de réfléchir...' : stateText}</span>
+              <!-- Épingle du tableau d'enquête -->
+              <div class="suspect-pin ${isCurrentTurn ? 'bg-[#fed72d]' : (p.isAlive ? 'bg-[#00e599]' : 'bg-rose-500')}"></div>
+
+              <!-- En-tête du dossier suspect -->
+              <div class="flex items-start justify-between gap-2 pb-2.5 border-b-2 border-slate-100">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-[#0b1021] border-2 border-[#090a0f] flex items-center justify-center text-lg flex-shrink-0 shadow-[2px_2px_0px_#090a0f]">
+                    ${p.avatar}
+                  </div>
+                  <div class="min-w-0">
+                    <h5 class="text-xs sm:text-sm font-black text-[#090a0f] truncate">
+                      ${isHost ? '👑 ' : ''}${escapeHtml(p.nickname)} ${isMe ? '(Moi)' : ''}
+                    </h5>
+                    <span class="text-[10px] font-mono font-bold text-slate-400 block">${p.flag} @${escapeHtml(p.tag)}</span>
+                  </div>
+                </div>
+                ${statusBadgeHtml}
+              </div>
+
+              <!-- Alibis / Mots donnés par ce suspect -->
+              <div class="mt-2.5">
+                <div class="flex items-center justify-between text-[10px] font-mono font-extrabold uppercase text-slate-400 mb-1.5">
+                  <span>Dépositions (Alibis)</span>
+                  <span>${clues.length} mot${clues.length > 1 ? 's' : ''}</span>
+                </div>
+                <div class="space-y-1.5">
+                  ${cluesListHtml}
+                </div>
+              </div>
             </div>
 
-            <div class="mt-2 ${lastClue ? 'bg-[#fed72d]/40 border-[#12131a]' : 'bg-[#f8fafc] border-slate-200'} border-2 rounded-xl px-2 py-1.5">
-              <span class="text-xs sm:text-sm font-black ${lastClue ? 'text-[#12131a]' : 'text-slate-400 font-bold'} italic block break-words">${lastClue ? `« ${escapeHtml(lastClue)} »` : 'Aucun indice'}</span>
-            </div>
-
+            <!-- Bouton d'accusation pendant la phase de vote -->
             ${canBeVoted ? `
-              <span class="mt-2 text-[10px] font-black ${me.votedFor === p.tag ? 'bg-emerald-600' : 'bg-rose-600'} text-white border border-[#12131a] rounded-lg py-1 block shadow-[1px_1.5px_0px_#12131a]">${me.votedFor === p.tag ? 'Ton vote ✅' : 'Voter contre 🗳️'}</span>
+              <button type="button" onclick="handleImposteurVote('${escapeHtml(p.tag)}')" class="w-full mt-3 neo-btn ${isMyVoteTarget ? 'bg-[#00e599] text-[#090a0f]' : 'bg-[#ff2a5f] hover:bg-rose-600 text-white'} py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5">
+                <span>${isMyVoteTarget ? '✅ CIBLÉ PAR TON VOTE' : '🎯 ACCUSER CE SUSPECT'}</span>
+              </button>
             ` : ''}
           </div>
         `;
       }).join('');
-
-      renderImposteurCluesBoard(data);
     }
 
-    function renderImposteurCluesBoard(data) {
-      const board = document.getElementById('imposteurCluesBoard');
-      const playersMap = data.players || {};
-      const order = (data.turnOrder || []).filter(tag => playersMap[tag]);
-
-      if (order.length === 0) {
-        board.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Les indices donnés par chaque joueur s'afficheront ici dès le lancement.</p>`;
-        return;
-      }
-
-      board.innerHTML = order.map(tag => {
-        const p = playersMap[tag];
-        const clues = p.clues ? Object.values(p.clues) : [];
-        const chips = clues.length > 0
-          ? clues.map((c, i) => `<span class="inline-block bg-[#fed72d] border-2 border-[#12131a] rounded-lg px-2 py-0.5 text-xs font-black text-[#12131a] shadow-[1px_1.5px_0px_#12131a]"><span class="text-[9px] font-mono text-[#12131a]/60 mr-1">#${i + 1}</span>${escapeHtml(c)}</span>`).join(' ')
-          : `<span class="text-[11px] font-bold text-slate-400 italic">En attente...</span>`;
-        return `
-          <div class="${p.isAlive ? '' : 'opacity-50'}">
-            <div class="text-xs font-black text-[#12131a] mb-1">${p.avatar} ${escapeHtml(p.nickname)}${p.isAlive ? '' : ' <span class="text-rose-600">(éliminé)</span>'}</div>
-            <div class="flex flex-wrap gap-1.5">${chips}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
+    /* ---------------- LANCEMENT D'UNE OPÉRATION ---------------- */
     async function startImposteurGame() {
       if (!currentImposteurState || !currentImposteurState.players) return;
       if (!canStartImposteur(currentImposteurState)) {
-        showToast("Seul l'hôte peut lancer la partie !", '⚠️');
+        showToast("Seul le chef de cellule peut lancer l'opération !", '⚠️');
         return;
       }
       const players = Object.values(currentImposteurState.players);
       if (players.length < 3) {
-        showToast('Minimum 3 joueurs requis pour jouer !', '⚠️');
+        showToast('Minimum 3 agents requis pour lancer !', '⚠️');
         return;
       }
 
@@ -1367,21 +1598,22 @@
           roster: roster,
           infiltratorTag: infiltratorTag,
           currentTurnIndex: 0,
-          currentRound: 1,
-          totalRounds: freshPlayers.length === 3 ? 1 : 2,
+          tourNumber: 1,
+          wordNumber: 1,
           votingStartedAt: null,
           winnerText: null,
           secretCompliceWord: selectedPair.complice,
           secretInfiltreWord: selectedPair.infiltre
         });
 
-        sendTableChat("🎲 Nouvelle partie lancée ! Découvrez votre mot secret au centre de la table.");
+        sendTableChat("🕵️‍♂️ Opération lancée ! Tour 1 : chaque agent va donner ses 3 premiers mots avant le vote.");
       } catch (err) {
         imposteurRef('status').set('waiting');
-        showToast(err.message === 'not-enough-players' ? 'Minimum 3 joueurs requis !' : 'Impossible de lancer la partie, réessaie !', '⚠️');
+        showToast(err.message === 'not-enough-players' ? 'Minimum 3 agents requis !' : "Impossible de lancer l'opération, réessaie !", '⚠️');
       }
     }
 
+    /* ---------------- ENVOI D'UN MOT-INDICE ---------------- */
     function submitImposteurClue() {
       const input = document.getElementById('imposteurClueInput');
       const clue = input.value.trim();
@@ -1391,29 +1623,35 @@
       const order = data.turnOrder || [];
       const player = data.players && data.players[currentUser.tag];
       if (!player || order[data.currentTurnIndex || 0] !== currentUser.tag) {
-        showToast("Ce n'est pas ton tour !", '⏳');
+        showToast("Ce n'est pas ton tour de déposer !", '⏳');
         return;
       }
 
+      const currentWordNum = data.wordNumber || 1;
+      const currentTourNum = data.tourNumber || 1;
       const clues = player.clues ? [...Object.values(player.clues), clue] : [clue];
-      const next = nextImposteurTurn(data, (data.currentTurnIndex || 0) + 1, data.currentRound || 1);
+
+      const next = nextImposteurTurn(data, (data.currentTurnIndex || 0) + 1, currentWordNum, currentTourNum);
 
       const updates = {
         [`players/${currentUser.tag}/clues`]: clues,
         status: next.status
       };
+
       if (next.status === 'playing') {
         updates.currentTurnIndex = next.index;
-        updates.currentRound = next.round;
+        updates.wordNumber = next.wordNumber;
+        updates.tourNumber = next.tourNumber;
       } else {
         updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
       }
 
       imposteurRef().update(updates);
       input.value = '';
-      sendTableChat(`${currentUser.nickname} a donné l'indice : « ${clue} »`);
+      sendTableChat(`🎙️ ${currentUser.nickname} (Mot #${currentWordNum}) : « ${clue} »`);
     }
 
+    /* ---------------- CHRONOMÈTRE & VOTE DE 60 SECONDES ---------------- */
     function stopImposteurTimer() {
       if (imposteurTimerInterval) clearInterval(imposteurTimerInterval);
       imposteurTimerInterval = null;
@@ -1451,7 +1689,7 @@
       const me = data.players[currentUser.tag];
       const target = data.players[targetTag];
       if (!me || !me.isAlive) {
-        showToast('Seuls les joueurs encore en vie peuvent voter !', '⚠️');
+        showToast('Seuls les agents encore en service peuvent voter !', '⚠️');
         return;
       }
       if (targetTag === currentUser.tag) {
@@ -1461,7 +1699,7 @@
       if (!target || !target.isAlive) return;
 
       imposteurRef(`players/${currentUser.tag}/votedFor`).set(targetTag);
-      showToast(`Vote enregistré contre ${target.nickname} !`, '🗳️');
+      showToast(`Accusation enregistrée contre ${target.nickname} !`, '🎯');
     }
 
     function resolveImposteurVotes() {
@@ -1496,58 +1734,73 @@
           }
 
           const eliminatedPlayer = data.players[mostVotedTag];
-          sendTableChat(`📢 Fin du vote ! ${eliminatedPlayer.nickname} est éliminé(e) !`);
+          sendTableChat(`🚨 Verdict du vote : ${eliminatedPlayer.nickname} a été éliminé(e) !`);
 
+          // Cas 1 : L'Imposteur a été éliminé -> Victoire des Agents !
           if (eliminatedPlayer.isUndercover) {
             imposteurRef().update({
               status: 'ended',
-              winnerText: `🎉 VICTOIRE DES COMPLICES ! L'Infiltré était bien ${eliminatedPlayer.nickname} (Son mot : « ${data.secretInfiltreWord} », mot des Complices : « ${data.secretCompliceWord} »).`
+              winnerText: `🎉 VICTOIRE DES AGENTS ! L'Imposteur était bien ${eliminatedPlayer.nickname} (Mot infiltré : « ${data.secretInfiltreWord} » · Mot des Agents : « ${data.secretCompliceWord} »).`
             });
             return;
           }
 
+          // Cas 2 : Un Agent innocent a été éliminé
           const remainingLiving = living.filter(p => p.tag !== mostVotedTag);
           const infiltrator = players.find(p => p.isUndercover);
 
+          // S'il ne reste plus que 3 personnes (ou moins) en vie -> Victoire de l'Imposteur !
           if (remainingLiving.length <= 3) {
             imposteurRef().update({
               status: 'ended',
-              winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Vous avez éliminé un Complice innocent. ${infiltrator ? infiltrator.nickname + ' (mot : « ' + data.secretInfiltreWord + ' »)' : "L'infiltré"} l'emporte !`
+              winnerText: `😈 VICTOIRE DE L'IMPOSTEUR ! ${eliminatedPlayer.nickname} était innocent(e) et il ne reste plus que ${remainingLiving.length} joueurs. ${infiltrator ? infiltrator.nickname + ' (mot : « ' + data.secretInfiltreWord + ' »)' : "L'Imposteur"} remporte la partie !`
             });
             return;
           }
+
+          // Cas 3 : Il reste strictement plus de 3 joueurs -> On passe au Tour suivant (4ème mot, puis 5ème mot, etc.)
+          const nextTour = (data.tourNumber || 1) + 1;
+          const nextWord = getStartWordForTour(nextTour);
+
+          const updatedPlayersMap = {
+            ...data.players,
+            [mostVotedTag]: { ...eliminatedPlayer, isAlive: false }
+          };
+
+          const nextTurn = nextImposteurTurn(
+            { ...data, players: updatedPlayersMap },
+            0,
+            nextWord,
+            nextTour
+          );
 
           const updates = {
             [`players/${mostVotedTag}/isAlive`]: false,
             votingStartedAt: null,
-            status: 'playing'
+            status: 'playing',
+            tourNumber: nextTour,
+            wordNumber: nextWord,
+            currentTurnIndex: nextTurn.index || 0
           };
           players.forEach(p => { updates[`players/${p.tag}/votedFor`] = null; });
-          const next = nextImposteurTurn(
-            { ...data, players: { ...data.players, [mostVotedTag]: { ...eliminatedPlayer, isAlive: false } } },
-            0,
-            1
-          );
-          updates.currentTurnIndex = next.index || 0;
-          updates.currentRound = 1;
 
           imposteurRef().update(updates);
-          sendTableChat(`❌ ${eliminatedPlayer.nickname} était un Complice innocent ! La manche continue...`);
+          sendTableChat(`❌ ${eliminatedPlayer.nickname} était un Agent innocent ! Passage au Tour ${nextTour} : chaque survivant donne son ${nextWord}ème mot.`);
         });
       }, false);
     }
 
-    /* ---------------- CHAT DE LA TABLE & MESSAGERIE FLOTTANTE ---------------- */
+    /* ---------------- CANAL RADIO & MESSAGERIE FLOTTANTE ---------------- */
     function listenToTableChat() {
       const boxRoom = document.getElementById('imposteurTableChatMessages');
       const boxFloat = document.getElementById('floatingTableMessages');
       if (imposteurChatQuery) imposteurChatQuery.off();
-      imposteurChatQuery = imposteurRef('chat').limitToLast(40);
+      imposteurChatQuery = imposteurRef('chat').limitToLast(45);
       imposteurChatQuery.on('value', snap => {
         const msgs = snap.val() ? Object.values(snap.val()) : [];
         const html = msgs.length
-          ? msgs.map(m => `<div><strong class="font-black text-[#12131a]">${escapeHtml(m.author)} :</strong> <span class="text-slate-700 font-bold">${escapeHtml(m.text)}</span></div>`).join('')
-          : `<p class="text-xs font-bold text-slate-400 text-center py-6">Aucun message dans le salon pour l'instant.</p>`;
+          ? msgs.map(m => `<div><strong class="font-black text-[#090a0f]">${escapeHtml(m.author)} :</strong> <span class="text-slate-700 font-bold">${escapeHtml(m.text)}</span></div>`).join('')
+          : `<p class="text-xs font-bold text-slate-400 text-center py-6">Canal radio ouvert. Aucun message.</p>`;
         boxRoom.innerHTML = html;
         boxRoom.scrollTop = boxRoom.scrollHeight;
         boxFloat.innerHTML = html;
@@ -1570,14 +1823,14 @@
       const text = input.value.trim();
       if (!text || !currentUser) return;
       if (!imposteurRoomId) {
-        showToast('Rejoins ou crée une salle pour parler au salon !', '⚠️');
+        showToast('Rejoins ou ouvre une cellule pour parler sur la radio !', '⚠️');
         return;
       }
       sendTableChat(text, currentUser.nickname);
       input.value = '';
     }
 
-    function sendTableChat(text, author = 'Système') {
+    function sendTableChat(text, author = 'QG') {
       if (!imposteurRoomId) return;
       db.ref(`rooms_imposteur/${imposteurRoomId}/chat`).push({
         author,
@@ -1606,13 +1859,13 @@
       const panelTable = document.getElementById('floatingTableChatPanel');
 
       if (tab === 'promo') {
-        btnPromo.className = 'neo-btn bg-[#12131a] text-white px-3 py-1 rounded-xl text-xs font-black';
-        btnTable.className = 'bg-white/80 hover:bg-white text-[#12131a] border-2 border-[#12131a] px-3 py-1 rounded-xl text-xs font-black transition-all';
+        btnPromo.className = 'neo-btn bg-[#090a0f] text-white px-3 py-1 rounded-xl text-xs font-black';
+        btnTable.className = 'bg-white/80 hover:bg-white text-[#090a0f] border-2 border-[#090a0f] px-3 py-1 rounded-xl text-xs font-black transition-all';
         panelPromo.classList.remove('hidden');
         panelTable.classList.add('hidden');
       } else {
-        btnTable.className = 'neo-btn bg-[#12131a] text-white px-3 py-1 rounded-xl text-xs font-black';
-        btnPromo.className = 'bg-white/80 hover:bg-white text-[#12131a] border-2 border-[#12131a] px-3 py-1 rounded-xl text-xs font-black transition-all';
+        btnTable.className = 'neo-btn bg-[#090a0f] text-white px-3 py-1 rounded-xl text-xs font-black';
+        btnPromo.className = 'bg-white/80 hover:bg-white text-[#090a0f] border-2 border-[#090a0f] px-3 py-1 rounded-xl text-xs font-black transition-all';
         panelTable.classList.remove('hidden');
         panelTable.classList.add('flex');
         panelPromo.classList.add('hidden');
@@ -1638,7 +1891,7 @@
           if (m.isSystem) {
             return `
               <div class="text-center py-0.5">
-                <span class="text-[10px] font-mono font-bold bg-[#edf0f8] border border-[#12131a] px-2 py-0.5 rounded-full">${escapeHtml(m.text)}</span>
+                <span class="text-[10px] font-mono font-bold bg-[#edf0f8] border border-[#090a0f] px-2 py-0.5 rounded-full">${escapeHtml(m.text)}</span>
               </div>
             `;
           }
@@ -1646,21 +1899,21 @@
             const isImpo = m.internalGame && (m.internalGame.toUpperCase() === 'IMPOSTEUR' || m.internalGame.toUpperCase() === 'UNDERCOVER');
             const code = safeRoomCode(m.internalRoom);
             return `
-              <div class="neo-box-sm bg-[#fed72d] p-2.5 text-[#12131a] space-y-1.5">
+              <div class="neo-box-sm bg-[#fed72d] p-2.5 text-[#090a0f] space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-black">${m.authorAvatar || '🍺'} ${escapeHtml(m.authorNick)}</span>
+                  <span class="text-[11px] font-black">${m.authorAvatar || '🕵️‍♂️'} ${escapeHtml(m.authorNick)}</span>
                   <span class="text-[9px] font-mono font-bold">${m.time || ''}</span>
                 </div>
-                <div class="bg-white border-2 border-[#12131a] p-2 rounded-xl">
-                  <div class="font-black text-[11px] text-[#12131a]">🎮 ${escapeHtml(m.gameTitle)}</div>
+                <div class="bg-white border-2 border-[#090a0f] p-2 rounded-xl">
+                  <div class="font-black text-[11px] text-[#090a0f]">🎮 ${escapeHtml(m.gameTitle)}</div>
                   <p class="text-[10px] font-bold text-slate-600 italic mb-1.5">« ${escapeHtml(m.text)} »</p>
                   ${isImpo && code ? `
-                    <button type="button" onclick="enterImposteurRoom('${code}'); toggleFloatingChat();" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-[11px]">
-                      Rejoindre ${code} ➔
+                    <button type="button" onclick="enterImposteurRoom('${code}'); toggleFloatingChat();" class="w-full neo-btn bg-[#00e599] hover:bg-[#00cc88] text-[#090a0f] py-1.5 rounded-lg text-[11px]">
+                      Infiltrer ${code} ➔
                     </button>
                   ` : `
-                    <a href="index.html" class="block text-center w-full neo-btn bg-[#fed72d] text-[#12131a] py-1 rounded-lg text-[11px] no-underline">
-                      Voir sur l'accueil ↗
+                    <a href="index.html" class="block text-center w-full neo-btn bg-[#fed72d] text-[#090a0f] py-1 rounded-lg text-[11px] no-underline">
+                      Voir sur le Hub ↗
                     </a>
                   `}
                 </div>
@@ -1670,7 +1923,7 @@
           return `
             <div class="neo-box-sm bg-white p-2">
               <div class="flex items-center justify-between mb-0.5">
-                <span class="text-[11px] font-black text-[#12131a]">${m.authorAvatar || '🍺'} ${escapeHtml(m.authorNick)}</span>
+                <span class="text-[11px] font-black text-[#090a0f]">${m.authorAvatar || '🍺'} ${escapeHtml(m.authorNick)}</span>
                 <span class="text-[9px] font-mono font-bold text-slate-400">${m.time || ''}</span>
               </div>
               <p class="text-xs font-bold text-slate-800 break-words">${escapeHtml(m.text)}</p>
@@ -1690,7 +1943,7 @@
       db.ref('chat').push({
         authorNick: currentUser.nickname,
         authorTag: currentUser.tag,
-        authorAvatar: currentUser.avatarEmoji || '🍺',
+        authorAvatar: currentUser.avatarEmoji || '🕵️‍♂️',
         authorFlag: currentUser.flagEmoji || '🇫🇷',
         isInvite: false,
         text: text,
@@ -1700,7 +1953,7 @@
       input.value = '';
     }
 
-    /* ---------------- MODALES RÈGLES & MOTS PROMO ---------------- */
+    /* ---------------- MODALES RÈGLES & ARCHIVES DE MOTS ---------------- */
     function openRulesModal() {
       document.getElementById('modalRules').classList.remove('hidden');
     }
@@ -1731,7 +1984,7 @@
       document.getElementById('inputCustomWord1').value = '';
       document.getElementById('inputCustomWord2').value = '';
       closeCustomWordsModal();
-      showToast('Nouvelle paire ajoutée à la boîte à mots de la promo !', '✨');
+      showToast('Nouvelle paire enregistrée dans les archives de la promo !', '✨');
     }
 
     /* ---------------- UTILITAIRES ---------------- */
