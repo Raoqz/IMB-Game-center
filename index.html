@@ -388,7 +388,8 @@
           </div>
 
           <!-- Carte L'Imposteur -->
-          <div onclick="openImposteurModal()" class="game-card">
+          <!-- Carte L'Imposteur -->
+          <div onclick="window.open('/imposteur.html', '_blank')" class="game-card">
             <div class="w-full h-32 bg-[#06d6a0] flex items-center justify-center border-b-[3px] border-[#12131a]">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
             </div>
@@ -1161,13 +1162,13 @@
     function openInternalInvite(game, code) {
       if (!currentUser || !code) return;
       if (game === 'MORPION') {
-        openMorpionModal();
-        setMorpionMode('online');
-        document.getElementById('morpionInputRoom').value = code;
-        joinMorpionOnlineRoom();
-      } else if (game === 'IMPOSTEUR') {
-        enterImposteurRoom(code);
-      }
+      openMorpionModal();
+      setMorpionMode('online');
+      document.getElementById('morpionInputRoom').value = code;
+      joinMorpionOnlineRoom();
+    } else if (game === 'IMPOSTEUR') {
+      window.open(`/imposteur.html?room=${encodeURIComponent(code)}`, '_blank');
+    }
     }
 
     function listenToLiveUsersCount() {
