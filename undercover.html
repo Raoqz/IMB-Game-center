@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Undercover (L'Imposteur) — IMB Game Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-blue: #1e3cfa;
+      --yellow-main: #fed72d;
+      --yellow-hover: #eec418;
+      --border-dark: #12131a;
+      --card-shadow: 5px 6px 0px #12131a;
+      --btn-shadow: 3px 4px 0px #12131a;
+    }
+
+    body {
+      background-color: var(--bg-blue);
+      background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.5px, transparent 1.5px);
+      background-size: 22px 22px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #11141f;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .neo-box {
+      border: 3px solid var(--border-dark);
+      box-shadow: var(--card-shadow);
+      border-radius: 1.5rem;
+    }
+
+    .neo-box-sm {
+      border: 2.5px solid var(--border-dark);
+      box-shadow: 2px 3px 0px var(--border-dark);
+      border-radius: 1.1rem;
+    }
+
+    .neo-btn {
+      border: 2.5px solid var(--border-dark);
+      box-shadow: var(--btn-shadow);
+      font-weight: 800;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+    }
+
+    .neo-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .neo-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px var(--border-dark) !important;
+    }
+
+    /* Titre Cartoon Néo-Brutaliste style Président */
+    .cartoon-title {
+      color: var(--yellow-main);
+      -webkit-text-stroke: 3px #12131a;
+      text-shadow: 4px 5px 0px #12131a;
+      letter-spacing: 0.02em;
+    }
+
+    /* Eventail de cartes au-dessus du titre */
+    .fan-cards {
+      position: relative;
+      height: 82px;
+      width: 190px;
+      margin: 0 auto 4px auto;
+    }
+
+    .playing-card {
+      position: absolute;
+      width: 54px;
+      height: 76px;
+      background: #ffffff;
+      border: 2.5px solid #12131a;
+      border-radius: 0.55rem;
+      box-shadow: 2px 3px 0px #12131a;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 4px 6px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 900;
+      user-select: none;
+      transform-origin: bottom center;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .fan-cards:hover .card-1 { transform: translateX(-52px) rotate(-24deg) translateY(-4px); }
+    .fan-cards:hover .card-2 { transform: translateX(-18px) rotate(-8deg) translateY(-8px); }
+    .fan-cards:hover .card-3 { transform: translateX(18px) rotate(8deg) translateY(-8px); }
+    .fan-cards:hover .card-4 { transform: translateX(52px) rotate(24deg) translateY(-4px); }
+
+    .card-1 { left: 68px; transform: translateX(-44px) rotate(-18deg); z-index: 1; }
+    .card-2 { left: 68px; transform: translateX(-15px) rotate(-6deg); z-index: 2; }
+    .card-3 { left: 68px; transform: translateX(15px) rotate(6deg); z-index: 3; }
+    .card-4 { left: 68px; transform: translateX(44px) rotate(18deg); z-index: 4; }
+
+    /* Tapis de poker */
+    .poker-table {
+      background: radial-gradient(circle, #228b22 0%, #155715 80%, #0d380d 100%);
+      border: 8px solid #5a3818;
+      box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 4px 6px 0px #12131a;
+      border-radius: 3.5rem;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f4fb;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c3cbdf;
+      border-radius: 4px;
+      border: 1px solid #12131a;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- ================= AUTH OVERLAY (SI NON CONNECTÉ) ================= -->
+  <div id="authOverlay" class="hidden fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 relative max-h-[95vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2.5">
+          <div class="w-11 h-11 rounded-2xl bg-[#fed72d] border-[2.5px] border-[#12131a] flex items-center justify-center text-xl shadow-[2px_3px_0px_#12131a]">
+            🕵️‍♂️
+          </div>
+          <div>
+            <span class="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#12131a] bg-[#fed72d] border-2 border-[#12131a] px-2 py-0.5 rounded-full inline-block shadow-[1px_1.5px_0px_#12131a]">Accès Promo</span>
+            <h1 class="text-2xl font-black italic tracking-tight text-[#12131a] leading-none mt-1">UNDERCOVER</h1>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-4">
+        <button type="button" onclick="switchAuthTab('login')" id="tabBtnLogin" class="neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl">Connexion</button>
+        <button type="button" onclick="switchAuthTab('register')" id="tabBtnRegister" class="bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all">Inscription</button>
+      </div>
+
+      <div id="authErrorBanner" class="hidden mb-4 p-3 bg-rose-50 border-2 border-rose-600 rounded-xl text-rose-700 text-xs font-bold"></div>
+
+      <!-- Connexion -->
+      <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Ton Tag *</label>
+          <div class="flex items-center">
+            <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
+            <input type="text" id="loginTag" required placeholder="sara" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] focus:outline-none focus:bg-white">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe *</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+        </div>
+        <button type="submit" id="btnSubmitLogin" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
+          <span>Se connecter & Jouer</span>
+          <span>🔑</span>
+        </button>
+      </form>
+
+      <!-- Inscription -->
+      <form id="formRegister" onsubmit="handleRegister(event)" class="space-y-3.5 hidden">
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (avec ton prénom) *</label>
+          <input type="text" id="regNickname" required placeholder="Ex : Thomas S." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a]">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Tag unique *</label>
+          <div class="flex items-center">
+            <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
+            <input type="text" id="regTag" required placeholder="thomas" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a]">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe simple *</label>
+          <input type="password" id="regPassword" required placeholder="Ex: 1234" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a]">
+        </div>
+        <button type="submit" id="btnSubmitReg" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
+          <span>Créer mon compte & Jouer</span>
+          <span>🚀</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= TOP NAVBAR (STYLE CAPTURE PRÉSIDENT) ================= -->
+  <header id="topNavbar" class="bg-[#121526] border-b-[3px] border-[#fed72d] sticky top-0 z-40 text-white transition-all">
+    <div class="max-w-[1440px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+      
+      <!-- Gauche : Bouton Retour + Nom du jeu -->
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 no-underline">
+          <span>←</span>
+          <span>Retour</span>
+        </a>
+        <h1 class="font-black text-base sm:text-lg tracking-tight text-white">Undercover</h1>
+      </div>
+
+      <!-- Droite : Annoncer ma partie, En ligne, Plein écran, Nouvel onglet, Flèche -->
+      <div class="flex items-center gap-2">
+        <button onclick="announcePartyFromHeader()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+          <span>📣</span>
+          <span class="hidden xs:inline sm:inline">Annoncer ma partie</span>
+        </button>
+
+        <div class="hidden sm:flex items-center gap-1.5 bg-white text-[#12131a] px-3 py-1.5 rounded-xl border-[2.5px] border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a]">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
+          <span id="navOnlineCount">1</span>
+          <span>en ligne</span>
+        </div>
+
+        <button onclick="toggleFullScreen()" class="hidden md:flex neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black items-center gap-1.5">
+          <span>⛶</span>
+          <span>Plein écran</span>
+        </button>
+
+        <button onclick="openInNewTab()" class="hidden lg:flex neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black items-center gap-1.5">
+          <span>↗</span>
+          <span>Nouvel onglet</span>
+        </button>
+
+        <button onclick="scrollToTopOrToggleHero()" title="Haut de page" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center">
+          ▲
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= VUE 1 : LOBBY CENTRAL (STYLE PRÉSIDENT) ================= -->
+  <main id="viewLobby" class="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
+    
+    <!-- Éventail de 4 cartes style Président -->
+    <div class="fan-cards">
+      <div class="playing-card card-1 text-rose-600">
+        <div class="text-xs leading-none">C<br><span class="text-[10px]">♥</span></div>
+        <div class="text-center text-lg">🕵️‍♂️</div>
+      </div>
+      <div class="playing-card card-2 text-[#12131a]">
+        <div class="text-xs leading-none">2<br><span class="text-[10px]">♠</span></div>
+        <div class="text-center text-lg">🎭</div>
+      </div>
+      <div class="playing-card card-3 text-[#12131a]">
+        <div class="text-xs leading-none">A<br><span class="text-[10px]">♠</span></div>
+        <div class="text-center text-lg">🤫</div>
+      </div>
+      <div class="playing-card card-4 text-[#12131a]">
+        <div class="text-xs leading-none">I<br><span class="text-[10px]">♣</span></div>
+        <div class="text-center text-lg">🔍</div>
+      </div>
+    </div>
+
+    <!-- Grand Titre Jaune Cartoon -->
+    <h2 class="cartoon-title text-5xl sm:text-6xl md:text-7xl font-black uppercase text-center leading-none select-none">
+      UNDERCOVER
+    </h2>
+
+    <!-- Sous-titre humoristique -->
+    <p class="text-white font-extrabold text-sm sm:text-base mt-2 mb-7 text-center drop-shadow-[1px_2px_0px_#12131a]">
+      Démasque l'infiltré... ou bluffe toute la promo 🕵️‍♂️
+    </p>
+
+    <!-- Carte Blanche Centrale (Créer / Rejoindre / Revenir) -->
+    <div class="neo-box bg-white max-w-md w-full p-5 sm:p-6 space-y-4">
+      
+      <p class="text-xs sm:text-sm font-bold text-slate-700">
+        Salut <strong id="lobbyUserGreeting" class="font-black text-[#12131a]">Joueur</strong> 👋 Crée une salle ou rejoins tes potes.
+      </p>
+
+      <!-- Bouton principal Créer une salle -->
+      <button onclick="createImposteurRoom()" id="btnCreateImposteurRoom" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-xl text-sm sm:text-base font-black flex items-center justify-center gap-2">
+        <span>🃏</span>
+        <span>Créer une salle</span>
+      </button>
+
+      <!-- Options rapides des packs de mots pour la création -->
+      <div class="bg-[#f8fafc] border-2 border-[#12131a] rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chkWordsClassic" checked class="w-3.5 h-3.5 accent-[#12131a] rounded">
+            <span>Mots classiques</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chkWordsCustom" checked class="w-3.5 h-3.5 accent-[#12131a] rounded">
+            <span>Mots promo</span>
+          </label>
+        </div>
+        <button type="button" onclick="openCustomWordsModal()" class="text-blue-600 hover:underline font-black text-[11px]">
+          + Ajouter un mot
+        </button>
+      </div>
+
+      <!-- Séparateur "ou" -->
+      <div class="flex items-center gap-3 py-0.5">
+        <div class="flex-1 h-px bg-slate-200"></div>
+        <span class="text-xs font-bold text-slate-400">ou</span>
+        <div class="flex-1 h-px bg-slate-200"></div>
+      </div>
+
+      <!-- Champ CODE + Bouton Rejoindre -->
+      <form onsubmit="event.preventDefault(); joinImposteurRoomFromInput();" class="flex gap-2">
+        <input type="text" id="imposteurJoinCodeInput" placeholder="C O D E" maxlength="12" class="flex-1 min-w-0 bg-white border-[2.5px] border-[#12131a] rounded-xl px-3 py-2.5 text-center font-mono font-black text-sm uppercase tracking-[0.2em] placeholder-slate-400 focus:outline-none focus:bg-[#fffdf0]">
+        <button type="submit" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black">
+          Rejoindre
+        </button>
+      </form>
+
+      <!-- Bouton Revenir dans la dernière salle (affiché dynamiquement) -->
+      <button id="btnReturnLastRoom" onclick="rejoinLastImposteurRoom()" class="hidden w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2.5 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5">
+        <span>↩</span>
+        <span id="returnLastRoomText">Revenir dans la salle IMPO</span>
+      </button>
+
+    </div>
+
+    <!-- Boutons pilules sous la carte : Les règles & Mots de la promo -->
+    <div class="flex flex-wrap items-center justify-center gap-3 mt-5">
+      <button onclick="openRulesModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+        <span>📖</span>
+        <span>Les règles</span>
+      </button>
+      <button onclick="openCustomWordsModal()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+        <span>✨</span>
+        <span>Boîte à mots de la promo</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ================= VUE 2 : SALON DE JEU & TABLE DE POKER ================= -->
+  <section id="viewRoom" class="hidden flex-1 max-w-[1440px] w-full mx-auto p-3 sm:p-6 flex flex-col gap-4">
+
+    <!-- Barre supérieure du salon -->
+    <div class="neo-box bg-white p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <button onclick="returnToLobbyView()" class="neo-btn bg-[#f1f3f9] hover:bg-slate-200 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1">
+          <span>←</span>
+          <span>Lobby</span>
+        </button>
+        <div class="bg-[#fed72d] border-2 border-[#12131a] rounded-2xl px-3.5 py-1 shadow-[2px_3px_0px_#12131a] text-center">
+          <span class="block text-[9px] font-black uppercase text-[#12131a]/70 leading-none">Salle</span>
+          <span id="imposteurRoomBadge" class="block text-base sm:text-lg font-mono font-black text-[#12131a] leading-tight tracking-wider">IMPO-0000</span>
+        </div>
+        <div>
+          <h3 class="text-sm sm:text-base font-black text-[#12131a] leading-tight">Salon Undercover</h3>
+          <span id="imposteurRoomSettingsText" class="text-[11px] font-mono font-bold text-slate-500 block">Hôte : ... · Mots classiques + promo</span>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="copyImposteurRoomCode()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+          📋 Copier le code
+        </button>
+        <button onclick="shareImposteurRoomInChat()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+          📣 Inviter dans le chat
+        </button>
+        <button onclick="leaveRoomCompletely()" class="neo-btn bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl text-xs font-black">
+          Quitter la table
+        </button>
+      </div>
+    </div>
+
+    <!-- Grille principale : Table de jeu (8 cols) + Panneau récapitulatif du salon (4 cols) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- COLONNE GAUCHE : TABLE DE POKER & SAISIE D'INDICE (8 COLS) -->
+      <div class="lg:col-span-8 flex flex-col gap-4">
+
+        <!-- Action Tour par Tour : Entrée du mot indice (affiché en haut quand c'est notre tour) -->
+        <div id="imposteurTurnInputArea" class="hidden neo-box-sm bg-[#fed72d] p-3.5 animate-bounce-once">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs sm:text-sm font-black text-[#12131a] flex items-center gap-1.5">
+              <span>🗣️</span>
+              <span>C'EST TON TOUR ! DONNE UN MOT INDICE :</span>
+            </span>
+            <span class="text-[10px] font-mono font-extrabold bg-white border border-[#12131a] px-2 py-0.5 rounded-full text-[#12131a]">1 seul mot</span>
+          </div>
+          <form onsubmit="event.preventDefault(); submitImposteurClue();" class="flex gap-2">
+            <input type="text" id="imposteurClueInput" autocomplete="off" placeholder="Tape ton indice ici (ex : Pépin)..." class="flex-1 bg-white border-2 border-[#12131a] rounded-xl px-3.5 py-2 text-sm font-bold text-[#12131a] focus:outline-none">
+            <button type="submit" class="neo-btn bg-[#12131a] hover:bg-slate-800 text-[#fed72d] px-5 py-2 rounded-xl text-xs sm:text-sm font-black">
+              Valider ➔
+            </button>
+          </form>
+        </div>
+
+        <!-- TABLE DE POKER DES JOUEURS -->
+        <div class="poker-table p-5 sm:p-8 min-h-[500px] flex flex-col justify-between items-center gap-6 relative">
+
+          <!-- Centre de table : Statut, Mot Secret & Décompte -->
+          <div class="bg-white/95 border-[3px] border-[#12131a] rounded-3xl p-4 sm:p-5 text-center shadow-[4px_5px_0px_#12131a] max-w-md w-full z-10">
+            <div id="imposteurPhaseBadge" class="text-[10px] font-mono font-black uppercase tracking-wider text-[#12131a] bg-[#fed72d] border-2 border-[#12131a] px-3 py-0.5 rounded-full inline-block mb-1.5 shadow-[1px_1.5px_0px_#12131a]">
+              En attente des joueurs
+            </div>
+
+            <h4 id="imposteurCenterTitle" class="text-lg sm:text-xl font-black text-[#12131a] leading-tight">
+              1 Joueur(s) autour de la table
+            </h4>
+
+            <p id="imposteurCenterDesc" class="text-xs sm:text-sm font-bold text-slate-600 mt-1">
+              Minimum 3 joueurs pour lancer la partie.
+            </p>
+
+            <!-- Chrono vote 60s -->
+            <div id="imposteurTimerContainer" class="hidden mt-2">
+              <div class="inline-flex items-center gap-1.5 bg-rose-50 border-2 border-rose-600 px-3.5 py-1 rounded-2xl">
+                <span>⏱️</span>
+                <span class="text-2xl font-black font-mono text-rose-600 animate-pulse" id="imposteurTimerDisplay">60s</span>
+              </div>
+            </div>
+
+            <!-- Carte du Mot Secret (Visible uniquement par le joueur) -->
+            <div id="imposteurMyWordCard" class="hidden mt-3 p-3 bg-[#f0fdf4] border-2 border-emerald-600 rounded-2xl relative">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-[10px] font-black text-emerald-800 uppercase tracking-wider">🤫 Ton mot secret :</span>
+                <button type="button" onclick="toggleSecretWordVisibility()" class="text-[10px] font-mono font-bold text-emerald-700 underline">
+                  <span id="btnToggleWordText">Masquer</span>
+                </button>
+              </div>
+              <span id="imposteurSecretWordText" class="text-xl sm:text-2xl font-black text-emerald-700 tracking-wide block">???</span>
+              <span class="text-[10px] font-bold text-emerald-800/80 block mt-0.5">Complice ou Infiltré ? Sois subtil dans tes indices !</span>
+            </div>
+
+            <!-- Bouton Lancer la partie pour l'hôte -->
+            <div id="imposteurHostControls" class="mt-3.5">
+              <button onclick="startImposteurGame()" id="btnStartImposteur" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-6 py-2.5 rounded-xl text-sm font-black">
+                🚀 Lancer la partie
+              </button>
+            </div>
+          </div>
+
+          <!-- Sièges des joueurs autour de la table -->
+          <div id="imposteurSeatsContainer" class="w-full grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3.5 z-10"></div>
+
+        </div>
+
+      </div>
+
+      <!-- COLONNE DROITE : PANNEAU RÉCAPITULATIF DU SALON (JOUEURS, RÔLES, INDICES & RÈGLES) (4 COLS) -->
+      <div class="lg:col-span-4 flex flex-col gap-4">
+
+        <!-- Carte 1 : Récapitulatif du Salon (Joueurs, Rôles & Règles) -->
+        <div class="neo-box bg-white overflow-hidden">
+          <div class="bg-[#fed72d] px-4 py-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between">
+            <span class="text-xs sm:text-sm font-black text-[#12131a] uppercase tracking-tight">📋 Récapitulatif du Salon</span>
+            <span id="summaryPlayersCountBadge" class="text-[11px] font-mono font-black bg-white border-2 border-[#12131a] px-2 py-0.5 rounded-full">0 joueur</span>
+          </div>
+
+          <div class="p-3.5 space-y-3">
+            <!-- Répartition des rôles -->
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-[#f0fdf4] border-2 border-[#12131a] rounded-xl p-2 shadow-[1.5px_2px_0px_#12131a]">
+                <span class="text-base block">🤝</span>
+                <span id="summaryComplicesCount" class="text-sm font-black text-[#12131a] block">2+</span>
+                <span class="text-[10px] font-bold text-slate-600 block">Complices</span>
+              </div>
+              <div class="bg-rose-50 border-2 border-[#12131a] rounded-xl p-2 shadow-[1.5px_2px_0px_#12131a]">
+                <span class="text-base block">🕵️‍♂️</span>
+                <span id="summaryInfiltreCount" class="text-sm font-black text-[#12131a] block">1</span>
+                <span class="text-[10px] font-bold text-slate-600 block">Infiltré</span>
+              </div>
+              <div class="bg-[#f0f4ff] border-2 border-[#12131a] rounded-xl p-2 shadow-[1.5px_2px_0px_#12131a]">
+                <span class="text-base block">🔄</span>
+                <span id="summaryRoundsCount" class="text-sm font-black text-[#12131a] block">2 tours</span>
+                <span class="text-[10px] font-bold text-slate-600 block">Avant vote</span>
+              </div>
+            </div>
+
+            <!-- Liste synthétique des joueurs présents -->
+            <div>
+              <span class="text-[10px] font-mono font-extrabold uppercase text-slate-400 block mb-1">Joueurs dans le salon</span>
+              <div id="summaryPlayersList" class="flex flex-wrap gap-1.5"></div>
+            </div>
+
+            <!-- Rappel des règles clés -->
+            <div class="bg-[#f8fafc] border-2 border-[#12131a] rounded-xl p-2.5 text-[11px] font-bold text-slate-600 leading-snug">
+              💡 <strong class="text-[#12131a]">Règle d'or :</strong> Personne ne sait s'il est Complice ou Infiltré ! Après les tours d'indices, vous avez <strong class="text-[#12131a]">60s</strong> pour voter. S'il ne reste que 3 joueurs dont l'Infiltré, l'Infiltré gagne !
+            </div>
+          </div>
+        </div>
+
+        <!-- Carte 2 : Tableau des indices donnés -->
+        <div class="neo-box bg-white overflow-hidden">
+          <div class="bg-[#06d6a0] px-4 py-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between">
+            <span class="text-xs sm:text-sm font-black text-[#12131a] uppercase tracking-tight">🗣️ Indices donnés</span>
+            <span class="text-[10px] font-mono font-bold text-[#12131a]/80">Ordre de parole</span>
+          </div>
+          <div id="imposteurCluesBoard" class="p-3.5 space-y-2.5 max-h-64 overflow-y-auto custom-scrollbar"></div>
+        </div>
+
+        <!-- Carte 3 : Chat de la Table intégré -->
+        <div class="neo-box bg-white overflow-hidden flex flex-col">
+          <div class="bg-[#f1f3f9] px-4 py-2 border-b-[3px] border-[#12131a] flex items-center justify-between">
+            <span class="text-xs font-black text-[#12131a] uppercase">💬 Chat de la Table</span>
+            <span class="text-[10px] font-mono font-bold text-slate-500">Salon privé</span>
+          </div>
+          <div id="imposteurTableChatMessages" class="h-44 overflow-y-auto p-3 space-y-1.5 text-xs custom-scrollbar bg-[#f8fafc]"></div>
+          <form onsubmit="handleSendTableChatMessage(event)" class="p-2.5 bg-white border-t-2 border-[#12131a] flex gap-2">
+            <input type="text" id="tableChatInput" autocomplete="off" placeholder="Message à la table..." class="flex-1 min-w-0 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:bg-white">
+            <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+              Envoyer
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ================= BOUTON FLOTTANT MESSAGERIE INSTANTANÉE (BAS DROITE STYLE CAPTURE) ================= -->
+  <div class="fixed bottom-5 right-5 z-40 flex flex-col items-end">
+    
+    <!-- Tiroir / Popover de messagerie instantanée -->
+    <div id="floatingChatDrawer" class="hidden mb-3 w-[340px] sm:w-[380px] h-[470px] neo-box bg-white flex flex-col overflow-hidden">
+      
+      <!-- Header avec onglets Général Promo / Chat Salon -->
+      <div class="bg-[#fed72d] p-2.5 border-b-[3px] border-[#12131a] flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 flex-1">
+          <button type="button" onclick="switchFloatingChatTab('promo')" id="tabChatPromo" class="neo-btn bg-[#12131a] text-white px-3 py-1 rounded-xl text-xs font-black">
+            📢 Général Promo
+          </button>
+          <button type="button" onclick="switchFloatingChatTab('table')" id="tabChatTable" class="bg-white/80 hover:bg-white text-[#12131a] border-2 border-[#12131a] px-3 py-1 rounded-xl text-xs font-black transition-all">
+            🕵️‍♂️ Salon
+          </button>
+        </div>
+        <button type="button" onclick="toggleFloatingChat()" class="w-7 h-7 rounded-xl bg-white border-2 border-[#12131a] font-black text-xs flex items-center justify-center">
+          ✕
+        </button>
+      </div>
+
+      <!-- Contenu Onglet 1 : Chat Général Promo -->
+      <div id="floatingPromoChatPanel" class="flex-1 flex flex-col min-h-0">
+        <div id="floatingPromoMessages" class="flex-1 p-3 overflow-y-auto space-y-reverse space-y-2.5 custom-scrollbar bg-[#f8fafc] flex flex-col-reverse">
+          <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement du chat promo...</p>
+        </div>
+        <form onsubmit="handleSendPromoChat(event)" class="p-2.5 bg-white border-t-[3px] border-[#12131a] flex gap-2">
+          <input type="text" id="floatingPromoInput" autocomplete="off" placeholder="Écris à toute la promo..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+            Envoyer
+          </button>
+        </form>
+      </div>
+
+      <!-- Contenu Onglet 2 : Chat de la Salle -->
+      <div id="floatingTableChatPanel" class="hidden flex-1 flex-col min-h-0">
+        <div id="floatingTableMessages" class="flex-1 p-3 overflow-y-auto space-y-2 custom-scrollbar bg-[#f8fafc] text-xs">
+          <p class="text-xs font-bold text-slate-400 text-center py-8">Rejoins ou crée une salle pour discuter avec la table.</p>
+        </div>
+        <form onsubmit="handleSendFloatingTableChat(event)" class="p-2.5 bg-white border-t-[3px] border-[#12131a] flex gap-2">
+          <input type="text" id="floatingTableInput" autocomplete="off" placeholder="Message aux joueurs du salon..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+          <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+            Envoyer
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Bouton Rond Jaune Flottant (identique à la capture d'écran) -->
+    <button onclick="toggleFloatingChat()" id="btnFloatingChat" title="Messagerie instantanée" class="relative w-14 h-14 rounded-full bg-[#fed72d] hover:bg-[#eec418] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-2xl transition-transform active:translate-x-0.5 active:translate-y-0.5">
+      <span>💬</span>
+      <span id="chatUnreadBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-600 border-2 border-[#12131a] text-white text-[10px] font-mono font-black flex items-center justify-center">!</span>
+    </button>
+
+  </div>
+
+  <!-- ================= MODALE : LES RÈGLES DU JEU ================= -->
+  <div id="modalRules" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-lg w-full p-6 relative max-h-[92vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
+        <h3 class="text-xl font-black text-[#12131a] flex items-center gap-2">
+          <span>📖</span>
+          <span>RÈGLES D'UNDERCOVER</span>
+        </h3>
+        <button onclick="closeRulesModal()" class="text-xl font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs font-bold text-slate-700 leading-relaxed">
+        <div class="p-3 bg-[#f0fdf4] border-2 border-[#12131a] rounded-xl">
+          <strong class="text-sm font-black text-[#12131a] block mb-1">1. Distribution secrète des rôles 🎭</strong>
+          Au lancement (3 joueurs minimum), tout le monde reçoit un mot secret. Les <strong>Complices</strong> reçoivent tous exactement le même mot (ex : <em>Kebab</em>), tandis que l'<strong>Infiltré</strong> reçoit un mot très proche (ex : <em>Tacos</em>). <strong>Personne ne sait s'il est Complice ou Infiltré !</strong>
+        </div>
+
+        <div class="p-3 bg-[#fffdf0] border-2 border-[#12131a] rounded-xl">
+          <strong class="text-sm font-black text-[#12131a] block mb-1">2. Tours de parole & Indices 🗣️</strong>
+          Chacun son tour, chaque joueur donne <strong>un seul mot indice</strong> en rapport avec son mot secret. Sois assez précis pour prouver aux autres que tu as le bon mot, mais pas trop évident pour ne pas aider l'Infiltré !
+        </div>
+
+        <div class="p-3 bg-rose-50 border-2 border-[#12131a] rounded-xl">
+          <strong class="text-sm font-black text-[#12131a] block mb-1">3. Phase de vote (60 secondes) 🗳️</strong>
+          Après 2 tours de table (ou 1 seul tour à 3 joueurs), vous avez <strong>60 secondes</strong> pour débattre et cliquer sur le joueur que vous soupçonnez.
+          <ul class="list-disc list-inside mt-1 space-y-1">
+            <li>Si l'Infiltré est éliminé : <strong>Victoire immédiate des Complices ! 🎉</strong></li>
+            <li>Si un Complice est éliminé par erreur : la partie continue, mais s'il ne reste plus que 3 joueurs en vie, <strong>l'Infiltré remporte la partie ! 😈</strong></li>
+          </ul>
+        </div>
+      </div>
+
+      <button onclick="closeRulesModal()" class="w-full mt-5 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black">
+        J'ai compris, place au bluff !
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODALE : BOÎTE À MOTS DE LA PROMO ================= -->
+  <div id="modalCustomWords" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-6 relative">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
+        <h3 class="text-lg font-black text-[#12131a] flex items-center gap-2">
+          <span>✨</span>
+          <span>BOÎTE À MOTS DE LA PROMO</span>
+        </h3>
+        <button onclick="closeCustomWordsModal()" class="text-xl font-bold">✕</button>
+      </div>
+
+      <p class="text-xs font-bold text-slate-600 mb-4 leading-snug">
+        Ajoute une paire de mots proches ou un délire de la promo IMB ! Elle sera automatiquement tirée au sort dans les prochaines parties.
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Mot des Complices *</label>
+          <input type="text" id="inputCustomWord1" placeholder="Ex : Kebab" class="w-full bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de l'Infiltré (proche) *</label>
+          <input type="text" id="inputCustomWord2" placeholder="Ex : Tacos" class="w-full bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold">
+        </div>
+        <button onclick="addCustomWordPairToPromo()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black">
+          ➕ Ajouter la paire pour la promo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOAST ================= -->
+  <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-white border-[2.5px] border-[#12131a] shadow-[3px_4px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
+    <span id="toastIcon">💬</span>
+    <span id="toastMsg">Notification</span>
+  </div>
+
+  <script>
+    /* =========================================================
+       FIREBASE CONFIGURATION & SESSION PARTAGÉE
+       ========================================================= */
+    const firebaseConfig = {
+      apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
+      authDomain: "imb-game-center.firebaseapp.com",
+      databaseURL: "https://imb-game-center-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "imb-game-center",
+      storageBucket: "imb-game-center.firebasestorage.app",
+      messagingSenderId: "571101212396",
+      appId: "1:571101212396:web:3c66a1de5dbf8032007fc9"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const STORAGE_AUTH_SESSION = 'imb_session_v4';
+    const STORAGE_LAST_IMPO_ROOM = 'imb_last_imposteur_room';
+
+    const DEFAULT_CLASSIC_PAIRS = [
+      { complice: 'Pomme', infiltre: 'Poire' },
+      { complice: 'Thé', infiltre: 'Café' },
+      { complice: 'Guitare', infiltre: 'Violon' },
+      { complice: 'Avion', infiltre: 'Fusée' },
+      { complice: 'Plage', infiltre: 'Piscine' },
+      { complice: 'Chat', infiltre: 'Chien' },
+      { complice: 'Stylo', infiltre: 'Crayon' },
+      { complice: 'Soleil', infiltre: 'Lune' },
+      { complice: 'Cinéma', infiltre: 'Théâtre' },
+      { complice: 'Pizza', infiltre: 'Burger' }
+    ];
+
+    let currentUser = null;
+    let imposteurRoomId = null;
+    let currentImposteurState = null;
+    let imposteurTimerInterval = null;
+    let imposteurRoomListener = null;
+    let imposteurChatQuery = null;
+    let imposteurServerOffset = 0;
+    let isSecretWordHidden = false;
+    let floatingChatOpen = false;
+    let activeFloatingTab = 'promo';
+    let initialChatLoaded = false;
+
+    const IMPOSTEUR_VOTE_SECONDS = 60;
+    const IMPOSTEUR_IN_GAME = ['playing', 'voting', 'resolving'];
+    const IMPOSTEUR_HASH_PREFIX = '#imposteur=';
+
+    // Synchronisation horloge serveur Firebase
+    db.ref('.info/serverTimeOffset').on('value', snap => {
+      imposteurServerOffset = snap.val() || 0;
+    });
+    function imposteurNow() {
+      return Date.now() + imposteurServerOffset;
+    }
+
+    function imposteurRef(path = '') {
+      return db.ref(`rooms_imposteur/${imposteurRoomId}${path ? '/' + path : ''}`);
+    }
+
+    function safeRoomCode(code) {
+      return String(code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    }
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    /* ---------------- INITIALISATION ---------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuthSession();
+      listenToLiveUsersCount();
+      listenToFloatingPromoChat();
+      checkLastSavedRoomButton();
+    });
+
+    window.addEventListener('hashchange', checkImposteurRoomFromHash);
+
+    function checkAuthSession() {
+      const stored = localStorage.getItem(STORAGE_AUTH_SESSION);
+      const overlay = document.getElementById('authOverlay');
+
+      if (stored) {
+        currentUser = JSON.parse(stored);
+        overlay.classList.add('hidden');
+        document.getElementById('lobbyUserGreeting').textContent = currentUser.nickname;
+        checkImposteurRoomFromHash();
+      } else {
+        overlay.classList.remove('hidden');
+      }
+    }
+
+    /* ---------------- AUTH FALLBACK ---------------- */
+    function switchAuthTab(tab) {
+      const formReg = document.getElementById('formRegister');
+      const formLog = document.getElementById('formLogin');
+      const btnReg = document.getElementById('tabBtnRegister');
+      const btnLog = document.getElementById('tabBtnLogin');
+      document.getElementById('authErrorBanner').classList.add('hidden');
+
+      if (tab === 'register') {
+        formReg.classList.remove('hidden');
+        formLog.classList.add('hidden');
+        btnReg.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
+        btnLog.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
+      } else {
+        formLog.classList.remove('hidden');
+        formReg.classList.add('hidden');
+        btnLog.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
+        btnReg.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
+      }
+    }
+
+    function showAuthError(msg) {
+      const banner = document.getElementById('authErrorBanner');
+      banner.textContent = msg;
+      banner.classList.remove('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const tag = document.getElementById('loginTag').value.trim().toLowerCase().replace(/^@/, '');
+      const password = document.getElementById('loginPassword').value;
+      try {
+        const snap = await db.ref(`users/${tag}`).get();
+        const userData = snap.val();
+        if (!userData || userData.password !== password) {
+          showAuthError("Identifiants incorrects ou compte inexistant.");
+          return;
+        }
+        localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(userData));
+        currentUser = userData;
+        checkAuthSession();
+        showToast(`Salut ${userData.nickname} !`, '👋');
+      } catch (err) {
+        showAuthError("Erreur : " + err.message);
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const nickname = document.getElementById('regNickname').value.trim();
+      const tag = document.getElementById('regTag').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      const password = document.getElementById('regPassword').value;
+      if (!nickname || !tag || !password) return;
+
+      try {
+        const exists = (await db.ref(`users/${tag}`).get()).exists();
+        if (exists) {
+          showAuthError(`Le tag @${tag} est déjà pris.`);
+          return;
+        }
+        const newUser = { nickname, tag, password, avatarEmoji: '🕵️‍♂️', flagEmoji: '🇫🇷', createdAt: Date.now() };
+        await db.ref(`users/${tag}`).set(newUser);
+        localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(newUser));
+        currentUser = newUser;
+        checkAuthSession();
+        showToast(`Compte créé, bienvenue ${nickname} !`, '🚀');
+      } catch (err) {
+        showAuthError("Erreur : " + err.message);
+      }
+    }
+
+    /* ---------------- BARRE SUPÉRIEURE ACTIONS ---------------- */
+    function listenToLiveUsersCount() {
+      db.ref('users').on('value', snapshot => {
+        const users = snapshot.val();
+        document.getElementById('navOnlineCount').textContent = users ? Object.keys(users).length : 1;
+      });
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function openInNewTab() {
+      window.open(window.location.href, '_blank');
+    }
+
+    function scrollToTopOrToggleHero() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function announcePartyFromHeader() {
+      if (imposteurRoomId) {
+        shareImposteurRoomInChat();
+      } else {
+        const lastCode = localStorage.getItem(STORAGE_LAST_IMPO_ROOM);
+        if (lastCode) {
+          imposteurRoomId = lastCode;
+          shareImposteurRoomInChat();
+        } else {
+          showToast("Crée d'abord une salle pour l'annoncer dans le chat !", '📣');
+        }
+      }
+    }
+
+    /* ---------------- BOUTON "REVENIR DANS LA SALLE" ---------------- */
+    async function checkLastSavedRoomButton() {
+      const savedCode = localStorage.getItem(STORAGE_LAST_IMPO_ROOM);
+      const btn = document.getElementById('btnReturnLastRoom');
+      const txt = document.getElementById('returnLastRoomText');
+      if (!savedCode) {
+        btn.classList.add('hidden');
+        return;
+      }
+      try {
+        const snap = await db.ref(`rooms_imposteur/${savedCode}`).get();
+        if (snap.exists()) {
+          txt.textContent = `Revenir dans la salle ${savedCode}`;
+          btn.classList.remove('hidden');
+        } else {
+          localStorage.removeItem(STORAGE_LAST_IMPO_ROOM);
+          btn.classList.add('hidden');
+        }
+      } catch (e) {
+        btn.classList.add('hidden');
+      }
+    }
+
+    function rejoinLastImposteurRoom() {
+      const savedCode = localStorage.getItem(STORAGE_LAST_IMPO_ROOM);
+      if (savedCode) {
+        enterImposteurRoom(savedCode);
+      }
+    }
+
+    /* ---------------- CRÉATION & CONNEXION AU SALON ---------------- */
+    async function createImposteurRoom() {
+      if (!currentUser) return;
+      const classic = document.getElementById('chkWordsClassic').checked;
+      const custom = document.getElementById('chkWordsCustom').checked;
+      if (!classic && !custom) {
+        showToast('Coche au moins un pack de mots (classiques ou promo) !', '⚠️');
+        return;
+      }
+
+      const btn = document.getElementById('btnCreateImposteurRoom');
+      btn.disabled = true;
+      try {
+        let code = null;
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        for (let i = 0; i < 10 && !code; i++) {
+          let shortCode = '';
+          for (let c = 0; c < 4; c++) shortCode += chars[Math.floor(Math.random() * chars.length)];
+          const candidate = 'IMPO-' + shortCode;
+          if (!(await db.ref(`rooms_imposteur/${candidate}`).get()).exists()) code = candidate;
+        }
+        if (!code) throw new Error('no-code');
+
+        await db.ref(`rooms_imposteur/${code}`).set({
+          status: 'waiting',
+          hostTag: currentUser.tag,
+          hostNick: currentUser.nickname,
+          settings: { classic, custom },
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        await enterImposteurRoom(code);
+        showToast(`Salle ${code} créée ! Clique sur "Annoncer ma partie" pour inviter la promo.`, '🃏');
+      } catch (err) {
+        showToast('Impossible de créer la salle, réessaie !', '❌');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function joinImposteurRoomFromInput() {
+      let raw = document.getElementById('imposteurJoinCodeInput').value.trim().toUpperCase();
+      if (!raw) {
+        showToast('Entre un code de salle !', '⚠️');
+        return;
+      }
+      // Permet de taper soit "ABCD" soit "IMPO-ABCD"
+      const clean = safeRoomCode(raw);
+      const code = clean.startsWith('IMPO-') ? clean : `IMPO-${clean}`;
+      enterImposteurRoom(code);
+    }
+
+    async function enterImposteurRoom(rawCode) {
+      if (!currentUser) return;
+      let code = safeRoomCode(rawCode);
+      if (!code) return;
+
+      // Vérifie si le code existe tel quel ou avec préfixe IMPO-
+      try {
+        let snap = await db.ref(`rooms_imposteur/${code}`).get();
+        if (!snap.exists() && !code.startsWith('IMPO-')) {
+          const alt = 'IMPO-' + code;
+          const altSnap = await db.ref(`rooms_imposteur/${alt}`).get();
+          if (altSnap.exists()) {
+            code = alt;
+            snap = altSnap;
+          }
+        }
+        if (!snap.exists()) {
+          showToast(`Salle ${code} introuvable !`, '❌');
+          clearImposteurHash();
+          return;
+        }
+      } catch (err) {
+        showToast('Connexion au salon impossible, réessaie !', '❌');
+        return;
+      }
+
+      if (imposteurRoomId && imposteurRoomId !== code) {
+        leaveImposteurRoom();
+      }
+      imposteurRoomId = code;
+      localStorage.setItem(STORAGE_LAST_IMPO_ROOM, code);
+
+      document.getElementById('imposteurRoomBadge').textContent = code;
+      document.getElementById('imposteurCluesBoard').innerHTML = '';
+      document.getElementById('imposteurTableChatMessages').innerHTML = '';
+
+      // Basculer du Lobby vers la Vue Salon
+      document.getElementById('viewLobby').classList.add('hidden');
+      document.getElementById('viewRoom').classList.remove('hidden');
+
+      if (location.hash !== IMPOSTEUR_HASH_PREFIX + code) {
+        history.replaceState(null, '', location.pathname + location.search + IMPOSTEUR_HASH_PREFIX + code);
+      }
+
+      await joinImposteurRoom();
+    }
+
+    function returnToLobbyView() {
+      document.getElementById('viewRoom').classList.add('hidden');
+      document.getElementById('viewLobby').classList.remove('hidden');
+      clearImposteurHash();
+      checkLastSavedRoomButton();
+    }
+
+    function leaveRoomCompletely() {
+      leaveImposteurRoom();
+      document.getElementById('viewRoom').classList.add('hidden');
+      document.getElementById('viewLobby').classList.remove('hidden');
+      clearImposteurHash();
+      checkLastSavedRoomButton();
+      showToast('Tu as quitté la table.', '👋');
+    }
+
+    function clearImposteurHash() {
+      if (location.hash.startsWith(IMPOSTEUR_HASH_PREFIX)) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    }
+
+    function checkImposteurRoomFromHash() {
+      if (!currentUser) return;
+      if (location.hash.startsWith(IMPOSTEUR_HASH_PREFIX)) {
+        enterImposteurRoom(location.hash.slice(IMPOSTEUR_HASH_PREFIX.length));
+      }
+    }
+
+    function leaveImposteurRoom() {
+      if (!imposteurRoomId) return;
+      if (currentUser) {
+        const playerRef = imposteurRef(`players/${currentUser.tag}`);
+        playerRef.onDisconnect().cancel();
+        playerRef.remove();
+      }
+      if (imposteurRoomListener) imposteurRef().off('value', imposteurRoomListener);
+      if (imposteurChatQuery) imposteurChatQuery.off();
+      imposteurRoomListener = null;
+      imposteurChatQuery = null;
+      currentImposteurState = null;
+      imposteurRoomId = null;
+      stopImposteurTimer();
+    }
+
+    function copyImposteurRoomCode() {
+      if (!imposteurRoomId) return;
+      const code = imposteurRoomId;
+      (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject())
+        .then(() => showToast(`Code ${code} copié dans le presse-papier !`, '📋'))
+        .catch(() => showToast(`Code de la salle : ${code}`, '📋'));
+    }
+
+    function shareImposteurRoomInChat() {
+      if (!imposteurRoomId || !currentUser) return;
+      const inviteUrl = `${window.location.origin}${window.location.pathname}#imposteur=${imposteurRoomId}`;
+      db.ref('chat').push({
+        authorNick: currentUser.nickname,
+        authorTag: currentUser.tag,
+        authorAvatar: currentUser.avatarEmoji || '🕵️‍♂️',
+        authorFlag: currentUser.flagEmoji || '🇫🇷',
+        isInvite: true,
+        gameTitle: "L'Imposteur (Undercover)",
+        roomUrl: inviteUrl,
+        internalGame: 'imposteur',
+        internalRoom: imposteurRoomId,
+        text: `Qui vient démasquer l'infiltré ? Rejoignez la salle ${imposteurRoomId} !`,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      });
+      showToast(`Invitation pour ${imposteurRoomId} envoyée dans le chat général !`, '📣');
+    }
+
+    /* ---------------- LOGIQUE TEMPS RÉEL DE LA SALLE ---------------- */
+    async function joinImposteurRoom() {
+      if (!currentUser || !imposteurRoomId) return;
+      const roomId = imposteurRoomId;
+
+      const playerRef = imposteurRef(`players/${currentUser.tag}`);
+      let status = null;
+      try {
+        const roomSnap = await imposteurRef().get();
+        const room = roomSnap.val() || {};
+        status = room.status || null;
+        const ghosts = {};
+        Object.entries(room.players || {}).forEach(([tag, p]) => {
+          if (tag !== currentUser.tag && (!p || !p.joinedAt)) ghosts[`players/${tag}`] = null;
+        });
+        if (Object.keys(ghosts).length) await imposteurRef().update(ghosts);
+      } catch (err) {
+        showToast('Connexion au salon impossible, réessaie !', '❌');
+        return;
+      }
+      if (imposteurRoomId !== roomId) return;
+
+      const inGame = IMPOSTEUR_IN_GAME.includes(status);
+
+      playerRef.onDisconnect().remove();
+      await playerRef.set({
+        tag: currentUser.tag,
+        nickname: currentUser.nickname,
+        avatar: currentUser.avatarEmoji || '🍺',
+        flag: currentUser.flagEmoji || '🇫🇷',
+        isAlive: !inGame,
+        isSpectator: inGame,
+        votedFor: null,
+        joinedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+      if (imposteurRoomId !== roomId) return;
+
+      if (!imposteurRoomListener) {
+        imposteurRoomListener = imposteurRef().on('value', snapshot => {
+          const data = snapshot.val();
+          currentImposteurState = data;
+          if (!data) {
+            showToast("Cette salle a été fermée.", '⚠️');
+            leaveRoomCompletely();
+            return;
+          }
+          if (imposteurGameIsBroken(data)) {
+            resetImposteurRoom('⚠️ Plus assez de joueurs à la table, la partie est annulée. Relancez quand vous êtes prêts !');
+          } else {
+            handleImposteurDepartures(data);
+          }
+          renderImposteurTable(data);
+        });
+      }
+
+      listenToTableChat();
+    }
+
+    function imposteurGameIsBroken(data) {
+      if (!data || !IMPOSTEUR_IN_GAME.includes(data.status)) return false;
+      return !data.turnOrder || data.turnOrder.length === 0;
+    }
+
+    function handleImposteurDepartures(data) {
+      if (!['playing', 'voting'].includes(data.status)) return;
+      const players = data.players || {};
+      const order = data.turnOrder || [];
+      const missing = order.filter(tag => !players[tag]);
+      if (missing.length === 0) return;
+
+      imposteurRef('turnOrder').transaction(current => {
+        if (!current) return undefined;
+        const kept = current.filter(tag => players[tag]);
+        return kept.length === current.length ? undefined : kept;
+      }, (err, committed, snap) => {
+        if (err || !committed) return;
+        applyImposteurDepartures(data, order, snap.val() || [], missing);
+      }, false);
+    }
+
+    function applyImposteurDepartures(data, oldOrder, newOrder, missing) {
+      const players = data.players || {};
+      const roster = data.roster || {};
+      const leftNames = missing.map(tag => roster[tag] || `@${tag}`).join(', ');
+      const alive = newOrder.filter(tag => players[tag] && players[tag].isAlive);
+      const infiltratorTag = data.infiltratorTag || null;
+
+      if (infiltratorTag && missing.includes(infiltratorTag)) {
+        imposteurRef().update({
+          status: 'ended',
+          votingStartedAt: null,
+          winnerText: `🏃 L'infiltré (${roster[infiltratorTag] || '@' + infiltratorTag}, mot : ${data.secretInfiltreWord}) a quitté la partie. VICTOIRE DES COMPLICES !`
+        });
+        sendTableChat(`🏃 ${leftNames} a quitté la table.`);
+        return;
+      }
+
+      if (alive.length < 3) {
+        const infiltratorName = infiltratorTag ? (roster[infiltratorTag] || '@' + infiltratorTag) : "L'infiltré";
+        imposteurRef().update({
+          status: 'ended',
+          votingStartedAt: null,
+          winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Il ne reste plus assez de joueurs. ${infiltratorName} (mot : ${data.secretInfiltreWord}) a gagné !`
+        });
+        sendTableChat(`🏃 ${leftNames} a quitté la table.`);
+        return;
+      }
+
+      const updates = {};
+      if (data.status === 'playing') {
+        const idx = data.currentTurnIndex || 0;
+        const activeTag = oldOrder[idx];
+        if (players[activeTag]) {
+          updates.currentTurnIndex = newOrder.indexOf(activeTag);
+        } else {
+          const startIdx = oldOrder.slice(0, idx).filter(tag => players[tag]).length;
+          const next = nextImposteurTurn({ ...data, turnOrder: newOrder }, startIdx, data.currentRound || 1);
+          if (next.status === 'playing') {
+            updates.currentTurnIndex = next.index;
+            updates.currentRound = next.round;
+          } else {
+            updates.status = 'voting';
+            updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
+          }
+        }
+      } else {
+        Object.values(players).forEach(p => {
+          if (p.votedFor && missing.includes(p.votedFor)) updates[`players/${p.tag}/votedFor`] = null;
+        });
+      }
+
+      if (Object.keys(updates).length) imposteurRef().update(updates);
+      sendTableChat(`🏃 ${leftNames} a quitté la table, la partie continue !`);
+    }
+
+    function resetImposteurRoom(message) {
+      imposteurRef('status').transaction(st => (IMPOSTEUR_IN_GAME.includes(st) ? 'waiting' : undefined), (err, committed) => {
+        if (err || !committed) return;
+        imposteurRef('players').get().then(snap => {
+          const updates = {
+            turnOrder: null,
+            currentTurnIndex: 0,
+            currentRound: 1,
+            votingStartedAt: null,
+            secretCompliceWord: null,
+            secretInfiltreWord: null,
+            infiltratorTag: null,
+            roster: null
+          };
+          Object.keys(snap.val() || {}).forEach(tag => {
+            updates[`players/${tag}/isAlive`] = true;
+            updates[`players/${tag}/isSpectator`] = null;
+            updates[`players/${tag}/isUndercover`] = null;
+            updates[`players/${tag}/word`] = null;
+            updates[`players/${tag}/clues`] = null;
+            updates[`players/${tag}/votedFor`] = null;
+          });
+          imposteurRef().update(updates);
+          if (message) sendTableChat(message);
+        });
+      }, false);
+    }
+
+    function nextImposteurTurn(data, fromIndex, round) {
+      const order = data.turnOrder || [];
+      const totalRounds = data.totalRounds || 2;
+      let idx = fromIndex;
+      let r = round;
+      for (let guard = 0; guard < order.length * (totalRounds + 1) + 1; guard++) {
+        if (idx >= order.length) {
+          idx = 0;
+          r++;
+        }
+        if (r > totalRounds) break;
+        const p = data.players && data.players[order[idx]];
+        if (p && p.isAlive) return { status: 'playing', index: idx, round: r };
+        idx++;
+      }
+      return { status: 'voting' };
+    }
+
+    function canStartImposteur(data) {
+      if (!currentUser || !data) return false;
+      const players = data.players || {};
+      return !data.hostTag || data.hostTag === currentUser.tag || !players[data.hostTag];
+    }
+
+    function toggleSecretWordVisibility() {
+      isSecretWordHidden = !isSecretWordHidden;
+      const btnText = document.getElementById('btnToggleWordText');
+      const wordEl = document.getElementById('imposteurSecretWordText');
+      if (isSecretWordHidden) {
+        btnText.textContent = 'Afficher';
+        wordEl.textContent = '••••••';
+      } else {
+        btnText.textContent = 'Masquer';
+        const me = currentImposteurState && currentImposteurState.players && currentUser
+          ? currentImposteurState.players[currentUser.tag]
+          : null;
+        wordEl.textContent = me && me.word ? me.word : '???';
+      }
+    }
+
+    function renderImposteurTable(data) {
+      if (!data) return;
+
+      const players = data.players ? Object.values(data.players) : [];
+      const playerCount = players.length;
+      const me = currentUser && data.players ? data.players[currentUser.tag] : null;
+      const seatsContainer = document.getElementById('imposteurSeatsContainer');
+      const centerTitle = document.getElementById('imposteurCenterTitle');
+      const centerDesc = document.getElementById('imposteurCenterDesc');
+      const phaseBadge = document.getElementById('imposteurPhaseBadge');
+      const hostControls = document.getElementById('imposteurHostControls');
+      const myWordCard = document.getElementById('imposteurMyWordCard');
+      const turnInputArea = document.getElementById('imposteurTurnInputArea');
+      const timerContainer = document.getElementById('imposteurTimerContainer');
+      const canStart = canStartImposteur(data);
+      const hostName = data.hostNick || "l'hôte";
+
+      const settings = data.settings || { classic: true, custom: true };
+      const wordTypes = [settings.classic ? 'classiques' : null, settings.custom ? 'promo' : null].filter(Boolean).join(' + ');
+      document.getElementById('imposteurRoomSettingsText').textContent = `Hôte : ${hostName} · Mots ${wordTypes || 'classiques'}`;
+
+      // Mise à jour du panneau récapitulatif du salon
+      document.getElementById('summaryPlayersCountBadge').textContent = `${playerCount} joueur${playerCount > 1 ? 's' : ''}`;
+      document.getElementById('summaryComplicesCount').textContent = Math.max(2, playerCount - 1);
+      document.getElementById('summaryInfiltreCount').textContent = '1';
+      document.getElementById('summaryRoundsCount').textContent = playerCount === 3 ? '1 tour' : '2 tours';
+      document.getElementById('summaryPlayersList').innerHTML = players.map(p => `
+        <span class="inline-flex items-center gap-1 bg-[#f1f3f9] border border-[#12131a] rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-[#12131a]">
+          <span>${p.avatar}</span>
+          <span>${escapeHtml(p.nickname)}</span>
+          ${data.hostTag === p.tag ? '<span>👑</span>' : ''}
+        </span>
+      `).join('');
+
+      centerTitle.textContent = `${playerCount} Joueur(s) autour de la table`;
+      const activePlayerTag = data.turnOrder ? data.turnOrder[data.currentTurnIndex || 0] : null;
+
+      // En attente
+      if (!data.status || data.status === 'waiting' || data.status === 'starting') {
+        phaseBadge.textContent = data.status === 'starting' ? 'Distribution des rôles...' : 'En attente des joueurs';
+        if (playerCount < 3) {
+          centerDesc.textContent = `Encore ${3 - playerCount} joueur(s) minimum... Partage le code ${imposteurRoomId} !`;
+        } else {
+          centerDesc.textContent = canStart ? 'Tout le monde est prêt ! Tu peux lancer la partie.' : `Prêt ! En attente du lancement par ${hostName}...`;
+        }
+        hostControls.classList.toggle('hidden', !canStart || playerCount < 3 || data.status === 'starting');
+        myWordCard.classList.add('hidden');
+        turnInputArea.classList.add('hidden');
+        timerContainer.classList.add('hidden');
+      }
+
+      // En cours de jeu
+      if (data.status === 'playing') {
+        phaseBadge.textContent = `MANCHE EN COURS (Tour ${data.currentRound || 1}/${data.totalRounds || 2})`;
+        hostControls.classList.add('hidden');
+        timerContainer.classList.add('hidden');
+
+        if (activePlayerTag && data.players[activePlayerTag]) {
+          centerDesc.textContent = `C'est au tour de ${data.players[activePlayerTag].nickname} de donner un indice !`;
+        }
+
+        if (me && me.isAlive && activePlayerTag === currentUser.tag) {
+          turnInputArea.classList.remove('hidden');
+        } else {
+          turnInputArea.classList.add('hidden');
+        }
+      }
+
+      // Phase de vote
+      if (data.status === 'voting' || data.status === 'resolving') {
+        phaseBadge.textContent = `🚨 PHASE DE VOTE (${IMPOSTEUR_VOTE_SECONDS} SECONDES)`;
+        centerDesc.textContent = data.status === 'resolving' ? 'Dépouillement des votes...' : "Clique sur la carte du joueur que tu soupçonnes d'être l'Infiltré !";
+        hostControls.classList.add('hidden');
+        turnInputArea.classList.add('hidden');
+        timerContainer.classList.remove('hidden');
+      }
+
+      // Affichage du mot secret
+      if (IMPOSTEUR_IN_GAME.includes(data.status)) {
+        if (me && me.word) {
+          myWordCard.classList.remove('hidden');
+          document.getElementById('imposteurSecretWordText').textContent = isSecretWordHidden ? '••••••' : me.word;
+        } else {
+          myWordCard.classList.add('hidden');
+          if (me && me.isSpectator) centerDesc.textContent += ' (Tu es spectateur pour cette manche.)';
+        }
+      }
+
+      // Fin de partie
+      if (data.status === 'ended') {
+        phaseBadge.textContent = 'PARTIE TERMINÉE';
+        centerDesc.textContent = data.winnerText || 'Victoire !';
+        turnInputArea.classList.add('hidden');
+        timerContainer.classList.add('hidden');
+        myWordCard.classList.add('hidden');
+        hostControls.classList.toggle('hidden', !canStart || playerCount < 3);
+      }
+
+      syncImposteurTimer(data);
+
+      // Si tous les joueurs vivants ont voté, résolution immédiate
+      if (data.status === 'voting') {
+        const voters = players.filter(p => p.isAlive);
+        if (voters.length > 0 && voters.every(p => p.votedFor)) resolveImposteurVotes();
+      }
+
+      // Rendu des sièges
+      seatsContainer.innerHTML = players.map(p => {
+        const isCurrentTurn = data.status === 'playing' && activePlayerTag === p.tag;
+        const isMe = currentUser && currentUser.tag === p.tag;
+        const isHost = data.hostTag === p.tag;
+        const canBeVoted = data.status === 'voting' && p.isAlive && !isMe && me && me.isAlive;
+        const clues = p.clues ? Object.values(p.clues) : [];
+        const lastClue = clues.length > 0 ? clues[clues.length - 1] : null;
+        const stateText = p.isSpectator
+          ? 'Spectateur 👀'
+          : (p.isAlive ? (data.status === 'voting' && p.votedFor ? 'A voté ✅' : 'En jeu') : 'Éliminé 💀');
+
+        return `
+          <div onclick="handleImposteurVote('${escapeHtml(p.tag)}')" class="bg-white border-[2.5px] border-[#12131a] rounded-2xl p-3 flex flex-col justify-between text-center transition-all ${isCurrentTurn ? 'ring-4 ring-[#fed72d] scale-105 shadow-[3px_4px_0px_#12131a]' : 'shadow-[2px_3px_0px_#12131a]'} ${!p.isAlive ? 'opacity-45 grayscale' : ''} ${canBeVoted ? 'cursor-pointer hover:bg-rose-50 hover:border-rose-600 hover:-translate-y-1' : ''}">
+            <div>
+              <span class="text-3xl block">${p.avatar} ${p.flag}</span>
+              <h5 class="text-xs sm:text-sm font-black text-[#12131a] truncate mt-1">${isHost ? '👑 ' : ''}${escapeHtml(p.nickname)} ${isMe ? '(Moi)' : ''}</h5>
+              <span class="text-[10px] font-mono font-bold ${isCurrentTurn ? 'text-amber-600 font-black' : 'text-slate-500'}">${isCurrentTurn ? '🗣️ En train de réfléchir...' : stateText}</span>
+            </div>
+
+            <div class="mt-2 ${lastClue ? 'bg-[#fed72d]/40 border-[#12131a]' : 'bg-[#f8fafc] border-slate-200'} border-2 rounded-xl px-2 py-1.5">
+              <span class="text-xs sm:text-sm font-black ${lastClue ? 'text-[#12131a]' : 'text-slate-400 font-bold'} italic block break-words">${lastClue ? `« ${escapeHtml(lastClue)} »` : 'Aucun indice'}</span>
+            </div>
+
+            ${canBeVoted ? `
+              <span class="mt-2 text-[10px] font-black ${me.votedFor === p.tag ? 'bg-emerald-600' : 'bg-rose-600'} text-white border border-[#12131a] rounded-lg py-1 block shadow-[1px_1.5px_0px_#12131a]">${me.votedFor === p.tag ? 'Ton vote ✅' : 'Voter contre 🗳️'}</span>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      renderImposteurCluesBoard(data);
+    }
+
+    function renderImposteurCluesBoard(data) {
+      const board = document.getElementById('imposteurCluesBoard');
+      const playersMap = data.players || {};
+      const order = (data.turnOrder || []).filter(tag => playersMap[tag]);
+
+      if (order.length === 0) {
+        board.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Les indices donnés par chaque joueur s'afficheront ici dès le lancement.</p>`;
+        return;
+      }
+
+      board.innerHTML = order.map(tag => {
+        const p = playersMap[tag];
+        const clues = p.clues ? Object.values(p.clues) : [];
+        const chips = clues.length > 0
+          ? clues.map((c, i) => `<span class="inline-block bg-[#fed72d] border-2 border-[#12131a] rounded-lg px-2 py-0.5 text-xs font-black text-[#12131a] shadow-[1px_1.5px_0px_#12131a]"><span class="text-[9px] font-mono text-[#12131a]/60 mr-1">#${i + 1}</span>${escapeHtml(c)}</span>`).join(' ')
+          : `<span class="text-[11px] font-bold text-slate-400 italic">En attente...</span>`;
+        return `
+          <div class="${p.isAlive ? '' : 'opacity-50'}">
+            <div class="text-xs font-black text-[#12131a] mb-1">${p.avatar} ${escapeHtml(p.nickname)}${p.isAlive ? '' : ' <span class="text-rose-600">(éliminé)</span>'}</div>
+            <div class="flex flex-wrap gap-1.5">${chips}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function startImposteurGame() {
+      if (!currentImposteurState || !currentImposteurState.players) return;
+      if (!canStartImposteur(currentImposteurState)) {
+        showToast("Seul l'hôte peut lancer la partie !", '⚠️');
+        return;
+      }
+      const players = Object.values(currentImposteurState.players);
+      if (players.length < 3) {
+        showToast('Minimum 3 joueurs requis pour jouer !', '⚠️');
+        return;
+      }
+
+      const lock = await imposteurRef('status').transaction(
+        st => (!st || st === 'waiting' || st === 'ended' ? 'starting' : undefined),
+        null,
+        false
+      );
+      if (!lock.committed) return;
+
+      try {
+        const settings = currentImposteurState.settings || { classic: true, custom: true };
+        let wordPairs = [];
+        if (settings.classic) {
+          wordPairs = wordPairs.concat(DEFAULT_CLASSIC_PAIRS);
+        }
+        if (settings.custom) {
+          const customSnap = await db.ref('promo_words').get();
+          if (customSnap.exists()) {
+            wordPairs = wordPairs.concat(Object.values(customSnap.val()).filter(w => w && w.complice && w.infiltre));
+          }
+        }
+        if (wordPairs.length === 0) wordPairs = [...DEFAULT_CLASSIC_PAIRS];
+
+        const selectedPair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
+
+        const freshPlayers = Object.values((await imposteurRef('players').get()).val() || {});
+        if (freshPlayers.length < 3) throw new Error('not-enough-players');
+
+        const turnOrder = shuffleArray(freshPlayers.map(p => p.tag));
+        const infiltratorTag = turnOrder[Math.floor(Math.random() * turnOrder.length)];
+
+        const updatedPlayers = {};
+        const roster = {};
+        freshPlayers.forEach(p => {
+          const isUndercover = p.tag === infiltratorTag;
+          roster[p.tag] = p.nickname;
+          updatedPlayers[p.tag] = {
+            tag: p.tag,
+            nickname: p.nickname,
+            avatar: p.avatar,
+            flag: p.flag,
+            joinedAt: p.joinedAt || firebase.database.ServerValue.TIMESTAMP,
+            word: isUndercover ? selectedPair.infiltre : selectedPair.complice,
+            isUndercover: isUndercover,
+            isAlive: true
+          };
+        });
+
+        isSecretWordHidden = false;
+        await imposteurRef().update({
+          status: 'playing',
+          players: updatedPlayers,
+          turnOrder: turnOrder,
+          roster: roster,
+          infiltratorTag: infiltratorTag,
+          currentTurnIndex: 0,
+          currentRound: 1,
+          totalRounds: freshPlayers.length === 3 ? 1 : 2,
+          votingStartedAt: null,
+          winnerText: null,
+          secretCompliceWord: selectedPair.complice,
+          secretInfiltreWord: selectedPair.infiltre
+        });
+
+        sendTableChat("🎲 Nouvelle partie lancée ! Découvrez votre mot secret au centre de la table.");
+      } catch (err) {
+        imposteurRef('status').set('waiting');
+        showToast(err.message === 'not-enough-players' ? 'Minimum 3 joueurs requis !' : 'Impossible de lancer la partie, réessaie !', '⚠️');
+      }
+    }
+
+    function submitImposteurClue() {
+      const input = document.getElementById('imposteurClueInput');
+      const clue = input.value.trim();
+      const data = currentImposteurState;
+      if (!clue || !data || !currentUser || data.status !== 'playing') return;
+
+      const order = data.turnOrder || [];
+      const player = data.players && data.players[currentUser.tag];
+      if (!player || order[data.currentTurnIndex || 0] !== currentUser.tag) {
+        showToast("Ce n'est pas ton tour !", '⏳');
+        return;
+      }
+
+      const clues = player.clues ? [...Object.values(player.clues), clue] : [clue];
+      const next = nextImposteurTurn(data, (data.currentTurnIndex || 0) + 1, data.currentRound || 1);
+
+      const updates = {
+        [`players/${currentUser.tag}/clues`]: clues,
+        status: next.status
+      };
+      if (next.status === 'playing') {
+        updates.currentTurnIndex = next.index;
+        updates.currentRound = next.round;
+      } else {
+        updates.votingStartedAt = firebase.database.ServerValue.TIMESTAMP;
+      }
+
+      imposteurRef().update(updates);
+      input.value = '';
+      sendTableChat(`${currentUser.nickname} a donné l'indice : « ${clue} »`);
+    }
+
+    function stopImposteurTimer() {
+      if (imposteurTimerInterval) clearInterval(imposteurTimerInterval);
+      imposteurTimerInterval = null;
+    }
+
+    function syncImposteurTimer(data) {
+      if (!data || data.status !== 'voting') {
+        stopImposteurTimer();
+        return;
+      }
+      if (imposteurTimerInterval) return;
+
+      const display = document.getElementById('imposteurTimerDisplay');
+      const tick = () => {
+        const st = currentImposteurState;
+        if (!st || st.status !== 'voting') {
+          stopImposteurTimer();
+          return;
+        }
+        const endsAt = (st.votingStartedAt || 0) + IMPOSTEUR_VOTE_SECONDS * 1000;
+        const secondsLeft = Math.max(0, Math.ceil((endsAt - imposteurNow()) / 1000));
+        display.textContent = `${secondsLeft}s`;
+        if (secondsLeft <= 0) {
+          stopImposteurTimer();
+          resolveImposteurVotes();
+        }
+      };
+      tick();
+      imposteurTimerInterval = setInterval(tick, 1000);
+    }
+
+    function handleImposteurVote(targetTag) {
+      const data = currentImposteurState;
+      if (!data || data.status !== 'voting' || !currentUser || !data.players) return;
+      const me = data.players[currentUser.tag];
+      const target = data.players[targetTag];
+      if (!me || !me.isAlive) {
+        showToast('Seuls les joueurs encore en vie peuvent voter !', '⚠️');
+        return;
+      }
+      if (targetTag === currentUser.tag) {
+        showToast('Tu ne peux pas voter contre toi-même !', '⚠️');
+        return;
+      }
+      if (!target || !target.isAlive) return;
+
+      imposteurRef(`players/${currentUser.tag}/votedFor`).set(targetTag);
+      showToast(`Vote enregistré contre ${target.nickname} !`, '🗳️');
+    }
+
+    function resolveImposteurVotes() {
+      imposteurRef('status').transaction(st => (st === 'voting' ? 'resolving' : undefined), (err, committed) => {
+        if (err || !committed) return;
+
+        imposteurRef().get().then(snap => {
+          const data = snap.val();
+          if (!data || !data.players) return;
+
+          const players = Object.values(data.players);
+          const living = players.filter(p => p.isAlive);
+          const voteCounts = {};
+
+          living.forEach(p => {
+            if (p.votedFor && data.players[p.votedFor] && data.players[p.votedFor].isAlive) {
+              voteCounts[p.votedFor] = (voteCounts[p.votedFor] || 0) + 1;
+            }
+          });
+
+          let mostVotedTag = null;
+          let maxVotes = -1;
+          for (let tag in voteCounts) {
+            if (voteCounts[tag] > maxVotes) {
+              maxVotes = voteCounts[tag];
+              mostVotedTag = tag;
+            }
+          }
+
+          if (!mostVotedTag) {
+            mostVotedTag = living[0].tag;
+          }
+
+          const eliminatedPlayer = data.players[mostVotedTag];
+          sendTableChat(`📢 Fin du vote ! ${eliminatedPlayer.nickname} est éliminé(e) !`);
+
+          if (eliminatedPlayer.isUndercover) {
+            imposteurRef().update({
+              status: 'ended',
+              winnerText: `🎉 VICTOIRE DES COMPLICES ! L'Infiltré était bien ${eliminatedPlayer.nickname} (Son mot : « ${data.secretInfiltreWord} », mot des Complices : « ${data.secretCompliceWord} »).`
+            });
+            return;
+          }
+
+          const remainingLiving = living.filter(p => p.tag !== mostVotedTag);
+          const infiltrator = players.find(p => p.isUndercover);
+
+          if (remainingLiving.length <= 3) {
+            imposteurRef().update({
+              status: 'ended',
+              winnerText: `😈 VICTOIRE DE L'INFILTRÉ ! Vous avez éliminé un Complice innocent. ${infiltrator ? infiltrator.nickname + ' (mot : « ' + data.secretInfiltreWord + ' »)' : "L'infiltré"} l'emporte !`
+            });
+            return;
+          }
+
+          const updates = {
+            [`players/${mostVotedTag}/isAlive`]: false,
+            votingStartedAt: null,
+            status: 'playing'
+          };
+          players.forEach(p => { updates[`players/${p.tag}/votedFor`] = null; });
+          const next = nextImposteurTurn(
+            { ...data, players: { ...data.players, [mostVotedTag]: { ...eliminatedPlayer, isAlive: false } } },
+            0,
+            1
+          );
+          updates.currentTurnIndex = next.index || 0;
+          updates.currentRound = 1;
+
+          imposteurRef().update(updates);
+          sendTableChat(`❌ ${eliminatedPlayer.nickname} était un Complice innocent ! La manche continue...`);
+        });
+      }, false);
+    }
+
+    /* ---------------- CHAT DE LA TABLE & MESSAGERIE FLOTTANTE ---------------- */
+    function listenToTableChat() {
+      const boxRoom = document.getElementById('imposteurTableChatMessages');
+      const boxFloat = document.getElementById('floatingTableMessages');
+      if (imposteurChatQuery) imposteurChatQuery.off();
+      imposteurChatQuery = imposteurRef('chat').limitToLast(40);
+      imposteurChatQuery.on('value', snap => {
+        const msgs = snap.val() ? Object.values(snap.val()) : [];
+        const html = msgs.length
+          ? msgs.map(m => `<div><strong class="font-black text-[#12131a]">${escapeHtml(m.author)} :</strong> <span class="text-slate-700 font-bold">${escapeHtml(m.text)}</span></div>`).join('')
+          : `<p class="text-xs font-bold text-slate-400 text-center py-6">Aucun message dans le salon pour l'instant.</p>`;
+        boxRoom.innerHTML = html;
+        boxRoom.scrollTop = boxRoom.scrollHeight;
+        boxFloat.innerHTML = html;
+        boxFloat.scrollTop = boxFloat.scrollHeight;
+      });
+    }
+
+    function handleSendTableChatMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('tableChatInput');
+      const text = input.value.trim();
+      if (!text || !currentUser) return;
+      sendTableChat(text, currentUser.nickname);
+      input.value = '';
+    }
+
+    function handleSendFloatingTableChat(e) {
+      e.preventDefault();
+      const input = document.getElementById('floatingTableInput');
+      const text = input.value.trim();
+      if (!text || !currentUser) return;
+      if (!imposteurRoomId) {
+        showToast('Rejoins ou crée une salle pour parler au salon !', '⚠️');
+        return;
+      }
+      sendTableChat(text, currentUser.nickname);
+      input.value = '';
+    }
+
+    function sendTableChat(text, author = 'Système') {
+      if (!imposteurRoomId) return;
+      db.ref(`rooms_imposteur/${imposteurRoomId}/chat`).push({
+        author,
+        text,
+        timestamp: Date.now()
+      });
+    }
+
+    function toggleFloatingChat() {
+      floatingChatOpen = !floatingChatOpen;
+      const drawer = document.getElementById('floatingChatDrawer');
+      const badge = document.getElementById('chatUnreadBadge');
+      if (floatingChatOpen) {
+        drawer.classList.remove('hidden');
+        badge.classList.add('hidden');
+      } else {
+        drawer.classList.add('hidden');
+      }
+    }
+
+    function switchFloatingChatTab(tab) {
+      activeFloatingTab = tab;
+      const btnPromo = document.getElementById('tabChatPromo');
+      const btnTable = document.getElementById('tabChatTable');
+      const panelPromo = document.getElementById('floatingPromoChatPanel');
+      const panelTable = document.getElementById('floatingTableChatPanel');
+
+      if (tab === 'promo') {
+        btnPromo.className = 'neo-btn bg-[#12131a] text-white px-3 py-1 rounded-xl text-xs font-black';
+        btnTable.className = 'bg-white/80 hover:bg-white text-[#12131a] border-2 border-[#12131a] px-3 py-1 rounded-xl text-xs font-black transition-all';
+        panelPromo.classList.remove('hidden');
+        panelTable.classList.add('hidden');
+      } else {
+        btnTable.className = 'neo-btn bg-[#12131a] text-white px-3 py-1 rounded-xl text-xs font-black';
+        btnPromo.className = 'bg-white/80 hover:bg-white text-[#12131a] border-2 border-[#12131a] px-3 py-1 rounded-xl text-xs font-black transition-all';
+        panelTable.classList.remove('hidden');
+        panelTable.classList.add('flex');
+        panelPromo.classList.add('hidden');
+      }
+    }
+
+    function listenToFloatingPromoChat() {
+      const container = document.getElementById('floatingPromoMessages');
+      db.ref('chat').limitToLast(35).on('value', snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+          container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-8">Aucun message pour le moment.</p>`;
+          return;
+        }
+
+        if (initialChatLoaded && !floatingChatOpen) {
+          document.getElementById('chatUnreadBadge').classList.remove('hidden');
+        }
+        initialChatLoaded = true;
+
+        const messages = Object.values(data).reverse();
+        container.innerHTML = messages.map(m => {
+          if (m.isSystem) {
+            return `
+              <div class="text-center py-0.5">
+                <span class="text-[10px] font-mono font-bold bg-[#edf0f8] border border-[#12131a] px-2 py-0.5 rounded-full">${escapeHtml(m.text)}</span>
+              </div>
+            `;
+          }
+          if (m.isInvite) {
+            const isImpo = m.internalGame && (m.internalGame.toUpperCase() === 'IMPOSTEUR' || m.internalGame.toUpperCase() === 'UNDERCOVER');
+            const code = safeRoomCode(m.internalRoom);
+            return `
+              <div class="neo-box-sm bg-[#fed72d] p-2.5 text-[#12131a] space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-black">${m.authorAvatar || '🍺'} ${escapeHtml(m.authorNick)}</span>
+                  <span class="text-[9px] font-mono font-bold">${m.time || ''}</span>
+                </div>
+                <div class="bg-white border-2 border-[#12131a] p-2 rounded-xl">
+                  <div class="font-black text-[11px] text-[#12131a]">🎮 ${escapeHtml(m.gameTitle)}</div>
+                  <p class="text-[10px] font-bold text-slate-600 italic mb-1.5">« ${escapeHtml(m.text)} »</p>
+                  ${isImpo && code ? `
+                    <button type="button" onclick="enterImposteurRoom('${code}'); toggleFloatingChat();" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-[11px]">
+                      Rejoindre ${code} ➔
+                    </button>
+                  ` : `
+                    <a href="index.html" class="block text-center w-full neo-btn bg-[#fed72d] text-[#12131a] py-1 rounded-lg text-[11px] no-underline">
+                      Voir sur l'accueil ↗
+                    </a>
+                  `}
+                </div>
+              </div>
+            `;
+          }
+          return `
+            <div class="neo-box-sm bg-white p-2">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-[11px] font-black text-[#12131a]">${m.authorAvatar || '🍺'} ${escapeHtml(m.authorNick)}</span>
+                <span class="text-[9px] font-mono font-bold text-slate-400">${m.time || ''}</span>
+              </div>
+              <p class="text-xs font-bold text-slate-800 break-words">${escapeHtml(m.text)}</p>
+            </div>
+          `;
+        }).join('');
+      });
+    }
+
+    function handleSendPromoChat(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+      const input = document.getElementById('floatingPromoInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      db.ref('chat').push({
+        authorNick: currentUser.nickname,
+        authorTag: currentUser.tag,
+        authorAvatar: currentUser.avatarEmoji || '🍺',
+        authorFlag: currentUser.flagEmoji || '🇫🇷',
+        isInvite: false,
+        text: text,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      });
+      input.value = '';
+    }
+
+    /* ---------------- MODALES RÈGLES & MOTS PROMO ---------------- */
+    function openRulesModal() {
+      document.getElementById('modalRules').classList.remove('hidden');
+    }
+    function closeRulesModal() {
+      document.getElementById('modalRules').classList.add('hidden');
+    }
+    function openCustomWordsModal() {
+      document.getElementById('modalCustomWords').classList.remove('hidden');
+    }
+    function closeCustomWordsModal() {
+      document.getElementById('modalCustomWords').classList.add('hidden');
+    }
+
+    function addCustomWordPairToPromo() {
+      const w1 = document.getElementById('inputCustomWord1').value.trim();
+      const w2 = document.getElementById('inputCustomWord2').value.trim();
+      if (!w1 || !w2) {
+        showToast('Remplis bien les 2 mots de la paire !', '⚠️');
+        return;
+      }
+
+      db.ref('promo_words').push({
+        complice: w1,
+        infiltre: w2,
+        addedBy: currentUser ? currentUser.nickname : 'Promo'
+      });
+
+      document.getElementById('inputCustomWord1').value = '';
+      document.getElementById('inputCustomWord2').value = '';
+      closeCustomWordsModal();
+      showToast('Nouvelle paire ajoutée à la boîte à mots de la promo !', '✨');
+    }
+
+    /* ---------------- UTILITAIRES ---------------- */
+    function showToast(msg, icon = '💬') {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMsg').textContent = msg;
+      document.getElementById('toastIcon').textContent = icon;
+
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 3200);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
