@@ -12,13 +12,15 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
 
+  <!-- Firebase SDK Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="app.js" defer></script>
 </head>
 <body class="flex flex-col min-h-screen">
 
-  <!-- ================= AUTH OVERLAY =================e -->
+  <!-- ================= AUTH OVERLAY (CONNEXION / INSCRIPTION) ================= -->
   <div id="authOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 relative max-h-[95vh] overflow-y-auto custom-scrollbar">
       
@@ -34,59 +36,72 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-5">
+      <!-- Bouton Google Rapide -->
+      <button type="button" onclick="handleGoogleSignIn()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-3 mb-4">
+        <svg class="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Continuer avec Google</span>
+      </button>
+
+      <div class="flex items-center my-4">
+        <div class="flex-grow border-t-2 border-slate-200"></div>
+        <span class="flex-shrink mx-3 text-[11px] font-mono font-bold text-slate-400 uppercase">ou avec email</span>
+        <div class="flex-grow border-t-2 border-slate-200"></div>
+      </div>
+
+      <!-- Switcher Connexion / Inscription -->
+      <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-4">
         <button type="button" onclick="switchAuthTab('login')" id="tabBtnLogin" class="neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl">Connexion</button>
         <button type="button" onclick="switchAuthTab('register')" id="tabBtnRegister" class="bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all">Inscription</button>
       </div>
 
-      <div class="p-3 bg-amber-50 border-2 border-amber-500 rounded-xl mb-4 text-[11px] font-bold text-amber-900 leading-tight">
-        ⚠️ <strong>Mot de passe jetable recommandé :</strong> Ne mets pas un mot de passe que tu utilises partout ! Mets un truc simple (ex : <code>1234</code>). Pas d'adresse courriel requise.
-      </div>
-
       <div id="authErrorBanner" class="hidden mb-4 p-3 bg-rose-50 border-2 border-rose-600 rounded-xl text-rose-700 text-xs font-bold"></div>
 
-      <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-3.5">
+      <!-- Formulaire Connexion E-mail -->
+      <form id="formLogin" onsubmit="handleEmailLogin(event)" class="space-y-3.5">
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Ton Tag *</label>
-          <div class="flex items-center">
-            <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
-            <input type="text" id="loginTag" required placeholder="sara" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
-          </div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Adresse e-mail</label>
+          <input type="email" id="loginEmail" required placeholder="nom@exemple.com" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
         </div>
 
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe *</label>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe</label>
           <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
         </div>
 
-        <button type="submit" id="btnSubmitLogin" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
+        <button type="submit" id="btnSubmitLogin" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2">
           <span>Se connecter</span>
           <span class="text-base">🔑</span>
         </button>
-
-        <p class="text-center text-xs text-slate-500 font-bold pt-2">
-          Pas encore inscrit ? 
-          <button type="button" onclick="switchAuthTab('register')" class="text-blue-600 underline font-black">Créer un compte</button>
-        </p>
       </form>
 
-      <form id="formRegister" onsubmit="handleRegister(event)" class="space-y-3.5 hidden">
+      <!-- Formulaire Inscription E-mail -->
+      <form id="formRegister" onsubmit="handleEmailRegister(event)" class="space-y-3 hidden">
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (mets ton vrai prénom dedans) *</label>
-          <input type="text" id="regNickname" required placeholder="Ex : Thomas S." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
+          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (ton vrai prénom) *</label>
+          <input type="text" id="regNickname" required placeholder="Ex : Thomas S." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
         </div>
 
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Tag unique (identifiant fixe) *</label>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Tag unique *</label>
           <div class="flex items-center">
             <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
-            <input type="text" id="regTag" required placeholder="thomas" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+            <input type="text" id="regTag" required placeholder="thomas" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] focus:outline-none focus:bg-white">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe (jetable, simple) *</label>
-          <input type="password" id="regPassword" required placeholder="Ex : 1234" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+          <label class="block text-xs font-black text-[#12131a] mb-1">Adresse e-mail *</label>
+          <input type="email" id="regEmail" required placeholder="nom@exemple.com" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+        </div>
+
+        <div>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe (6 car. min) *</label>
+          <input type="password" id="regPassword" minlength="6" required placeholder="Au moins 6 caractères" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
         </div>
 
         <div>
@@ -99,16 +114,61 @@
           <div class="flex flex-wrap gap-1.5" id="flagPickerReg"></div>
         </div>
 
-        <button type="submit" id="btnSubmitReg" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-sm flex items-center justify-center gap-2">
-          <span>Créer mon compte & Entrer</span>
+        <button type="submit" id="btnSubmitReg" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2">
+          <span>Créer mon compte</span>
           <span class="text-base">🚀</span>
         </button>
-
-        <p class="text-center text-xs text-slate-500 font-bold pt-2">
-          Déjà inscrit ? 
-          <button type="button" onclick="switchAuthTab('login')" class="text-blue-600 underline font-black">Me connecter</button>
-        </p>
       </form>
+
+    </div>
+  </div>
+
+  <!-- ================= ÉCRAN SALLE D'ATTENTE (PENDING APPROVAL) ================= -->
+  <div id="pendingOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative">
+      <div class="w-16 h-16 rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
+        ⏳
+      </div>
+      <h2 class="text-2xl font-black italic tracking-tight text-[#12131a] mb-2 uppercase">Compte en attente</h2>
+      <p class="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed mb-6">
+        Salut <span id="pendingUserNick" class="text-black font-black">Joueur</span> (<span id="pendingUserTag" class="font-mono text-indigo-600 font-black">@tag</span>) ! Ton inscription est bien enregistrée.<br><br>
+        Pour garantir la sécurité de la promo, un <strong>administrateur</strong> doit approuver ton accès. Cette page s'ouvrira <strong>automatiquement</strong> dès validation !
+      </p>
+
+      <div class="p-3 bg-amber-50 border-2 border-amber-400 rounded-xl text-[11px] font-bold text-amber-900 mb-6 flex items-center justify-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+        <span>En attente de confirmation en temps réel...</span>
+      </div>
+
+      <button onclick="logout()" class="neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] px-5 py-2.5 rounded-xl text-xs font-black">
+        Se déconnecter
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODALE MODÉRATION ADMIN ================= -->
+  <div id="modalAdmin" class="hidden fixed inset-0 z-50 bg-[#121422]/90 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-xl w-full p-6 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+      
+      <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🛡️</span>
+          <div>
+            <h3 class="text-lg font-black text-[#12131a] leading-none">Panneau d'Administration</h3>
+            <p class="text-[10px] font-mono text-slate-500 mt-0.5">Valider ou refuser les inscriptions à la promo</p>
+          </div>
+        </div>
+        <button onclick="closeAdminModal()" class="text-xl font-bold">✕</button>
+      </div>
+
+      <!-- Liste des demandes en attente -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-black uppercase text-slate-400 tracking-wider">Demandes en attente (<span id="adminPendingCount">0</span>)</h4>
+        
+        <div id="adminPendingList" class="space-y-2.5">
+          <p class="text-xs font-bold text-slate-400 italic py-4 text-center">Aucune demande en attente actuellement.</p>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -127,12 +187,20 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Bouton Admin (affiché uniquement pour role: 'admin') -->
+        <button id="navAdminBtn" onclick="openAdminModal()" class="hidden items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
+          <span>🛡️ Admin</span>
+          <span id="navAdminBadge" class="hidden bg-white text-rose-600 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">0</span>
+        </button>
+
+        <!-- Bouton En ligne / Membres -->
         <button onclick="openDirectoryFromNavbar()" title="Voir les membres connectés et inscrits" class="flex items-center gap-2 bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
           <span><span id="navOnlineCount">1</span> en ligne</span>
           <span class="hidden md:inline text-[10px] font-mono text-slate-500">/ <span id="navRegisteredCount">1</span> inscrits</span>
         </button>
 
+        <!-- Profil -->
         <button onclick="openProfileModal()" class="flex items-center gap-2 bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-1.5 rounded-2xl border-2 border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
           <span id="navUserEmojis" class="text-sm">🍺 🇫🇷</span>
           <div class="text-left leading-none">
@@ -207,8 +275,6 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          
-          <!-- Carte Morpion : Redirection vers dossier games/morpion/ -->
           <a href="games/morpion/" class="game-card">
             <div class="w-full h-32 bg-[#ffd166] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">⭕❌</span>
@@ -225,7 +291,6 @@
             </div>
           </a>
 
-          <!-- Carte L'Imposteur -->
           <a href="games/undercover/" class="game-card">
             <div class="w-full h-32 bg-[#00e599] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
@@ -246,7 +311,6 @@
               </div>
             </div>
           </a>
-
         </div>
       </div>
 
@@ -355,7 +419,6 @@
   <!-- ================= MODALE JEU EXTERNE ================= -->
   <div id="modalExternalGame" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-7 relative max-h-[92vh] overflow-y-auto custom-scrollbar">
-      
       <div class="flex items-center gap-3 mb-5">
         <span id="modalGameIcon" class="text-3xl">🕵️‍♂️</span>
         <h3 id="modalGameTitle" class="text-2xl font-black text-[#12131a] tracking-tight">Codenames</h3>
@@ -374,15 +437,13 @@
 
       <div class="space-y-3.5 mb-5">
         <h4 class="text-base font-black text-[#12131a]">2. Préviens tes camarades</h4>
-        
         <div>
           <label class="block text-xs font-black text-[#12131a] mb-1">Lien d'invitation</label>
-          <input type="text" id="modalInputRoomLink" placeholder="Colle ici le lien de ta partie..." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+          <input type="text" id="modalInputRoomLink" placeholder="Colle ici le lien..." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
         </div>
-
         <div>
           <label class="block text-xs font-black text-[#12131a] mb-1">Message (tu peux @tag tes potes)</label>
-          <input type="text" id="modalInputRoomMsg" placeholder="Ex : @promo on lance dans 2 min !" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#12131a] placeholder-slate-400 focus:outline-none focus:bg-white">
+          <input type="text" id="modalInputRoomMsg" placeholder="Ex : @promo on lance dans 2 min !" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
         </div>
       </div>
 
@@ -391,12 +452,10 @@
           <span>📣</span>
           <span>Annoncer dans le général</span>
         </button>
-
         <button onclick="closeExternalModal()" class="w-full neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-2.5 rounded-2xl text-xs">
           Fermer
         </button>
       </div>
-
     </div>
   </div>
 
@@ -410,12 +469,12 @@
 
       <form onsubmit="handleSaveProfile(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (avec ton prénom)</label>
+          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo</label>
           <input type="text" id="editNickname" required class="w-full bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a]">
         </div>
 
         <div>
-          <label class="block text-xs font-black text-slate-500 mb-1">Tag unique (non modifiable)</label>
+          <label class="block text-xs font-black text-slate-500 mb-1">Tag unique</label>
           <div class="flex items-center">
             <span class="bg-slate-200 border-y-2 border-l-2 border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
             <input type="text" id="editTag" disabled class="w-full bg-slate-100 border-2 border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-slate-500 cursor-not-allowed">
@@ -439,7 +498,7 @@
     </div>
   </div>
 
-  <!-- ================= TOAST ================= -->
+  <!-- ================= TOAST NOTIFICATION ================= -->
   <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-white border-[2.5px] border-[#12131a] shadow-[3px_4px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
     <span id="toastIcon">💬</span>
     <span id="toastMsg">Notification</span>
