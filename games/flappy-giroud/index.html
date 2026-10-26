@@ -21,36 +21,34 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script src="/shared/game-shell.js"></script>
 </head>
-<body class="bg-[#1d4ed8] text-[#12131a] flex flex-col min-h-screen pt-16 select-none items-center justify-center p-3 sm:p-5">
+<body class="bg-[#1d4ed8] text-[#12131a] flex flex-col min-h-screen pt-14 select-none items-center justify-center p-2 sm:p-4">
 
   <!-- ================= ÉCRAN D'ACCUEIL DU JEU ================= -->
-  <main id="viewLobby" class="flex-1 flex items-center justify-center w-full max-w-md py-6">
-    <div class="neo-box bg-white w-full p-6 sm:p-8 text-center">
+  <main id="viewLobby" class="flex-1 flex items-center justify-center w-full max-w-lg py-6">
+    <div class="neo-box bg-white w-full p-6 sm:p-8 text-center border-[3px] border-[#12131a] shadow-[4px_6px_0px_#12131a] rounded-2xl">
       
-      <!-- Visuel Giroud -->
-      <div class="w-28 h-28 mx-auto flex items-center justify-center mb-3">
-        <img id="lobbyGiroudImg" src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-contain drop-shadow-[3px_4px_0px_#12131a]" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
+      <div class="w-36 h-36 mx-auto flex items-center justify-center mb-4">
+        <img id="lobbyGiroudImg" src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-contain drop-shadow-[4px_6px_0px_#12131a]" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
       </div>
 
-      <h2 class="text-3xl font-black italic tracking-tight text-[#12131a] uppercase leading-none mb-1">
+      <h2 class="text-4xl font-black italic tracking-tight text-[#12131a] uppercase leading-none mb-2">
         FLAPPY GIROUD
       </h2>
-      <p class="text-xs font-bold text-slate-500 mb-5">
-        Mode horizontal panoramique : enchaîne les têtes et esquive les tuyaux !
+      <p class="text-xs sm:text-sm font-bold text-slate-500 mb-6">
+        Format panoramique grand écran : esquive les tuyaux en coup de tête !
       </p>
 
-      <!-- Badge Record Personnel -->
-      <div class="p-3 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl flex items-center justify-between mb-5 shadow-[2px_2px_0px_#12131a]">
+      <div class="p-3.5 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl flex items-center justify-between mb-6 shadow-[2px_3px_0px_#12131a]">
         <div class="flex items-center gap-2">
-          <span class="text-xl">🏆</span>
+          <span class="text-2xl">🏆</span>
           <span class="text-xs font-black text-slate-600 uppercase">Mon record :</span>
         </div>
-        <span id="lobbyPersonalRecord" class="font-mono text-sm font-black text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg">
+        <span id="lobbyPersonalRecord" class="font-mono text-base font-black text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-0.5 rounded-lg">
           0 pts
         </span>
       </div>
 
-      <button onclick="startGame()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 mb-3 shadow-[3px_4px_0px_#12131a]">
+      <button onclick="startGame()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-4 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2 mb-3 shadow-[3px_4px_0px_#12131a]">
         <span>⚽</span>
         <span>Coup d'envoi (Jouer)</span>
       </button>
@@ -62,61 +60,61 @@
     </div>
   </main>
 
-  <!-- ================= PLATEAU DE JEU HORIZONTAL ================= -->
-  <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center w-full max-w-4xl py-2">
+  <!-- ================= PLATEAU GRAND ÉCRAN ================= -->
+  <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center w-full max-w-6xl py-1">
     
-    <!-- En-tête de la manche -->
-    <div class="w-full flex items-center justify-between mb-2 px-1">
-      <button onclick="exitToLobby()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3.5 py-1.5 rounded-xl text-xs font-black">
+    <!-- En-tête -->
+    <div class="w-full flex items-center justify-between mb-2.5 px-2">
+      <button onclick="exitToLobby()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2 rounded-xl text-xs sm:text-sm font-black shadow-[2px_2px_0px_#12131a]">
         ← Menu
       </button>
 
-      <div class="flex items-center gap-2.5">
-        <span class="text-xs font-mono font-black bg-white border-2 border-[#12131a] px-3 py-1 rounded-xl shadow-[2px_2px_0px_#12131a]">
+      <div class="flex items-center gap-3">
+        <span class="text-xs sm:text-sm font-mono font-black bg-white border-2 border-[#12131a] px-3.5 py-1.5 rounded-xl shadow-[2px_2px_0px_#12131a]">
           Record : <strong id="inGameRecord" class="text-indigo-600">0</strong>
         </span>
-        <span class="text-xs font-mono font-black bg-[#fed72d] border-2 border-[#12131a] px-3.5 py-1 rounded-xl shadow-[2px_2px_0px_#12131a]">
+        <span class="text-xs sm:text-sm font-mono font-black bg-[#fed72d] border-2 border-[#12131a] px-4 py-1.5 rounded-xl shadow-[2px_2px_0px_#12131a]">
           Score : <strong id="inGameScore">0</strong>
         </span>
       </div>
     </div>
 
-    <!-- Conteneur Canvas Horizontal avec ratio d'aspect -->
-    <div id="canvasWrapper" class="relative w-full max-w-[800px]">
-      <canvas id="flappyCanvas" width="800" height="450" class="w-full h-auto border-[3px] border-[#12131a] rounded-2xl shadow-[4px_6px_0px_#12131a] bg-[#70c5ce] block"></canvas>
+    <!-- Conteneur Canvas XXL -->
+    <div id="canvasWrapper" class="relative w-full">
+      <canvas id="flappyCanvas" width="1200" height="640" class="w-full h-auto border-[3px] border-[#12131a] rounded-2xl shadow-[5px_7px_0px_#12131a] bg-[#70c5ce] block"></canvas>
 
       <!-- Overlay Prêt à jouer -->
-      <div id="startOverlay" class="absolute inset-0 bg-black/20 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none">
-        <div class="bg-white border-[2.5px] border-[#12131a] px-5 py-3.5 rounded-2xl shadow-[3px_4px_0px_#12131a] animate-pulse">
-          <p class="font-black text-sm text-[#12131a]">ESPACE ou CLIC</p>
-          <p class="text-[11px] font-bold text-slate-500 mt-0.5">pour donner un coup de tête !</p>
+      <div id="startOverlay" class="absolute inset-0 bg-black/25 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none">
+        <div class="bg-white border-[3px] border-[#12131a] px-6 py-4 rounded-2xl shadow-[4px_5px_0px_#12131a] animate-pulse">
+          <p class="font-black text-base sm:text-lg text-[#12131a]">ESPACE ou CLIC</p>
+          <p class="text-xs font-bold text-slate-500 mt-0.5">pour t'envoler en douceur !</p>
         </div>
       </div>
 
       <!-- Overlay Fin de match -->
-      <div id="gameOverOverlay" class="hidden absolute inset-0 bg-[#121422]/85 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 text-center">
-        <div class="neo-box bg-white max-w-sm w-full p-6 text-center border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] rounded-2xl">
-          <div class="text-3xl mb-1">🛑</div>
-          <h3 class="text-xl font-black italic tracking-tight text-rose-600 uppercase mb-3 leading-none">
+      <div id="gameOverOverlay" class="hidden absolute inset-0 bg-[#121422]/85 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 text-center z-20">
+        <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center border-[3px] border-[#12131a] shadow-[5px_7px_0px_#12131a] rounded-2xl">
+          <div class="text-4xl mb-1">🛑</div>
+          <h3 class="text-2xl font-black italic tracking-tight text-rose-600 uppercase mb-4 leading-none">
             Fin de match !
           </h3>
 
-          <div class="bg-slate-50 border-2 border-[#12131a] rounded-xl p-3 mb-4 space-y-1">
-            <div class="flex justify-between text-xs font-black">
+          <div class="bg-slate-50 border-[2.5px] border-[#12131a] rounded-xl p-4 mb-4 space-y-2">
+            <div class="flex justify-between items-center text-sm font-black">
               <span class="text-slate-500 uppercase">Score :</span>
-              <span id="finalScore" class="text-base text-[#12131a] font-mono font-black">0</span>
+              <span id="finalScore" class="text-xl text-[#12131a] font-mono font-black">0</span>
             </div>
-            <div class="flex justify-between text-xs font-black pt-1 border-t border-slate-200">
+            <div class="flex justify-between items-center text-sm font-black pt-2 border-t border-slate-200">
               <span class="text-slate-500 uppercase">Meilleur record :</span>
-              <span id="finalBest" class="text-indigo-600 font-mono font-black">0 pts</span>
+              <span id="finalBest" class="text-indigo-600 font-mono font-black text-lg">0 pts</span>
             </div>
           </div>
 
-          <div id="newRecordBanner" class="hidden mb-3 py-1 bg-amber-100 border-2 border-amber-400 rounded-lg text-amber-900 text-[11px] font-black uppercase animate-bounce">
+          <div id="newRecordBanner" class="hidden mb-4 py-2 bg-amber-100 border-2 border-amber-400 rounded-xl text-amber-900 text-xs font-black uppercase animate-bounce">
             🎉 Nouveau record personnel !
           </div>
 
-          <button onclick="restartGame()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+          <button onclick="restartGame()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-xl text-sm font-black shadow-[3px_4px_0px_#12131a]">
             Rejouer (Espace) ⚽
           </button>
         </div>
@@ -125,12 +123,12 @@
 
   </div>
 
-  <!-- ================= LOGIQUE DU JEU ================= -->
+  <!-- ================= MOTEUR DE JEU ================= -->
   <script>
     const canvas = document.getElementById('flappyCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Chargement des images
+    // Images
     const giroudImg = new Image();
     giroudImg.src = '/games/flappy-giroud/giroud.png';
     let imgLoaded = false;
@@ -141,32 +139,31 @@
     let fondLoaded = false;
     fondImg.onload = () => {
       fondLoaded = true;
-      // Calibre la hauteur du canvas sur le ratio exact de l'image de fond
       if (fondImg.naturalWidth && fondImg.naturalHeight) {
         const ratio = fondImg.naturalHeight / fondImg.naturalWidth;
         canvas.height = Math.round(canvas.width * ratio);
       }
     };
 
-    // État du jeu
+    // État
     let gameState = 'LOBBY';
     let personalBest = 0;
     let score = 0;
     let animationFrameId = null;
     let bgScrollX = 0;
 
-    // Physique lente et aérienne
-    const GRAVITY = 0.16;
-    const JUMP_FORCE = -4.1;
-    const PIPE_WIDTH = 62;
-    const GROUND_HEIGHT = 38;
+    // Physique ultra ralentie et flottante
+    const GRAVITY = 0.085;
+    const JUMP_FORCE = -3.1;
+    const PIPE_WIDTH = 84;
+    const GROUND_HEIGHT = 42;
 
-    // Giroud (tête agrandie sans aucun rond)
+    // Tête de Giroud doublée (130 px visuels, hitbox 34 px)
     let player = {
-      x: 130,
-      y: 200,
-      visualSize: 66,
-      hitboxRadius: 18,
+      x: 180,
+      y: 260,
+      visualSize: 130,
+      hitboxRadius: 34,
       velocity: 0,
       rotation: 0
     };
@@ -174,20 +171,17 @@
     let pipes = [];
     let frameCount = 0;
 
-    // Initialisation du GameShell commun
     GameShell.init({
       gameId: 'flappy-giroud',
       gameTitle: 'Flappy Giroud',
       rulesHtml: `
-        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour t'élever en coup de tête.</p>
-        <p>• <strong>Objectif :</strong> Franchis les tuyaux horizontaux sans heurter les obstacles, le plafond ou la pelouse.</p>
-        <p>• <strong>Échauffement (0 à 15 pts) :</strong> Vitesse lente et trajectoires douces.</p>
+        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour flotter vers le haut.</p>
+        <p>• <strong>Physique :</strong> La chute est très douce et ralentie pour permettre des esquives précises.</p>
         <p>• <strong>Mode rouge (30+ pts) :</strong> Des tuyaux rouges mobiles oscillent de haut en bas.</p>
-        <p>• <strong>Classement :</strong> Ton score maximal est automatiquement sauvegardé dans le classement de la promo !</p>
+        <p>• <strong>Classement :</strong> Ton meilleur record est automatiquement enregistré dans le classement général de la promo !</p>
       `
     });
 
-    // Chargement du record personnel depuis Firebase
     auth.onAuthStateChanged(async (user) => {
       if (!user) return;
       const snap = await db.ref(`users/${user.uid}`).once('value');
@@ -255,23 +249,23 @@
       document.getElementById('startOverlay').classList.add('hidden');
     }
 
-    // Paramètres progressifs sur la largeur
+    // Ouvertures élargies adaptées à la grande tête
     function getDifficultyParams(currentScore) {
-      let gap = 150;
-      let speed = 1.6;
+      let gap = 250;
+      let speed = 1.65;
       let redProb = 0;
 
       if (currentScore >= 50) {
-        gap = 132;
-        speed = 2.1;
+        gap = 220;
+        speed = 2.2;
         redProb = 0.65;
       } else if (currentScore >= 30) {
-        gap = 138;
-        speed = 1.9;
+        gap = 230;
+        speed = 1.95;
         redProb = 0.25 + (currentScore - 30) * 0.015;
       } else if (currentScore >= 16) {
-        gap = 144;
-        speed = 1.75;
+        gap = 240;
+        speed = 1.8;
         redProb = 0;
       }
 
@@ -281,8 +275,8 @@
     function spawnPipe() {
       const { gap, redProb } = getDifficultyParams(score);
       const isRed = score >= 30 && (Math.random() < redProb);
-      const minTop = 45;
-      const maxTop = canvas.height - GROUND_HEIGHT - gap - 45;
+      const minTop = 50;
+      const maxTop = canvas.height - GROUND_HEIGHT - gap - 50;
       const topHeight = Math.floor(minTop + Math.random() * (maxTop - minTop));
 
       pipes.push({
@@ -292,7 +286,7 @@
         passed: false,
         isRed: isRed,
         oscillationAngle: Math.random() * Math.PI * 2,
-        oscillationSpeed: 0.028
+        oscillationSpeed: 0.024
       });
     }
 
@@ -302,16 +296,14 @@
       frameCount++;
       const { speed } = getDifficultyParams(score);
 
-      // Défilement continu du décor horizontal
-      bgScrollX = (bgScrollX - speed * 0.4) % canvas.width;
+      bgScrollX = (bgScrollX - speed * 0.35) % canvas.width;
 
-      // Gravité lente
+      // Descente lente
       player.velocity += GRAVITY;
       player.y += player.velocity;
-      player.rotation = Math.min(Math.PI / 6, Math.max(-Math.PI / 7, player.velocity * 0.08));
+      player.rotation = Math.min(Math.PI / 7, Math.max(-Math.PI / 8, player.velocity * 0.06));
 
-      // Intervalle d'apparition sur plan large (800 px)
-      const spawnInterval = Math.max(140, Math.floor(190 - score * 0.5));
+      const spawnInterval = Math.max(160, Math.floor(210 - score * 0.5));
       if (frameCount % spawnInterval === 0) {
         spawnPipe();
       }
@@ -322,8 +314,8 @@
 
         if (p.isRed) {
           p.oscillationAngle += p.oscillationSpeed;
-          p.topHeight += Math.sin(p.oscillationAngle) * 1.1;
-          p.topHeight = Math.max(35, Math.min(canvas.height - GROUND_HEIGHT - p.gap - 35, p.topHeight));
+          p.topHeight += Math.sin(p.oscillationAngle) * 1.2;
+          p.topHeight = Math.max(40, Math.min(canvas.height - GROUND_HEIGHT - p.gap - 40, p.topHeight));
         }
 
         if (!p.passed && p.x + PIPE_WIDTH < player.x) {
@@ -332,12 +324,11 @@
           document.getElementById('inGameScore').textContent = score;
         }
 
-        if (p.x + PIPE_WIDTH < -30) {
+        if (p.x + PIPE_WIDTH < -40) {
           pipes.splice(i, 1);
           continue;
         }
 
-        // Hitbox centrée sur la tête
         const bottomPipeY = p.topHeight + p.gap;
         const playerBox = {
           left: player.x - player.hitboxRadius,
@@ -356,7 +347,6 @@
         }
       }
 
-      // Collision sol ou plafond
       if (player.y + player.hitboxRadius >= canvas.height - GROUND_HEIGHT || player.y - player.hitboxRadius <= 0) {
         triggerGameOver();
       }
@@ -393,57 +383,54 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Fond paysage horizontal en boucle
       if (fondLoaded) {
         ctx.drawImage(fondImg, bgScrollX, 0, canvas.width, canvas.height);
         ctx.drawImage(fondImg, bgScrollX + canvas.width, 0, canvas.width, canvas.height);
       } else {
-        ctx.fillStyle = '#70c5ce';
+        ctx.fillStyle = '#101528';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Tuyaux néo-brutalistes
+      // Tuyaux
       pipes.forEach(p => {
-        const pipeColor = p.isRed ? '#ef4444' : '#22c55e';
-        const capColor = p.isRed ? '#b91c1c' : '#15803d';
+        const pipeColor = p.isRed ? '#ef4444' : '#15803d';
+        const capColor = p.isRed ? '#b91c1c' : '#166534';
 
-        // Tuyau Haut
+        // Tuyau haut
         ctx.fillStyle = pipeColor;
         ctx.strokeStyle = '#12131a';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3.5;
         ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topHeight);
         ctx.strokeRect(p.x, -2, PIPE_WIDTH, p.topHeight + 2);
 
-        // Chapeau Haut
         ctx.fillStyle = capColor;
-        ctx.fillRect(p.x - 3, p.topHeight - 20, PIPE_WIDTH + 6, 20);
-        ctx.strokeRect(p.x - 3, p.topHeight - 20, PIPE_WIDTH + 6, 20);
+        ctx.fillRect(p.x - 4, p.topHeight - 26, PIPE_WIDTH + 8, 26);
+        ctx.strokeRect(p.x - 4, p.topHeight - 26, PIPE_WIDTH + 8, 26);
 
-        // Tuyau Bas
+        // Tuyau bas
         const bottomY = p.topHeight + p.gap;
         const bottomHeight = canvas.height - GROUND_HEIGHT - bottomY;
         ctx.fillStyle = pipeColor;
         ctx.fillRect(p.x, bottomY, PIPE_WIDTH, bottomHeight);
         ctx.strokeRect(p.x, bottomY, PIPE_WIDTH, bottomHeight + 5);
 
-        // Chapeau Bas
         ctx.fillStyle = capColor;
-        ctx.fillRect(p.x - 3, bottomY, PIPE_WIDTH + 6, 20);
-        ctx.strokeRect(p.x - 3, bottomY, PIPE_WIDTH + 6, 20);
+        ctx.fillRect(p.x - 4, bottomY, PIPE_WIDTH + 8, 26);
+        ctx.strokeRect(p.x - 4, bottomY, PIPE_WIDTH + 8, 26);
       });
 
-      // Pelouse / Ligne de sol
-      ctx.fillStyle = '#ded895';
+      // Sol
+      ctx.fillStyle = '#27272a';
       ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
       ctx.strokeStyle = '#12131a';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.strokeRect(-2, canvas.height - GROUND_HEIGHT, canvas.width + 4, GROUND_HEIGHT + 4);
 
-      ctx.fillStyle = '#65a30d';
+      ctx.fillStyle = '#3f3f46';
       ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, 8);
       ctx.strokeRect(-2, canvas.height - GROUND_HEIGHT, canvas.width + 4, 8);
 
-      // Tête de Giroud dessinée directement (aucun cercle jaune autour)
+      // Tête de Giroud agrandie x2 sans cercle
       ctx.save();
       ctx.translate(player.x, player.y);
       ctx.rotate(player.rotation);
@@ -452,7 +439,7 @@
         const size = player.visualSize;
         ctx.drawImage(giroudImg, -size / 2, -size / 2, size, size);
       } else {
-        ctx.font = '36px sans-serif';
+        ctx.font = '54px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('⚽', 0, 0);
@@ -468,7 +455,6 @@
       animationFrameId = requestAnimationFrame(renderLoop);
     }
 
-    // Commandes
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault();
