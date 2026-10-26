@@ -31,14 +31,14 @@ const INTERNAL_GAMES = {
   morpion: {
     id: 'morpion',
     title: 'Morpion',
-    icon: '⭕❌',
+    icon: '⭕',
     bg: '#ffd166',
     path: 'games/morpion/'
   },
   undercover: {
     id: 'undercover',
     title: "L'Imposteur",
-    icon: '🕵️‍♂️🎭',
+    icon: '🕵️‍♂️',
     bg: '#00e599',
     path: 'games/undercover/'
   }
