@@ -17,6 +17,7 @@ const db = firebase.database();
 
 const ADMIN_EMAILS = ['sayaralex@gmail.com'];
 const STORAGE_FAVS = 'imb_favs_v4';
+const STORAGE_RECENTS = 'imb_recent_internal_games';
 
 const AVATAR_EMOJIS = ['🍺', '🍷', '👑', '🗿', '🎆', '💩', '🎲', '⚡'];
 const FLAG_EMOJIS = [
@@ -24,6 +25,24 @@ const FLAG_EMOJIS = [
   '🇺🇸', '🇨🇦',
   '🇯🇵', '🇹🇭', '🇮🇳'
 ];
+
+/* Répertoire des Jeux IMB (Internes) */
+const INTERNAL_GAMES = {
+  morpion: {
+    id: 'morpion',
+    title: 'Morpion',
+    icon: '⭕❌',
+    bg: '#ffd166',
+    path: 'games/morpion/'
+  },
+  undercover: {
+    id: 'undercover',
+    title: "L'Imposteur",
+    icon: '🕵️‍♂️🎭',
+    bg: '#00e599',
+    path: 'games/undercover/'
+  }
+};
 
 const GAMES_CATALOG = [
   {
@@ -126,13 +145,13 @@ let soundMuted = false;
 let initialChatTimestamp = Date.now();
 let lastNotifiedMsgKey = null;
 
-/* ---------------- DÉMARRAGE & SURVEILLANCE SESSION ---------------- */
+/* ---------------- DÉMARRAGE ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
   renderPickers();
   renderGamesCatalog();
+  renderRecentGames();
 
   auth.onAuthStateChanged(async (firebaseUser) => {
-    // Si une inscription est en cours de traitement, laisser la fonction d'inscription finaliser
     if (isRegisteringProcess) return;
 
     const authOverlay = document.getElementById('authOverlay');
@@ -154,7 +173,6 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 1. Vérifier si l'utilisateur existe dans la base
     const snap = await db.ref(`users/${firebaseUser.uid}`).once('value');
     if (!snap.exists()) {
       await auth.signOut();
@@ -162,7 +180,6 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 2. Écouter les données du profil en temps réel
     if (userListenerRef) userListenerRef.off();
     userListenerRef = db.ref(`users/${firebaseUser.uid}`);
     
@@ -175,7 +192,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
       currentUser = userData;
 
-      // 3. Vérification de l'e-mail (sauf pour Google qui est déjà vérifié)
       const isGoogle = firebaseUser.providerData.some(p => p.providerId === 'google.com');
       if (!isGoogle && !firebaseUser.emailVerified) {
         authOverlay.classList.add('hidden');
@@ -188,7 +204,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
       verifyEmailOverlay.classList.add('hidden');
 
-      // 4. Vérification du statut d'approbation
       if (currentUser.status === 'rejected') {
         authOverlay.classList.add('hidden');
         pendingOverlay.classList.add('hidden');
@@ -206,7 +221,6 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 5. Compte approuvé : entrée dans le portail
       authOverlay.classList.add('hidden');
       pendingOverlay.classList.add('hidden');
       rejectedOverlay.classList.add('hidden');
@@ -216,6 +230,7 @@ window.addEventListener('DOMContentLoaded', () => {
       listenToUsersAndPresence();
       listenToLiveChat();
       listenToUndercoverLiveActivity();
+      renderRecentGames();
 
       if (currentUser.role === 'admin') {
         setupAdminWatcher();
@@ -232,7 +247,68 @@ function updateUserUI() {
   document.getElementById('heroGreeting').textContent = `SALUT ${currentUser.nickname} !`;
 }
 
-/* ---------------- CONNEXIONS (PAS DE CRÉATION AUTOMATIQUE) ---------------- */
+/* =========================================================
+   GESTION DU MENU REPRENDRE (PARTIES RÉCENTES)
+   ========================================================= */
+function trackGameLaunch(gameId) {
+  if (!INTERNAL_GAMES[gameId]) return;
+
+  let recents = JSON.parse(localStorage.getItem(STORAGE_RECENTS) || '[]');
+  // Supprime l'entrée si déjà présente pour la remonter en tête
+  recents = recents.filter(item => item.id !== gameId);
+  recents.unshift({
+    id: gameId,
+    timestamp: Date.now()
+  });
+
+  // Conserve au maximum les six derniers jeux
+  localStorage.setItem(STORAGE_RECENTS, JSON.stringify(recents.slice(0, 6)));
+}
+
+function formatRelativeTime(timestamp) {
+  const diffSec = Math.floor((Date.now() - timestamp) / 1000);
+  if (diffSec < 60) return "Joué à l'instant";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Joué il y a ${diffMin} min`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `Joué il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Joué il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+}
+
+function renderRecentGames() {
+  const container = document.getElementById('recentGamesContainer');
+  const section = document.getElementById('sectionReprendre');
+  if (!container || !section) return;
+
+  const recents = JSON.parse(localStorage.getItem(STORAGE_RECENTS) || '[]');
+  const validRecents = recents.filter(r => INTERNAL_GAMES[r.id]);
+
+  if (validRecents.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  container.innerHTML = validRecents.map(item => {
+    const game = INTERNAL_GAMES[item.id];
+    const timeLabel = formatRelativeTime(item.timestamp);
+
+    return `
+      <a href="${game.path}" onclick="trackGameLaunch('${game.id}')" class="flex-shrink-0 bg-white border-[3px] border-[#12131a] rounded-2xl p-2.5 sm:p-3 flex items-center gap-3 shadow-[3px_4px_0px_#12131a] hover:-translate-y-1 hover:shadow-[4px_6px_0px_#12131a] transition-all min-w-[210px] sm:min-w-[240px]">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl border-2 border-[#12131a] flex-shrink-0 shadow-[1px_2px_0px_#12131a]" style="background-color: ${game.bg};">
+          ${game.icon}
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 class="font-black text-sm text-[#12131a] truncate leading-tight">${game.title}</h4>
+          <span class="text-[11px] font-bold text-slate-400 block mt-0.5 truncate">${timeLabel}</span>
+        </div>
+      </a>
+    `;
+  }).join('');
+}
+
+/* ---------------- CONNEXIONS ---------------- */
 async function handleGoogleLogin() {
   hideAuthError();
   const provider = new firebase.auth.GoogleAuthProvider();
@@ -273,7 +349,7 @@ async function handleEmailLogin(e) {
   }
 }
 
-/* ---------------- INSCRIPTIONS AVEC PROFIL COMPLET ---------------- */
+/* ---------------- INSCRIPTIONS ---------------- */
 async function handleGoogleRegister() {
   hideAuthError();
   const nickname = document.getElementById('regNickname').value.trim();
@@ -296,7 +372,6 @@ async function handleGoogleRegister() {
     const provider = new firebase.auth.GoogleAuthProvider();
     const res = await auth.signInWithPopup(provider);
     
-    // Vérifier si ce compte Google n'était pas déjà inscrit
     const userSnap = await db.ref(`users/${res.user.uid}`).once('value');
     if (userSnap.exists()) {
       isRegisteringProcess = false;
@@ -358,8 +433,12 @@ async function handleEmailRegister(e) {
 
     const res = await auth.createUserWithEmailAndPassword(email, password);
 
-    // Envoi immédiat de l'e-mail d'activation
-    await res.user.sendEmailVerification();
+    try {
+      await res.user.sendEmailVerification();
+      showToast("E-mail de confirmation envoyé ! Regarde tes spams.", "📬");
+    } catch (mailErr) {
+      console.error("Erreur e-mail :", mailErr);
+    }
 
     const isAdmin = ADMIN_EMAILS.includes(email);
     const newUser = {
@@ -375,7 +454,6 @@ async function handleEmailRegister(e) {
     };
 
     await db.ref(`users/${res.user.uid}`).set(newUser);
-    showToast("E-mail de confirmation envoyé !", "📬");
   } catch (err) {
     showAuthError("Erreur : " + err.message);
   } finally {
@@ -403,7 +481,7 @@ async function resendVerificationEmail() {
     await auth.currentUser.sendEmailVerification();
     showToast("Nouveau lien envoyé !", "📬");
   } catch (err) {
-    showToast("Attends quelques instants avant de renvoyer un e-mail.", "⏳");
+    showToast("Patiente quelques instants avant de renvoyer un e-mail.", "⏳");
   }
 }
 
@@ -450,7 +528,7 @@ function hideAuthError() {
 }
 
 /* =========================================================
-   PANNEAU DE MODÉRATION ADMIN (ACCEPTER / REFUSER)
+   PANNEAU DE MODÉRATION ADMIN
    ========================================================= */
 let pendingUsersList = [];
 
@@ -832,16 +910,15 @@ function listenToUndercoverLiveActivity() {
 /* ---------------- JEU ALÉATOIRE ---------------- */
 function pickRandomGame() {
   const externalGames = GAMES_CATALOG.map(g => ({ type: 'external', id: g.id, title: g.title }));
-  const allGames = [
-    { type: 'internal', path: 'games/morpion/', title: 'Morpion' },
-    { type: 'internal', path: 'games/undercover/', title: "L'Imposteur (Undercover)" }
-  ].concat(externalGames);
+  const internalList = Object.values(INTERNAL_GAMES).map(g => ({ type: 'internal', path: g.path, id: g.id, title: g.title }));
+  const allGames = internalList.concat(externalGames);
 
   const chosen = allGames[Math.floor(Math.random() * allGames.length)];
   showToast(`La roulette a choisi : ${chosen.title} ! 🎲`, '🎰');
 
   setTimeout(() => {
     if (chosen.type === 'internal') {
+      trackGameLaunch(chosen.id);
       window.location.href = chosen.path;
     } else {
       openExternalGameModal(chosen.id);
@@ -945,8 +1022,10 @@ function safeRoomCode(code) {
 function openInternalInvite(game, code) {
   if (!currentUser || !code) return;
   if (game === 'MORPION') {
+    trackGameLaunch('morpion');
     window.location.href = `games/morpion/#room=${code}`;
   } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
+    trackGameLaunch('undercover');
     window.location.href = `games/undercover/#imposteur=${code}`;
   }
 }
