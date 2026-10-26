@@ -454,11 +454,12 @@ function listenToUndercoverLiveActivity() {
 
 /* ---------------- JEU ALÉATOIRE ---------------- */
 function pickRandomGame() {
+  const externalGames = GAMES_CATALOG.map(g => ({ type: 'external', id: g.id, title: g.title }));
   const allGames = [
     { type: 'internal', path: 'games/morpion/', title: 'Morpion' },
     { type: 'internal', path: 'games/undercover/', title: "L'Imposteur (Undercover)" }
-    ...GAMES_CATALOG.map(g => ({ type: 'external', id: g.id, title: g.title }))
-  ];
+  ].concat(externalGames);
+
   const chosen = allGames[Math.floor(Math.random() * allGames.length)];
   showToast(`La roulette a choisi : ${chosen.title} ! 🎲`, '🎰');
 
