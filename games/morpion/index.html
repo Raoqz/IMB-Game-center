@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morpion - IMB Game Center</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../style.css">
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- Script commun du Hub -->
+  <script src="../../shared/game-shell.js"></script>
+</head>
+<body class="flex flex-col min-h-screen pt-16 select-none">
+
+  <!-- ================= ACCUEIL DU JEU (CRÉER / REJOINDRE) ================= -->
+  <main id="viewLobby" class="flex-1 flex flex-col items-center justify-center p-4">
+    
+    <div class="text-center mb-6">
+      <div class="text-6xl sm:text-7xl mb-2 drop-shadow-[2px_3px_0px_#12131a]">⭕❌</div>
+      <h2 class="text-4xl sm:text-5xl font-black italic tracking-tighter text-white uppercase drop-shadow-[2px_3px_0px_rgba(0,0,0,0.6)]">
+        MORPION
+      </h2>
+      <p class="text-white font-bold text-xs sm:text-sm mt-1 opacity-95 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)]">
+        Aligne 3 symboles avant ton adversaire !
+      </p>
+    </div>
+
+    <div class="neo-box bg-white max-w-sm w-full p-6 text-center">
+      <p class="text-xs font-bold text-slate-600 mb-4">
+        Salut <span id="shellUserNick" class="text-black font-black">Joueur</span> 👋 Crée une salle ou rejoins un pote.
+      </p>
+
+      <button onclick="handleCreateRoom()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 mb-4">
+        <span>🎲</span>
+        <span>Créer une salle</span>
+      </button>
+
+      <div class="flex items-center my-3">
+        <div class="flex-grow border-t-2 border-slate-200"></div>
+        <span class="flex-shrink mx-2 text-[10px] font-mono font-bold text-slate-400 uppercase">ou</span>
+        <div class="flex-grow border-t-2 border-slate-200"></div>
+      </div>
+
+      <div class="flex gap-2">
+        <input type="text" id="shellInputRoomCode" maxlength="4" placeholder="CODE" class="flex-1 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-center text-xs font-mono font-black uppercase tracking-widest focus:outline-none focus:bg-white">
+        <button onclick="handleJoinRoom()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2 rounded-xl text-xs font-black">
+          Rejoindre
+        </button>
+      </div>
+
+      <button onclick="GameShell.openRules()" class="w-full mt-4 text-[11px] font-bold text-slate-500 hover:text-black underline flex items-center justify-center gap-1">
+        <span>📖</span>
+        <span>Les règles</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ================= PLATEAU DE JEU 1v1 ================= -->
+  <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center p-4">
+    
+    <div class="neo-box bg-white max-w-sm w-full p-5 flex flex-col items-center">
+      
+      <!-- Barre d'état de la salle -->
+      <div class="w-full flex items-center justify-between pb-3 mb-3 border-b-2 border-slate-200">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-mono font-bold bg-[#fed72d] border border-[#12131a] px-2 py-0.5 rounded-lg shadow-[1px_1px_0px_#12131a]" id="gameRoomCodeDisplay">SALLE</span>
+        </div>
+        <div id="gameStatusBadge" class="text-[11px] font-bold text-amber-600 animate-pulse">
+          En attente d'un adversaire...
+        </div>
+      </div>
+
+      <!-- Joueurs en duel -->
+      <div class="w-full grid grid-cols-2 gap-2 mb-4">
+        <div id="boxPlayerX" class="p-2 rounded-xl border-2 border-transparent bg-slate-50 flex items-center gap-2">
+          <span class="text-xl">❌</span>
+          <div class="min-w-0">
+            <span id="namePlayerX" class="text-xs font-black truncate block text-slate-400">Joueur 1</span>
+            <span class="text-[9px] font-mono font-bold text-blue-600 block">Symbole X</span>
+          </div>
+        </div>
+
+        <div id="boxPlayerO" class="p-2 rounded-xl border-2 border-transparent bg-slate-50 flex items-center gap-2">
+          <span class="text-xl">⭕</span>
+          <div class="min-w-0">
+            <span id="namePlayerO" class="text-xs font-black truncate block text-slate-400">En attente</span>
+            <span class="text-[9px] font-mono font-bold text-rose-600 block">Symbole O</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indicateur de tour -->
+      <div id="turnIndicator" class="mb-4 neo-btn bg-[#fed72d] text-[#12131a] px-4 py-1.5 rounded-full text-xs font-black">
+        Tour de X
+      </div>
+
+      <!-- Grille de Morpion (3x3) -->
+      <div id="morpionGrid" class="grid grid-cols-3 gap-2.5 mb-5">
+        <!-- Généré dynamiquement -->
+      </div>
+
+      <!-- Rejouer -->
+      <button id="btnRestart" onclick="handleRestartGame()" class="hidden w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2.5 rounded-xl text-xs font-black">
+        Rejouer une manche
+      </button>
+
+    </div>
+
+  </div>
+
+  <script>
+    let localBoard = Array(9).fill('');
+    let localTurn = 'X';
+    let isGameOver = false;
+
+    // 1. Initialisation du Shell avec les règles du jeu
+    GameShell.init({
+      gameId: 'morpion',
+      gameTitle: 'Morpion',
+      rulesHtml: `
+        <p>• Le Morpion se joue à 2 joueurs sur une grille de 3x3 cases.</p>
+        <p>• Le premier joueur utilise les <strong>❌</strong>, le second les <strong>⭕</strong>.</p>
+        <p>• Le joueur qui parvient à aligner <strong>3 de ses symboles</strong> horizontalement, verticalement ou en diagonale remporte immédiatement la partie.</p>
+        <p>• Si la grille est remplie sans vainqueur, la partie se termine par un match nul.</p>
+        <p>• Chaque victoire rapporte <strong>+1 point</strong> au classement général de la promo !</p>
+      `,
+      onPlayerJoined: (roomData) => {
+        document.getElementById('namePlayerX').textContent = roomData.playerX ? roomData.playerX.nickname : '...';
+        if (roomData.playerO) {
+          document.getElementById('namePlayerO').textContent = roomData.playerO.nickname;
+          document.getElementById('gameStatusBadge').textContent = 'Partie en cours';
+          document.getElementById('gameStatusBadge').className = 'text-[11px] font-bold text-emerald-600';
+        }
+      },
+      onStateUpdate: (state, roomData) => {
+        localBoard = state.board || Array(9).fill('');
+        localTurn = state.turn || 'X';
+        isGameOver = Boolean(state.winner);
+
+        renderBoard();
+        updateTurnDisplay(roomData);
+
+        if (state.winner) {
+          document.getElementById('btnRestart').classList.remove('hidden');
+          if (state.winner === 'draw') {
+            document.getElementById('turnIndicator').textContent = "Match nul ! 🤝";
+          } else {
+            const winnerNick = state.winner === 'X' ? roomData.playerX.nickname : roomData.playerO.nickname;
+            document.getElementById('turnIndicator').textContent = `Victoire de ${winnerNick} ! 🎉`;
+          }
+        } else {
+          document.getElementById('btnRestart').classList.add('hidden');
+        }
+      }
+    });
+
+    async function handleCreateRoom() {
+      const code = await GameShell.createRoom();
+      showGameView(code);
+    }
+
+    async function handleJoinRoom() {
+      const code = document.getElementById('shellInputRoomCode').value;
+      if (!code || code.length !== 4) {
+        alert("Entre un code de 4 lettres !");
+        return;
+      }
+      const ok = await GameShell.joinRoom(code);
+      if (ok) showGameView(code);
+    }
+
+    function showGameView(code) {
+      document.getElementById('viewLobby').classList.add('hidden');
+      document.getElementById('viewGame').classList.remove('hidden');
+      document.getElementById('gameRoomCodeDisplay').textContent = `SALLE : ${code}`;
+      renderBoard();
+    }
+
+    function renderBoard() {
+      const container = document.getElementById('morpionGrid');
+      container.innerHTML = localBoard.map((val, idx) => `
+        <button onclick="handleCellClick(${idx})" class="w-20 h-20 sm:w-24 sm:h-24 bg-white border-[3px] border-[#12131a] rounded-2xl flex items-center justify-center text-4xl font-black shadow-[2px_3px_0px_#12131a] active:translate-x-0.5 active:translate-y-0.5 transition-transform ${val === 'X' ? 'text-blue-600' : 'text-rose-600'}">
+          ${val}
+        </button>
+      `).join('');
+    }
+
+    function updateTurnDisplay(roomData) {
+      if (isGameOver) return;
+      const ind = document.getElementById('turnIndicator');
+      const isMyTurn = (GameShell.myRole === localTurn);
+
+      ind.textContent = isMyTurn ? "C'est ton tour !" : `Tour de ${localTurn}...`;
+      ind.className = isMyTurn 
+        ? "mb-4 neo-btn bg-[#fed72d] text-[#12131a] px-4 py-1.5 rounded-full text-xs font-black animate-pulse"
+        : "mb-4 neo-btn bg-slate-100 text-slate-500 px-4 py-1.5 rounded-full text-xs font-bold";
+
+      document.getElementById('boxPlayerX').style.borderColor = (localTurn === 'X') ? '#12131a' : 'transparent';
+      document.getElementById('boxPlayerO').style.borderColor = (localTurn === 'O') ? '#12131a' : 'transparent';
+    }
+
+    function handleCellClick(idx) {
+      if (isGameOver || localBoard[idx]) return;
+
+      if (GameShell.myRole !== localTurn) {
+        alert(`Ce n'est pas ton tour ! Tu as les ${GameShell.myRole === 'X' ? '❌' : '⭕'}.`);
+        return;
+      }
+
+      localBoard[idx] = GameShell.myRole;
+      const winner = checkWinner(localBoard);
+      const nextTurn = localTurn === 'X' ? 'O' : 'X';
+
+      if (winner) {
+        GameShell.updateGameState({
+          board: localBoard,
+          turn: nextTurn,
+          winner: winner
+        });
+        // Enregistrer dans la base de données scores/morpion/<tag>
+        GameShell.recordResult(winner);
+      } else if (localBoard.every(c => c)) {
+        GameShell.updateGameState({
+          board: localBoard,
+          turn: nextTurn,
+          winner: 'draw'
+        });
+        GameShell.recordResult('draw');
+      } else {
+        GameShell.updateGameState({
+          board: localBoard,
+          turn: nextTurn
+        });
+      }
+    }
+
+    function checkWinner(b) {
+      const lines = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+      for (let [x, y, z] of lines) {
+        if (b[x] && b[x] === b[y] && b[x] === b[z]) return b[x];
+      }
+      return null;
+    }
+
+    function handleRestartGame() {
+      GameShell.updateGameState({
+        board: Array(9).fill(''),
+        turn: 'X',
+        winner: null
+      });
+    }
+  </script>
+</body>
+</html>
