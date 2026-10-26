@@ -242,7 +242,7 @@
           <span class="text-2xl">🏆</span>
           <div>
             <h3 id="modalLeaderboardGameTitle" class="text-base font-black text-[#12131a] uppercase leading-none">Classement</h3>
-            <span class="text-[10px] font-mono text-slate-500">Palmarès des victoires</span>
+            <span class="text-[10px] font-mono text-slate-500">Palmarès global</span>
           </div>
         </div>
         <button onclick="closeLobbyLeaderboard()" class="text-xl font-bold hover:opacity-75">✕</button>
@@ -383,7 +383,7 @@
         </h3>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         
         <!-- CARTE MORPION -->
         <div class="game-card flex flex-col justify-between">
@@ -398,13 +398,11 @@
               <h4 class="text-lg font-black text-[#12131a]">Morpion (Tic-Tac-Toe)</h4>
               <p class="text-xs font-bold text-slate-500 mt-1 mb-3">Défie un camarade en local ou en créant une salle en ligne.</p>
 
-              <!-- ENCART TOP 3 DU CLASSEMENT -->
               <div class="border-2 border-dashed border-amber-300 bg-[#fffbeb] rounded-2xl p-2.5 space-y-1.5 mb-3" id="morpionTop3Box">
                 <div class="text-[10px] font-bold text-slate-400 italic text-center py-2">Chargement du Top 3...</div>
               </div>
             </div>
           </div>
-
           <div class="p-4 pt-0 flex items-center justify-between gap-2">
             <a href="/games/morpion/index.html" onclick="trackGameLaunch('morpion')" id="btnLaunchMorpion" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
               <span>Jouer</span>
@@ -429,11 +427,38 @@
             </div>
           </div>
           <div class="p-4 pt-0 flex items-center justify-between gap-2">
-            <a href="games/undercover/" onclick="trackGameLaunch('undercover')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+            <a href="/games/undercover/" onclick="trackGameLaunch('undercover')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
               <span>Jouer</span>
               <span>↗</span>
             </a>
             <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
+          </div>
+        </div>
+
+        <!-- CARTE FLAPPY GIROUD (NOUVEAU) -->
+        <div class="game-card flex flex-col justify-between">
+          <div>
+            <div class="w-full h-32 bg-[#fed72d] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
+              <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">⚽</span>
+              <span id="flappyActiveRoomBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#fed72d] border-2 border-[#fed72d] text-[10px] font-mono font-black px-2 py-0.5 rounded-full animate-pulse">
+                ⮌ En cours
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-lg font-black text-[#12131a]">Flappy Giroud</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1 mb-3">Bats ton propre record en évitant les tuyaux sur la route du but !</p>
+
+              <div class="border-2 border-dashed border-amber-300 bg-[#fffbeb] rounded-2xl p-2.5 space-y-1.5 mb-3" id="flappyTop3Box">
+                <div class="text-[10px] font-bold text-slate-400 italic text-center py-2">Chargement du Top 3...</div>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <a href="/games/flappy-giroud/index.html" onclick="trackGameLaunch('flappy-giroud')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+              <span>Jouer</span>
+              <span>↗</span>
+            </a>
+            <span class="text-[11px] font-mono font-black text-slate-600">Solo</span>
           </div>
         </div>
 
