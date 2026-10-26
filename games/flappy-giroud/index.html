@@ -35,7 +35,7 @@
         FLAPPY GIROUD
       </h2>
       <p class="text-xs sm:text-sm font-bold text-slate-500 mb-6">
-        Format panoramique : esquive les tuyaux en coup de tête !
+        Format grand écran : esquive les tuyaux Mario en coup de tête !
       </p>
 
       <div class="p-3.5 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl flex items-center justify-between mb-6 shadow-[2px_3px_0px_#12131a]">
@@ -75,7 +75,7 @@
       </div>
     </div>
 
-    <!-- Canvas avec score en direct au centre supérieur -->
+    <!-- Conteneur Canvas avec Score en direct flottant -->
     <div id="canvasWrapper" class="relative w-full">
       <div id="liveScoreHud" class="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none flex items-center gap-2 bg-[#fed72d] border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] px-6 py-2 rounded-2xl">
         <span class="text-2xl">⚽</span>
@@ -87,7 +87,7 @@
       <div id="startOverlay" class="absolute inset-0 bg-black/25 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none z-10">
         <div class="bg-white border-[3px] border-[#12131a] px-6 py-4 rounded-2xl shadow-[4px_5px_0px_#12131a] animate-pulse">
           <p class="font-black text-base sm:text-lg text-[#12131a]">ESPACE ou CLIC</p>
-          <p class="text-xs font-bold text-slate-500 mt-0.5">pour t'envoler !</p>
+          <p class="text-xs font-bold text-slate-500 mt-0.5">pour donner un coup de tête !</p>
         </div>
       </div>
 
@@ -148,12 +148,15 @@
     let score = 0;
     let animationFrameId = null;
 
+    // Physique
     const GRAVITY = 0.088;
-    const JUMP_FORCE = -3.2;
-    const PIPE_WIDTH = 80;
+    const JUMP_FORCE = -3.25;
+    const PIPE_WIDTH = 82;
+    const COLLAR_MARGIN = 7;
+    const COLLAR_HEIGHT = 28;
     const GROUND_HEIGHT = 42;
 
-    // Tête de Giroud réduite de 20 % (104 px visuels, hitbox à 25 px)
+    // Tête de Giroud (-20% : 104px)
     let player = {
       x: 180,
       y: 260,
@@ -164,15 +167,17 @@
     };
 
     let pipes = [];
+    let particles = [];
     let frameCount = 0;
 
     GameShell.init({
       gameId: 'flappy-giroud',
       gameTitle: 'Flappy Giroud',
       rulesHtml: `
-        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour t'envoler en coup de tête.</p>
+        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour planer vers le haut.</p>
+        <p>• <strong>Poteaux rapprochés :</strong> Les tuyaux s'enchaînent rapidement, anticipe tes trajectoires !</p>
         <p>• <strong>Mode rouge (15+ pts) :</strong> Des tuyaux rouges mobiles apparaissent dès 15 points et oscillent verticalement.</p>
-        <p>• <strong>Classement :</strong> Seul ton score record est enregistré dans le palmarès général de la promo !</p>
+        <p>• <strong>Classement :</strong> Ton meilleur score est automatiquement enregistré dans le classement général de la promo !</p>
       `
     });
 
@@ -218,13 +223,31 @@
       player.velocity = 0;
       player.rotation = 0;
       pipes = [];
+      particles = [];
       score = 0;
       frameCount = 0;
       document.getElementById('inGameScore').textContent = '0';
       document.getElementById('newRecordBanner').classList.add('hidden');
 
-      // Premier tuyau placé plus proche (x: 620 au lieu d'attendre 1200)
-      spawnPipe(620);
+      // Pré-génération de tuyaux rapprochés dès le départ
+      spawnPipe(480);
+      spawnPipe(760);
+    }
+
+    // Particules de saut sous la tête
+    function spawnJumpParticles() {
+      const count = 7;
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: player.x + (Math.random() - 0.5) * 26,
+          y: player.y + player.visualSize * 0.32 + (Math.random() * 6),
+          vx: (Math.random() - 0.5) * 2.2 - 0.6,
+          vy: Math.random() * 1.6 + 0.8,
+          radius: Math.random() * 4.5 + 3.5,
+          alpha: 0.9,
+          decay: 0.04
+        });
+      }
     }
 
     function flap() {
@@ -232,8 +255,10 @@
         gameState = 'PLAYING';
         document.getElementById('startOverlay').classList.add('hidden');
         player.velocity = JUMP_FORCE;
+        spawnJumpParticles();
       } else if (gameState === 'PLAYING') {
         player.velocity = JUMP_FORCE;
+        spawnJumpParticles();
       } else if (gameState === 'GAMEOVER') {
         restartGame();
       }
@@ -246,23 +271,22 @@
       document.getElementById('startOverlay').classList.add('hidden');
     }
 
-    // Paramètres : ouvertures verticales agrandies (225 px) et tuyaux rouges dès 15 pts
     function getDifficultyParams(currentScore) {
       let gap = 225;
-      let speed = 2.0;
+      let speed = 2.05;
       let redProb = 0;
 
       if (currentScore >= 50) {
-        gap = 190;
-        speed = 2.5;
+        gap = 195;
+        speed = 2.55;
         redProb = 0.60;
       } else if (currentScore >= 30) {
-        gap = 200;
-        speed = 2.3;
+        gap = 205;
+        speed = 2.35;
         redProb = 0.35 + (currentScore - 30) * 0.012;
       } else if (currentScore >= 15) {
-        gap = 210;
-        speed = 2.15;
+        gap = 215;
+        speed = 2.2;
         redProb = 0.20 + (currentScore - 15) * 0.01;
       }
 
@@ -272,8 +296,8 @@
     function spawnPipe(customX) {
       const { gap, redProb } = getDifficultyParams(score);
       const isRed = score >= 15 && (Math.random() < redProb);
-      const minTop = 50;
-      const maxTop = canvas.height - GROUND_HEIGHT - gap - 50;
+      const minTop = 55;
+      const maxTop = canvas.height - GROUND_HEIGHT - gap - 55;
       const topHeight = Math.floor(minTop + Math.random() * (maxTop - minTop));
 
       pipes.push({
@@ -297,12 +321,13 @@
       player.y += player.velocity;
       player.rotation = Math.min(Math.PI / 7, Math.max(-Math.PI / 8, player.velocity * 0.06));
 
-      // Espacement horizontal accru entre les tuyaux
-      const spawnInterval = Math.max(120, Math.floor(155 - score * 0.35));
+      // Cadence d'apparition rapprochée
+      const spawnInterval = Math.max(98, Math.floor(125 - score * 0.3));
       if (frameCount % spawnInterval === 0) {
         spawnPipe();
       }
 
+      // Mise à jour des tuyaux
       for (let i = pipes.length - 1; i >= 0; i--) {
         const p = pipes[i];
         p.x -= speed;
@@ -310,7 +335,7 @@
         if (p.isRed) {
           p.oscillationAngle += p.oscillationSpeed;
           p.topHeight += Math.sin(p.oscillationAngle) * 1.3;
-          p.topHeight = Math.max(40, Math.min(canvas.height - GROUND_HEIGHT - p.gap - 40, p.topHeight));
+          p.topHeight = Math.max(45, Math.min(canvas.height - GROUND_HEIGHT - p.gap - 45, p.topHeight));
         }
 
         if (!p.passed && p.x + PIPE_WIDTH < player.x) {
@@ -319,7 +344,7 @@
           document.getElementById('inGameScore').textContent = score;
         }
 
-        if (p.x + PIPE_WIDTH < -40) {
+        if (p.x + PIPE_WIDTH + COLLAR_MARGIN < -40) {
           pipes.splice(i, 1);
           continue;
         }
@@ -332,13 +357,25 @@
           bottom: player.y + player.hitboxRadius
         };
 
-        const inPipeX = playerBox.right > p.x && playerBox.left < p.x + PIPE_WIDTH;
+        const inPipeX = playerBox.right > p.x - COLLAR_MARGIN && playerBox.left < p.x + PIPE_WIDTH + COLLAR_MARGIN;
         const hitsTop = inPipeX && playerBox.top < p.topHeight;
         const hitsBottom = inPipeX && playerBox.bottom > bottomPipeY;
 
         if (hitsTop || hitsBottom) {
           triggerGameOver();
           return;
+        }
+      }
+
+      // Mise à jour des particules
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.radius *= 0.96;
+        pt.alpha -= pt.decay;
+        if (pt.alpha <= 0 || pt.radius <= 0.6) {
+          particles.splice(i, 1);
         }
       }
 
@@ -375,6 +412,85 @@
       });
     }
 
+    // Dégradé cylindrique Super Mario
+    function createMarioPipeGradient(x, width, isRed) {
+      const grad = ctx.createLinearGradient(x, 0, x + width, 0);
+      if (isRed) {
+        grad.addColorStop(0.0, '#ff9999');
+        grad.addColorStop(0.12, '#ffffff'); // Reflet lumineux
+        grad.addColorStop(0.25, '#ff4444');
+        grad.addColorStop(0.55, '#dc2626');
+        grad.addColorStop(0.85, '#991b1b');
+        grad.addColorStop(1.0, '#550707'); // Ombre profonde
+      } else {
+        grad.addColorStop(0.0, '#98ff98');
+        grad.addColorStop(0.12, '#ffffff'); // Reflet lumineux
+        grad.addColorStop(0.25, '#22c55e');
+        grad.addColorStop(0.55, '#16a34a');
+        grad.addColorStop(0.85, '#15803d');
+        grad.addColorStop(1.0, '#0a3d16'); // Ombre profonde
+      }
+      return grad;
+    }
+
+    function drawMarioPipe(x, y, width, height, isTop, isRed) {
+      const collarW = width + COLLAR_MARGIN * 2;
+      const collarX = x - COLLAR_MARGIN;
+      const bodyGrad = createMarioPipeGradient(x, width, isRed);
+      const collarGrad = createMarioPipeGradient(collarX, collarW, isRed);
+
+      ctx.save();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#12131a';
+
+      if (isTop) {
+        // Tuyau haut : corps puis collerette en bas
+        const bodyH = Math.max(0, height - COLLAR_HEIGHT);
+        ctx.fillStyle = bodyGrad;
+        ctx.fillRect(x, 0, width, bodyH);
+        ctx.strokeRect(x, -2, width, bodyH + 2);
+
+        // Collerette
+        const collarY = height - COLLAR_HEIGHT;
+        ctx.fillStyle = collarGrad;
+        ctx.fillRect(collarX, collarY, collarW, COLLAR_HEIGHT);
+        ctx.strokeRect(collarX, collarY, collarW, COLLAR_HEIGHT);
+
+        // Lèvre intérieure sombre
+        ctx.fillStyle = isRed ? '#450a0a' : '#052e16';
+        ctx.fillRect(collarX + 4, height - 4, collarW - 8, 4);
+
+        // Ligne de brillance blanche Mario
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(x + width * 0.12, 0, 4, bodyH);
+        ctx.fillRect(collarX + collarW * 0.12, collarY, 5, COLLAR_HEIGHT - 3);
+      } else {
+        // Tuyau bas : collerette en haut puis corps
+        const collarY = y;
+        ctx.fillStyle = collarGrad;
+        ctx.fillRect(collarX, collarY, collarW, COLLAR_HEIGHT);
+        ctx.strokeRect(collarX, collarY, collarW, COLLAR_HEIGHT);
+
+        // Lèvre intérieure sombre
+        ctx.fillStyle = isRed ? '#450a0a' : '#052e16';
+        ctx.fillRect(collarX + 4, collarY, collarW - 8, 4);
+
+        // Corps
+        const bodyY = y + COLLAR_HEIGHT;
+        const bodyH = Math.max(0, height - COLLAR_HEIGHT);
+        ctx.fillStyle = bodyGrad;
+        ctx.fillRect(x, bodyY, width, bodyH);
+        ctx.strokeRect(x, bodyY, width, bodyH + 4);
+
+        // Ligne de brillance blanche Mario
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(collarX + collarW * 0.12, collarY + 3, 5, COLLAR_HEIGHT - 3);
+        ctx.fillRect(x + width * 0.12, bodyY, 4, bodyH);
+      }
+
+      ctx.restore();
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -386,35 +502,32 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Tuyaux
+      // Tuyaux Super Mario
       pipes.forEach(p => {
-        const pipeColor = p.isRed ? '#ef4444' : '#15803d';
-        const capColor = p.isRed ? '#b91c1c' : '#166534';
-
         // Tuyau haut
-        ctx.fillStyle = pipeColor;
-        ctx.strokeStyle = '#12131a';
-        ctx.lineWidth = 3.5;
-        ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topHeight);
-        ctx.strokeRect(p.x, -2, PIPE_WIDTH, p.topHeight + 2);
-
-        ctx.fillStyle = capColor;
-        ctx.fillRect(p.x - 4, p.topHeight - 26, PIPE_WIDTH + 8, 26);
-        ctx.strokeRect(p.x - 4, p.topHeight - 26, PIPE_WIDTH + 8, 26);
+        drawMarioPipe(p.x, 0, PIPE_WIDTH, p.topHeight, true, p.isRed);
 
         // Tuyau bas
         const bottomY = p.topHeight + p.gap;
         const bottomHeight = canvas.height - GROUND_HEIGHT - bottomY;
-        ctx.fillStyle = pipeColor;
-        ctx.fillRect(p.x, bottomY, PIPE_WIDTH, bottomHeight);
-        ctx.strokeRect(p.x, bottomY, PIPE_WIDTH, bottomHeight + 5);
-
-        ctx.fillStyle = capColor;
-        ctx.fillRect(p.x - 4, bottomY, PIPE_WIDTH + 8, 26);
-        ctx.strokeRect(p.x - 4, bottomY, PIPE_WIDTH + 8, 26);
+        drawMarioPipe(p.x, bottomY, PIPE_WIDTH, bottomHeight, false, p.isRed);
       });
 
-      // Sol
+      // Particules de saut
+      particles.forEach(pt => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pt.alpha);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#12131a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Sol néo-brutaliste
       ctx.fillStyle = '#27272a';
       ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
       ctx.strokeStyle = '#12131a';
