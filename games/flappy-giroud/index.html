@@ -24,10 +24,10 @@
 <body class="bg-[#1d4ed8] text-[#12131a] flex flex-col min-h-screen pt-16 select-none">
 
   <!-- ================= ÉCRAN D'ACCUEIL (LOBBY) ================= -->
-  <div id="viewLobby" class="flex-1 flex items-center justify-center p-4">
+  <div id="viewLobby" class="flex-1 flex items-center justify-center p-4 z-10 relative">
     <div class="neo-box bg-white max-w-md w-full p-8 text-center border-[3px] border-[#12131a] shadow-[4px_6px_0px_#12131a] rounded-2xl">
-      <div class="w-20 h-20 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-6">
-        ⚽
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-6 overflow-hidden">
+        <img src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
       </div>
       
       <h1 class="text-3xl font-black italic tracking-tight uppercase text-[#12131a] mb-2">Flappy Giroud</h1>
@@ -52,7 +52,7 @@
   </div>
 
   <!-- ================= ÉCRAN DE JEU ================= -->
-  <div id="viewGame" class="hidden flex-1 flex-col items-center justify-center p-4">
+  <div id="viewGame" class="hidden flex-1 flex-col items-center justify-center p-4 z-10 relative">
     <div class="w-full max-w-[400px] relative">
       <!-- Barre d'infos in-game -->
       <div class="flex items-center justify-between mb-3">
@@ -91,6 +91,14 @@
   </div>
 
   <script>
+    /* ================= CHARGEMENT DES IMAGES ================= */
+    const imgGiroud = new Image();
+    imgGiroud.src = '/games/flappy-giroud/giroud.png';
+    
+    const imgFond = new Image();
+    imgFond.src = '/games/flappy-giroud/fond.jpg';
+    let bgScrollX = 0; // Variable pour le défilement du fond
+
     /* ================= GESTION DES VUES & SESSION ================= */
     const viewLobby = document.getElementById('viewLobby');
     const viewGame = document.getElementById('viewGame');
@@ -104,7 +112,6 @@
     const GAME_ID = 'flappy-giroud';
 
     window.addEventListener('DOMContentLoaded', () => {
-      // Écouter Auth Firebase pour récupérer le record
       firebase.auth().onAuthStateChanged(user => {
         if (user) {
           firebase.database().ref(`users/${user.uid}`).once('value', snap => {
@@ -114,7 +121,6 @@
         }
       });
 
-      // Gestion de la reprise rapide
       if (localStorage.getItem(`imb_active_room_${GAME_ID}`)) {
         btnResumeActiveRoom.classList.remove('hidden');
         btnResumeActiveRoom.classList.add('flex');
@@ -171,13 +177,18 @@
       isGameOver: false
     };
 
+    // PHYISIQUE ADOUCIE : gravité réduite, impulsion (lift) ajustée
     const bird = {
-      x: 80, y: 300, radius: 14, velocity: 0, gravity: 0.35, lift: -6.5
+      x: 80, 
+      y: 300, 
+      radius: 16,     // Légèrement agrandi pour l'image
+      velocity: 0, 
+      gravity: 0.22,  // Plus lent (avant: 0.35)
+      lift: -5.2      // Impulsion adoucie en conséquence (avant: -6.5)
     };
     
     let pipes = [];
 
-    // Courbe de difficulté adaptative
     function getDifficulty(score) {
       if (score < 15) return { speed: 3, gap: 140, pipeFreq: 100, maxOsc: 0, redChance: 0 };
       if (score < 30) return { speed: 4, gap: 110, pipeFreq: 85, maxOsc: 0, redChance: 0 };
@@ -185,7 +196,6 @@
         speed: 4.5, gap: 95, pipeFreq: 75, maxOsc: 40, 
         redChance: Math.min(0.70, 0.25 + Math.floor((score - 30) / 5) * 0.05)
       };
-      // Mode Hardcore
       return { speed: 5, gap: 85, pipeFreq: 65, maxOsc: 75, redChance: 0.75 };
     }
 
@@ -195,6 +205,7 @@
       pipes = [];
       frames = 0;
       currentScore = 0;
+      bgScrollX = 0;
       scoreUI.textContent = "0";
       
       gameState.isPlaying = true;
@@ -221,8 +232,6 @@
     function spawnPipe() {
       const diff = getDifficulty(currentScore);
       const isRed = Math.random() < diff.redChance;
-      
-      // Marge pour s'assurer que les tuyaux restent dans l'écran malgré l'oscillation
       const margin = 50 + diff.maxOsc; 
       const topHeight = Math.max(margin, Math.random() * (canvas.height - diff.gap - (margin*2)) + margin);
       
@@ -252,6 +261,10 @@
       frames++;
       const diff = getDifficulty(currentScore);
       
+      // Vitesse de défilement du fond (Parallaxe)
+      bgScrollX -= (diff.speed * 0.5); 
+      if (bgScrollX <= -canvas.width) bgScrollX = 0;
+
       // Physique Bird
       bird.velocity += bird.gravity;
       bird.y += bird.velocity;
@@ -269,7 +282,6 @@
         let p = pipes[i];
         p.x -= diff.speed;
 
-        // Oscillation des tuyaux rouges
         let offsetY = 0;
         if (p.isRed) {
           p.oscAngle += 0.06;
@@ -279,7 +291,7 @@
         const currentTopBorder = p.topY + offsetY;
         const currentBottomBorder = p.topY + offsetY + p.gap;
 
-        // Hitbox rectangulaire autour de l'oiseau (cercle approché)
+        // Hitbox
         if (bird.x + bird.radius - 4 > p.x && bird.x - bird.radius + 4 < p.x + p.w) {
           if (bird.y - bird.radius + 4 < currentTopBorder || bird.y + bird.radius - 4 > currentBottomBorder) {
             triggerGameOver();
@@ -294,19 +306,25 @@
         }
       }
 
-      // Nettoyage tuyaux hors écran
       pipes = pipes.filter(p => p.x + p.w > 0);
     }
 
     function render() {
-      // Fond géré par le CSS du canvas (transparent = laisse voir le bleu)
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 1. Dessin du fond d'écran
+      if (imgFond.complete && imgFond.naturalHeight !== 0) {
+        // Dessin double pour créer une boucle infinie sans coupure
+        ctx.drawImage(imgFond, bgScrollX, 0, canvas.width, canvas.height);
+        ctx.drawImage(imgFond, bgScrollX + canvas.width, 0, canvas.width, canvas.height);
+      } else {
+        // Fallback si l'image ne charge pas : fond transparent (laissera voir le fond bleu CSS)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
 
-      // Dessin des tuyaux
+      // 2. Dessin des tuyaux
       for (let p of pipes) {
         let offsetY = p.isRed ? Math.sin(p.oscAngle) * getDifficulty(currentScore).maxOsc : 0;
         
-        ctx.fillStyle = p.isRed ? '#ef4444' : '#00e599'; // Rouge ou Vert
+        ctx.fillStyle = p.isRed ? '#ef4444' : '#00e599';
         ctx.lineWidth = 3;
         ctx.strokeStyle = '#12131a';
         
@@ -326,17 +344,24 @@
         ctx.strokeRect(p.x - 2, bottomY, p.w + 4, 20);
       }
 
-      // Dessin Bird (Tête de Giroud simulée par l'émoji ⚽)
-      ctx.font = "24px 'Plus Jakarta Sans'";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      
+      // 3. Dessin de Giroud
       ctx.save();
       ctx.translate(bird.x, bird.y);
       // Rotation selon la vélocité
-      let angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (bird.velocity * 0.1)));
+      let angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (bird.velocity * 0.12)));
       ctx.rotate(angle);
-      ctx.fillText('⚽', 0, 0);
+      
+      if (imgGiroud.complete && imgGiroud.naturalHeight !== 0) {
+        // Affiche l'image centrée (la taille d'affichage est légèrement plus grande que la hitbox pour que ce soit joli)
+        const renderSize = bird.radius * 2.8; 
+        ctx.drawImage(imgGiroud, -renderSize/2, -renderSize/2, renderSize, renderSize);
+      } else {
+        // Fallback émoji
+        ctx.font = "24px 'Plus Jakarta Sans'";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText('⚽', 0, 0);
+      }
       ctx.restore();
     }
 
@@ -363,10 +388,9 @@
               tag: currentUser.tag,
               avatarEmoji: currentUser.avatarEmoji,
               flagEmoji: currentUser.flagEmoji || '🇫🇷',
-              wins: currentScore // On utilise 'wins' pour que le tableau des scores général fonctionne
+              wins: currentScore
             });
             
-            // Confettis !
             if (typeof GameShell !== 'undefined' && GameShell.fireConfetti) {
               GameShell.fireConfetti();
             } else if (typeof confetti === 'function') {
