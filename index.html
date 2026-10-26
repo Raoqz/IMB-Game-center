@@ -36,94 +36,146 @@
         </div>
       </div>
 
-      <!-- Bouton Google Rapide -->
-      <button type="button" onclick="handleGoogleSignIn()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-3 mb-4">
-        <svg class="w-4 h-4" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-        </svg>
-        <span>Continuer avec Google</span>
-      </button>
-
-      <div class="flex items-center my-4">
-        <div class="flex-grow border-t-2 border-slate-200"></div>
-        <span class="flex-shrink mx-3 text-[11px] font-mono font-bold text-slate-400 uppercase">ou avec email</span>
-        <div class="flex-grow border-t-2 border-slate-200"></div>
-      </div>
-
       <!-- Switcher Connexion / Inscription -->
-      <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-4">
+      <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-5">
         <button type="button" onclick="switchAuthTab('login')" id="tabBtnLogin" class="neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl">Connexion</button>
         <button type="button" onclick="switchAuthTab('register')" id="tabBtnRegister" class="bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all">Inscription</button>
       </div>
 
-      <div id="authErrorBanner" class="hidden mb-4 p-3 bg-rose-50 border-2 border-rose-600 rounded-xl text-rose-700 text-xs font-bold"></div>
+      <!-- Bannière d'erreur -->
+      <div id="authErrorBanner" class="hidden mb-4 p-3 bg-rose-50 border-2 border-rose-600 rounded-xl text-rose-700 text-xs font-bold leading-relaxed"></div>
 
-      <!-- Formulaire Connexion E-mail -->
-      <form id="formLogin" onsubmit="handleEmailLogin(event)" class="space-y-3.5">
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Adresse e-mail</label>
-          <input type="email" id="loginEmail" required placeholder="nom@exemple.com" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
-        </div>
-
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe</label>
-          <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
-        </div>
-
-        <button type="submit" id="btnSubmitLogin" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2">
-          <span>Se connecter</span>
-          <span class="text-base">🔑</span>
+      <!-- ================= ONGLET 1 : CONNEXION ================= -->
+      <div id="authLoginContainer" class="space-y-4">
+        <!-- Connexion Google -->
+        <button type="button" onclick="handleGoogleLogin()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-3">
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Se connecter avec Google</span>
         </button>
-      </form>
 
-      <!-- Formulaire Inscription E-mail -->
-      <form id="formRegister" onsubmit="handleEmailRegister(event)" class="space-y-3 hidden">
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (ton vrai prénom) *</label>
-          <input type="text" id="regNickname" required placeholder="Ex : Thomas S." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+        <div class="flex items-center my-3">
+          <div class="flex-grow border-t-2 border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[11px] font-mono font-bold text-slate-400 uppercase">ou avec e-mail</span>
+          <div class="flex-grow border-t-2 border-slate-200"></div>
         </div>
 
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Tag unique *</label>
-          <div class="flex items-center">
-            <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
-            <input type="text" id="regTag" required placeholder="thomas" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] focus:outline-none focus:bg-white">
+        <form id="formLogin" onsubmit="handleEmailLogin(event)" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">Adresse e-mail</label>
+            <input type="email" id="loginEmail" required placeholder="nom@exemple.com" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
           </div>
-        </div>
 
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Adresse e-mail *</label>
-          <input type="email" id="regEmail" required placeholder="nom@exemple.com" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-        </div>
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe</label>
+            <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#fed72d]">
+          </div>
 
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe (6 car. min) *</label>
-          <input type="password" id="regPassword" minlength="6" required placeholder="Au moins 6 caractères" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-        </div>
+          <button type="submit" id="btnSubmitLogin" class="w-full mt-2 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2">
+            <span>Se connecter</span>
+            <span class="text-base">🔑</span>
+          </button>
+        </form>
+      </div>
 
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">1er Émoji (Avatar)</label>
-          <div class="flex flex-wrap gap-1.5" id="emojiPickerReg"></div>
-        </div>
+      <!-- ================= ONGLET 2 : INSCRIPTION ================= -->
+      <div id="authRegisterContainer" class="space-y-4 hidden">
+        <form id="formRegister" onsubmit="handleEmailRegister(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">Pseudo (ton vrai prénom) *</label>
+            <input type="text" id="regNickname" required placeholder="Ex : Thomas S." class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+          </div>
 
-        <div>
-          <label class="block text-xs font-black text-[#12131a] mb-1">2e Émoji (Drapeau)</label>
-          <div class="flex flex-wrap gap-1.5" id="flagPickerReg"></div>
-        </div>
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">Tag unique *</label>
+            <div class="flex items-center">
+              <span class="bg-[#e2e8f0] border-y-[2.5px] border-l-[2.5px] border-[#12131a] px-2.5 py-2 rounded-l-xl font-mono text-xs font-black text-slate-600">@</span>
+              <input type="text" id="regTag" required placeholder="thomas" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-r-xl px-3 py-2 text-xs font-mono font-bold text-[#12131a] focus:outline-none focus:bg-white">
+            </div>
+          </div>
 
-        <button type="submit" id="btnSubmitReg" class="w-full mt-3 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2">
-          <span>Créer mon compte</span>
-          <span class="text-base">🚀</span>
-        </button>
-      </form>
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">1er Émoji (Avatar)</label>
+            <div class="flex flex-wrap gap-1.5" id="emojiPickerReg"></div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">2e Émoji (Drapeau)</label>
+            <div class="flex flex-wrap gap-1.5" id="flagPickerReg"></div>
+          </div>
+
+          <!-- Inscription avec Google -->
+          <div class="pt-2">
+            <button type="button" onclick="handleGoogleRegister()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-3">
+              <svg class="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Créer mon compte avec Google</span>
+            </button>
+          </div>
+
+          <div class="flex items-center my-3">
+            <div class="flex-grow border-t-2 border-slate-200"></div>
+            <span class="flex-shrink mx-3 text-[11px] font-mono font-bold text-slate-400 uppercase">ou avec mot de passe</span>
+            <div class="flex-grow border-t-2 border-slate-200"></div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">Adresse e-mail *</label>
+            <input type="email" id="regEmail" placeholder="nom@exemple.com" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-[#12131a] mb-1">Mot de passe (6 car. min) *</label>
+            <input type="password" id="regPassword" minlength="6" placeholder="Au moins 6 caractères" class="w-full bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+          </div>
+
+          <button type="submit" id="btnSubmitReg" class="w-full mt-2 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2">
+            <span>Créer mon compte par e-mail</span>
+            <span class="text-base">🚀</span>
+          </button>
+        </form>
+      </div>
 
     </div>
   </div>
 
-  <!-- ================= ÉCRAN SALLE D'ATTENTE (PENDING APPROVAL) ================= -->
+  <!-- ================= ÉCRAN 1 : VÉRIFICATION D'E-MAIL REQUISE ================= -->
+  <div id="verifyEmailOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative">
+      <div class="w-16 h-16 rounded-3xl bg-indigo-100 border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4">
+        📬
+      </div>
+      <h2 class="text-2xl font-black italic tracking-tight text-[#12131a] mb-2 uppercase">Vérifie ton e-mail</h2>
+      <p class="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed mb-6">
+        Un e-mail d'activation a été envoyé à :<br>
+        <strong id="verifyUserEmail" class="text-indigo-600 font-mono text-xs">nom@exemple.com</strong>.<br><br>
+        Clique sur le lien reçu pour valider ton compte, puis appuie sur le bouton ci-dessous pour continuer.
+      </p>
+
+      <div class="space-y-2 mb-4">
+        <button onclick="checkEmailVerified()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black">
+          ✓ J'ai validé mon e-mail (Continuer)
+        </button>
+        <button onclick="resendVerificationEmail()" class="w-full neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] py-2 rounded-xl text-xs font-bold">
+          Renvoyer le lien de confirmation
+        </button>
+      </div>
+
+      <button onclick="logout()" class="text-xs font-bold text-slate-400 hover:text-black underline">
+        Se déconnecter
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= ÉCRAN 2 : SALLE D'ATTENTE (PENDING) ================= -->
   <div id="pendingOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative">
       <div class="w-16 h-16 rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
@@ -137,11 +189,28 @@
 
       <div class="p-3 bg-amber-50 border-2 border-amber-400 rounded-xl text-[11px] font-bold text-amber-900 mb-6 flex items-center justify-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
-        <span>En attente de confirmation en temps réel...</span>
+        <span>En attente de confirmation en direct...</span>
       </div>
 
       <button onclick="logout()" class="neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] px-5 py-2.5 rounded-xl text-xs font-black">
         Se déconnecter
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= ÉCRAN 3 : ACCÈS REFUSÉ (REJECTED) ================= -->
+  <div id="rejectedOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative border-rose-600">
+      <div class="w-16 h-16 rounded-3xl bg-rose-100 border-[3px] border-rose-600 shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4">
+        🚫
+      </div>
+      <h2 class="text-2xl font-black italic tracking-tight text-rose-600 mb-2 uppercase">Accès refusé</h2>
+      <p class="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed mb-6">
+        Désolé <span id="rejectedUserNick" class="text-black font-black">Joueur</span>, ta demande d'inscription n'a pas été retenue par les administrateurs de la promo.
+      </p>
+
+      <button onclick="logout()" class="neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] px-5 py-2.5 rounded-xl text-xs font-black">
+        Quitter
       </button>
     </div>
   </div>
@@ -161,7 +230,6 @@
         <button onclick="closeAdminModal()" class="text-xl font-bold">✕</button>
       </div>
 
-      <!-- Liste des demandes en attente -->
       <div class="space-y-3">
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-wider">Demandes en attente (<span id="adminPendingCount">0</span>)</h4>
         
@@ -187,20 +255,17 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3">
-        <!-- Bouton Admin (affiché uniquement pour role: 'admin') -->
         <button id="navAdminBtn" onclick="openAdminModal()" class="hidden items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
           <span>🛡️ Admin</span>
           <span id="navAdminBadge" class="hidden bg-white text-rose-600 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">0</span>
         </button>
 
-        <!-- Bouton En ligne / Membres -->
         <button onclick="openDirectoryFromNavbar()" title="Voir les membres connectés et inscrits" class="flex items-center gap-2 bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-full border-2 border-[#12131a] font-extrabold text-xs shadow-[2px_2px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
           <span><span id="navOnlineCount">1</span> en ligne</span>
           <span class="hidden md:inline text-[10px] font-mono text-slate-500">/ <span id="navRegisteredCount">1</span> inscrits</span>
         </button>
 
-        <!-- Profil -->
         <button onclick="openProfileModal()" class="flex items-center gap-2 bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-1.5 rounded-2xl border-2 border-[#12131a] font-black text-xs shadow-[2px_3px_0px_#12131a] transition-transform active:translate-x-0.5 active:translate-y-0.5">
           <span id="navUserEmojis" class="text-sm">🍺 🇫🇷</span>
           <div class="text-left leading-none">
