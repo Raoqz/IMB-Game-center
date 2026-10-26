@@ -110,6 +110,9 @@ const GAMES_CATALOG = [
 ];
 
 let currentUser = null;
+let userListenerRef = null;
+let isRegisteringProcess = false;
+
 let selectedAvatarReg = '🍺';
 let selectedFlagReg = '🇫🇷';
 let selectedAvatarEdit = '🍺';
@@ -123,71 +126,97 @@ let soundMuted = false;
 let initialChatTimestamp = Date.now();
 let lastNotifiedMsgKey = null;
 
-/* ---------------- DÉMARRAGE & SURVEILLANCE AUTHENTIFICATION ---------------- */
+/* ---------------- DÉMARRAGE & SURVEILLANCE SESSION ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
   renderPickers();
   renderGamesCatalog();
 
-  // Écouteur global de session Firebase Auth
   auth.onAuthStateChanged(async (firebaseUser) => {
+    // Si une inscription est en cours de traitement, laisser la fonction d'inscription finaliser
+    if (isRegisteringProcess) return;
+
     const authOverlay = document.getElementById('authOverlay');
+    const verifyEmailOverlay = document.getElementById('verifyEmailOverlay');
     const pendingOverlay = document.getElementById('pendingOverlay');
+    const rejectedOverlay = document.getElementById('rejectedOverlay');
 
     if (!firebaseUser) {
-      // Déconnecté
+      if (userListenerRef) {
+        userListenerRef.off();
+        userListenerRef = null;
+      }
       currentUser = null;
       authOverlay.classList.remove('hidden');
+      verifyEmailOverlay.classList.add('hidden');
       pendingOverlay.classList.add('hidden');
+      rejectedOverlay.classList.add('hidden');
       document.getElementById('navAdminBtn').classList.add('hidden');
       return;
     }
 
-    // Connecté : écouter son profil en temps réel dans Realtime Database
-    db.ref(`users/${firebaseUser.uid}`).on('value', async (snap) => {
-      let userData = snap.val();
+    // 1. Vérifier si l'utilisateur existe dans la base
+    const snap = await db.ref(`users/${firebaseUser.uid}`).once('value');
+    if (!snap.exists()) {
+      await auth.signOut();
+      showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
+      return;
+    }
 
-      // Si c'est sa toute première connexion
+    // 2. Écouter les données du profil en temps réel
+    if (userListenerRef) userListenerRef.off();
+    userListenerRef = db.ref(`users/${firebaseUser.uid}`);
+    
+    userListenerRef.on('value', async (userSnap) => {
+      const userData = userSnap.val();
       if (!userData) {
-        const userEmail = (firebaseUser.email || '').toLowerCase();
-        const isAdmin = ADMIN_EMAILS.includes(userEmail);
-
-        // Profil par défaut pour Alex ou pour un nouvel arrivant
-        userData = {
-          uid: firebaseUser.uid,
-          email: userEmail,
-          nickname: isAdmin ? 'Alex' : (firebaseUser.displayName || 'Joueur'),
-          tag: isAdmin ? 'alexs' : ('joueur_' + Math.floor(1000 + Math.random() * 9000)),
-          role: isAdmin ? 'admin' : 'member',
-          status: isAdmin ? 'approved' : 'pending',
-          avatarEmoji: '🍺',
-          flagEmoji: '🇫🇷',
-          createdAt: Date.now()
-        };
-
-        await db.ref(`users/${firebaseUser.uid}`).set(userData);
+        await auth.signOut();
+        return;
       }
 
       currentUser = userData;
 
-      // 1. Vérification du statut d'approbation
-      if (currentUser.status === 'pending') {
+      // 3. Vérification de l'e-mail (sauf pour Google qui est déjà vérifié)
+      const isGoogle = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+      if (!isGoogle && !firebaseUser.emailVerified) {
         authOverlay.classList.add('hidden');
-        pendingOverlay.classList.remove('hidden');
-        document.getElementById('pendingUserNick').textContent = currentUser.nickname;
-        document.getElementById('pendingUserTag').textContent = `@${currentUser.tag}`;
+        pendingOverlay.classList.add('hidden');
+        rejectedOverlay.classList.add('hidden');
+        document.getElementById('verifyUserEmail').textContent = firebaseUser.email;
+        verifyEmailOverlay.classList.remove('hidden');
         return;
       }
 
-      // 2. Compte approuvé : déblocage du lobby
+      verifyEmailOverlay.classList.add('hidden');
+
+      // 4. Vérification du statut d'approbation
+      if (currentUser.status === 'rejected') {
+        authOverlay.classList.add('hidden');
+        pendingOverlay.classList.add('hidden');
+        document.getElementById('rejectedUserNick').textContent = currentUser.nickname;
+        rejectedOverlay.classList.remove('hidden');
+        return;
+      }
+
+      if (currentUser.status === 'pending') {
+        authOverlay.classList.add('hidden');
+        rejectedOverlay.classList.add('hidden');
+        document.getElementById('pendingUserNick').textContent = currentUser.nickname;
+        document.getElementById('pendingUserTag').textContent = `@${currentUser.tag}`;
+        pendingOverlay.classList.remove('hidden');
+        return;
+      }
+
+      // 5. Compte approuvé : entrée dans le portail
       authOverlay.classList.add('hidden');
       pendingOverlay.classList.add('hidden');
+      rejectedOverlay.classList.add('hidden');
+
       updateUserUI();
       setupMyRealtimePresence();
       listenToUsersAndPresence();
       listenToLiveChat();
       listenToUndercoverLiveActivity();
 
-      // 3. Si c'est un admin, activer le panneau modérateur
       if (currentUser.role === 'admin') {
         setupAdminWatcher();
       }
@@ -203,12 +232,17 @@ function updateUserUI() {
   document.getElementById('heroGreeting').textContent = `SALUT ${currentUser.nickname} !`;
 }
 
-/* ---------------- CONNEXION GOOGLE & EMAIL ---------------- */
-async function handleGoogleSignIn() {
+/* ---------------- CONNEXIONS (PAS DE CRÉATION AUTOMATIQUE) ---------------- */
+async function handleGoogleLogin() {
   hideAuthError();
   const provider = new firebase.auth.GoogleAuthProvider();
   try {
-    await auth.signInWithPopup(provider);
+    const res = await auth.signInWithPopup(provider);
+    const snap = await db.ref(`users/${res.user.uid}`).once('value');
+    if (!snap.exists()) {
+      await auth.signOut();
+      showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
+    }
   } catch (err) {
     showAuthError("Erreur Google : " + err.message);
   }
@@ -225,12 +259,71 @@ async function handleEmailLogin(e) {
   btn.textContent = "Connexion...";
 
   try {
-    await auth.signInWithEmailAndPassword(email, password);
+    const res = await auth.signInWithEmailAndPassword(email, password);
+    const snap = await db.ref(`users/${res.user.uid}`).once('value');
+    if (!snap.exists()) {
+      await auth.signOut();
+      showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
+    }
   } catch (err) {
-    showAuthError("Identifiants incorrects ou compte inexistant.");
+    showAuthError("Adresse e-mail ou mot de passe incorrect.");
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<span>Se connecter</span><span class="text-base">🔑</span>`;
+  }
+}
+
+/* ---------------- INSCRIPTIONS AVEC PROFIL COMPLET ---------------- */
+async function handleGoogleRegister() {
+  hideAuthError();
+  const nickname = document.getElementById('regNickname').value.trim();
+  const tag = document.getElementById('regTag').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+  if (!nickname || !tag) {
+    showAuthError("Renseigne ton prénom et ton tag avant de continuer avec Google.");
+    return;
+  }
+
+  isRegisteringProcess = true;
+  try {
+    const tagSnap = await db.ref('users').orderByChild('tag').equalTo(tag).once('value');
+    if (tagSnap.exists()) {
+      showAuthError(`Le tag @${tag} est déjà utilisé par un camarade.`);
+      isRegisteringProcess = false;
+      return;
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const res = await auth.signInWithPopup(provider);
+    
+    // Vérifier si ce compte Google n'était pas déjà inscrit
+    const userSnap = await db.ref(`users/${res.user.uid}`).once('value');
+    if (userSnap.exists()) {
+      isRegisteringProcess = false;
+      showToast("Tu avais déjà un compte ! Connexion...", "👋");
+      return;
+    }
+
+    const email = (res.user.email || '').toLowerCase();
+    const isAdmin = ADMIN_EMAILS.includes(email);
+
+    const newUser = {
+      uid: res.user.uid,
+      email: email,
+      nickname: nickname,
+      tag: tag,
+      role: isAdmin ? 'admin' : 'member',
+      status: isAdmin ? 'approved' : 'pending',
+      avatarEmoji: selectedAvatarReg,
+      flagEmoji: selectedFlagReg,
+      createdAt: Date.now()
+    };
+
+    await db.ref(`users/${res.user.uid}`).set(newUser);
+  } catch (err) {
+    showAuthError("Erreur inscription Google : " + err.message);
+  } finally {
+    isRegisteringProcess = false;
   }
 }
 
@@ -251,20 +344,24 @@ async function handleEmailRegister(e) {
   const btn = document.getElementById('btnSubmitReg');
   btn.disabled = true;
   btn.textContent = "Création du compte...";
+  isRegisteringProcess = true;
 
   try {
-    // Vérifier si le tag est déjà pris
     const tagSnap = await db.ref('users').orderByChild('tag').equalTo(tag).once('value');
     if (tagSnap.exists()) {
       showAuthError(`Le tag @${tag} est déjà utilisé.`);
       btn.disabled = false;
-      btn.innerHTML = `<span>Créer mon compte</span><span class="text-base">🚀</span>`;
+      btn.innerHTML = `<span>Créer mon compte par e-mail</span><span class="text-base">🚀</span>`;
+      isRegisteringProcess = false;
       return;
     }
 
     const res = await auth.createUserWithEmailAndPassword(email, password);
-    const isAdmin = ADMIN_EMAILS.includes(email);
 
+    // Envoi immédiat de l'e-mail d'activation
+    await res.user.sendEmailVerification();
+
+    const isAdmin = ADMIN_EMAILS.includes(email);
     const newUser = {
       uid: res.user.uid,
       email: email,
@@ -278,14 +375,39 @@ async function handleEmailRegister(e) {
     };
 
     await db.ref(`users/${res.user.uid}`).set(newUser);
+    showToast("E-mail de confirmation envoyé !", "📬");
   } catch (err) {
     showAuthError("Erreur : " + err.message);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span>Créer mon compte</span><span class="text-base">🚀</span>`;
+    btn.innerHTML = `<span>Créer mon compte par e-mail</span><span class="text-base">🚀</span>`;
+    isRegisteringProcess = false;
   }
 }
 
+/* ---------------- VÉRIFICATION D'E-MAIL ---------------- */
+async function checkEmailVerified() {
+  if (!auth.currentUser) return;
+  await auth.currentUser.reload();
+  if (auth.currentUser.emailVerified) {
+    showToast("E-mail validé avec succès !", "✅");
+    location.reload();
+  } else {
+    showToast("Ton adresse n'a pas encore été validée. Regarde tes spams !", "⚠️");
+  }
+}
+
+async function resendVerificationEmail() {
+  if (!auth.currentUser) return;
+  try {
+    await auth.currentUser.sendEmailVerification();
+    showToast("Nouveau lien envoyé !", "📬");
+  } catch (err) {
+    showToast("Attends quelques instants avant de renvoyer un e-mail.", "⏳");
+  }
+}
+
+/* ---------------- GESTION DÉCONNEXION & INTERFACE ---------------- */
 function logout() {
   if (currentUser && currentUser.tag) {
     db.ref(`presence/${currentUser.tag}`).remove();
@@ -297,19 +419,19 @@ function logout() {
 
 function switchAuthTab(tab) {
   hideAuthError();
-  const formReg = document.getElementById('formRegister');
-  const formLog = document.getElementById('formLogin');
+  const containerLog = document.getElementById('authLoginContainer');
+  const containerReg = document.getElementById('authRegisterContainer');
   const btnReg = document.getElementById('tabBtnRegister');
   const btnLog = document.getElementById('tabBtnLogin');
 
   if (tab === 'register') {
-    formReg.classList.remove('hidden');
-    formLog.classList.add('hidden');
+    containerReg.classList.remove('hidden');
+    containerLog.classList.add('hidden');
     btnReg.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
     btnLog.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
   } else {
-    formLog.classList.remove('hidden');
-    formReg.classList.add('hidden');
+    containerLog.classList.remove('hidden');
+    containerReg.classList.add('hidden');
     btnLog.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
     btnReg.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
   }
@@ -328,7 +450,7 @@ function hideAuthError() {
 }
 
 /* =========================================================
-   PANNEAU DE MODÉRATION ADMIN
+   PANNEAU DE MODÉRATION ADMIN (ACCEPTER / REFUSER)
    ========================================================= */
 let pendingUsersList = [];
 
@@ -374,7 +496,7 @@ function renderAdminPendingList() {
         <div class="min-w-0">
           <div class="text-xs font-black text-[#12131a] truncate">${escapeHtml(u.nickname)} ${u.flagEmoji || ''}</div>
           <div class="text-[10px] font-mono text-indigo-600 font-bold truncate">@${escapeHtml(u.tag)}</div>
-          <div class="text-[10px] font-mono text-slate-400 truncate">${escapeHtml(u.email || 'Google Auth')}</div>
+          <div class="text-[10px] font-mono text-slate-400 truncate">${escapeHtml(u.email || 'Compte Google')}</div>
         </div>
       </div>
 
@@ -382,8 +504,8 @@ function renderAdminPendingList() {
         <button onclick="approveUser('${u.uid}', '${escapeHtml(u.nickname)}')" class="neo-btn bg-emerald-400 hover:bg-emerald-500 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
           ✓ Accepter
         </button>
-        <button onclick="rejectUser('${u.uid}')" class="neo-btn bg-rose-200 hover:bg-rose-300 text-rose-900 px-2.5 py-1.5 rounded-xl text-xs font-black">
-          ✕
+        <button onclick="rejectUser('${u.uid}', '${escapeHtml(u.nickname)}')" class="neo-btn bg-rose-200 hover:bg-rose-300 text-rose-900 px-2.5 py-1.5 rounded-xl text-xs font-black">
+          ✕ Refuser
         </button>
       </div>
     </div>
@@ -399,10 +521,12 @@ function approveUser(uid, nickname) {
   });
 }
 
-function rejectUser(uid) {
-  if (confirm("Refuser cette inscription ?")) {
-    db.ref(`users/${uid}`).remove().then(() => {
-      showToast('Inscription refusée et supprimée.', '🗑️');
+function rejectUser(uid, nickname) {
+  if (confirm(`Refuser définitivement l'accès à ${nickname} ?`)) {
+    db.ref(`users/${uid}`).update({
+      status: 'rejected'
+    }).then(() => {
+      showToast(`Accès refusé pour ${nickname}.`, '🚫');
     });
   }
 }
@@ -448,7 +572,6 @@ function listenToUsersAndPresence() {
 
 function updatePresenceCountersAndDirectory() {
   const onlineCount = Object.keys(onlinePresenceMap).length || (currentUser ? 1 : 0);
-  // Ne compter que les membres approuvés
   const approvedUsers = Object.values(allUsersMap).filter(u => u && u.status === 'approved');
   const registeredCount = approvedUsers.length || onlineCount;
 
