@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Giroud - IMB Game Center</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/style.css">
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  
+  <!-- Confetti & GameShell -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="/shared/game-shell.js" defer></script>
+</head>
+<body class="bg-[#1d4ed8] text-[#12131a] flex flex-col min-h-screen pt-16 select-none">
+
+  <!-- ================= ÉCRAN D'ACCUEIL (LOBBY) ================= -->
+  <div id="viewLobby" class="flex-1 flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-md w-full p-8 text-center border-[3px] border-[#12131a] shadow-[4px_6px_0px_#12131a] rounded-2xl">
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-6">
+        ⚽
+      </div>
+      
+      <h1 class="text-3xl font-black italic tracking-tight uppercase text-[#12131a] mb-2">Flappy Giroud</h1>
+      <p class="text-sm font-bold text-slate-600 mb-6">Fais voler la tête d'Olivier le plus loin possible. Attention aux tuyaux rouges à partir de 30 pts !</p>
+
+      <div class="bg-slate-50 border-2 border-[#12131a] rounded-xl p-4 mb-6 shadow-[2px_3px_0px_#12131a]">
+        <div class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Ton Record Personnel</div>
+        <div class="text-2xl font-black text-[#1d4ed8]" id="personalBestDisplay">0 <span class="text-sm text-[#12131a]">pts</span></div>
+      </div>
+
+      <div class="space-y-3">
+        <button id="btnLaunchGame" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2">
+          <span>Lancer une partie</span><span>🚀</span>
+        </button>
+        <button id="btnResumeActiveRoom" class="w-full neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] py-3.5 rounded-2xl text-sm font-black hidden items-center justify-center gap-2">
+          <span>Reprendre la partie en cours</span><span>⮌</span>
+        </button>
+      </div>
+      
+      <a href="/" class="block mt-4 text-xs font-bold text-slate-400 hover:text-[#12131a] underline">Retour au QG</a>
+    </div>
+  </div>
+
+  <!-- ================= ÉCRAN DE JEU ================= -->
+  <div id="viewGame" class="hidden flex-1 flex-col items-center justify-center p-4">
+    <div class="w-full max-w-[400px] relative">
+      <!-- Barre d'infos in-game -->
+      <div class="flex items-center justify-between mb-3">
+        <button id="btnQuitGame" class="neo-btn bg-white hover:bg-slate-50 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border-[2.5px] border-[#12131a] shadow-[2px_2px_0px_#12131a]">
+          <span>←</span><span>Menu</span>
+        </button>
+        <div class="bg-[#fed72d] border-[2.5px] border-[#12131a] rounded-xl px-4 py-1.5 shadow-[2px_2px_0px_#12131a]">
+          <span class="font-black text-lg" id="inGameScore">0</span> <span class="text-[10px] font-bold">pts</span>
+        </div>
+      </div>
+
+      <!-- Zone de jeu (Canvas) -->
+      <div class="relative bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[4px_6px_0px_#12131a] overflow-hidden bg-[#1d4ed8]">
+        <canvas id="gameCanvas" width="400" height="600" class="w-full h-auto cursor-pointer touch-none block"></canvas>
+        
+        <!-- Overlay Game Over -->
+        <div id="gameOverOverlay" class="hidden absolute inset-0 bg-[#121422]/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-10 text-center">
+          <div class="bg-white border-[3px] border-[#12131a] rounded-2xl p-6 shadow-[3px_4px_0px_#12131a] w-full">
+            <h2 class="text-2xl font-black italic uppercase text-rose-500 mb-2">Game Over</h2>
+            <div class="mb-4">
+              <span class="text-xs font-bold text-slate-500">Score de la manche</span>
+              <div class="text-4xl font-black text-[#12131a] my-1" id="endGameScore">0</div>
+            </div>
+            <div class="bg-[#fed72d] border-2 border-[#12131a] p-2 rounded-xl mb-6 shadow-[1px_2px_0px_#12131a]">
+              <span class="text-[10px] font-black uppercase text-[#12131a]">Meilleur Record</span>
+              <div class="text-lg font-black" id="endGameBest">0</div>
+            </div>
+            
+            <button id="btnRestartGame" class="w-full neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2">
+              <span>Rejouer une manche</span><span>↺</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ================= GESTION DES VUES & SESSION ================= */
+    const viewLobby = document.getElementById('viewLobby');
+    const viewGame = document.getElementById('viewGame');
+    const btnLaunchGame = document.getElementById('btnLaunchGame');
+    const btnResumeActiveRoom = document.getElementById('btnResumeActiveRoom');
+    const btnQuitGame = document.getElementById('btnQuitGame');
+    const btnRestartGame = document.getElementById('btnRestartGame');
+    
+    let currentUser = null;
+    let personalBest = 0;
+    const GAME_ID = 'flappy-giroud';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Écouter Auth Firebase pour récupérer le record
+      firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+          firebase.database().ref(`users/${user.uid}`).once('value', snap => {
+            currentUser = snap.val();
+            loadPersonalBest();
+          });
+        }
+      });
+
+      // Gestion de la reprise rapide
+      if (localStorage.getItem(`imb_active_room_${GAME_ID}`)) {
+        btnResumeActiveRoom.classList.remove('hidden');
+        btnResumeActiveRoom.classList.add('flex');
+      }
+
+      btnLaunchGame.addEventListener('click', () => openGameView(true));
+      btnResumeActiveRoom.addEventListener('click', () => openGameView(false));
+      btnQuitGame.addEventListener('click', quitToMenu);
+      btnRestartGame.addEventListener('click', resetAndStartGame);
+    });
+
+    function loadPersonalBest() {
+      if (!currentUser) return;
+      firebase.database().ref(`scores/${GAME_ID}/${currentUser.tag}`).on('value', snap => {
+        const data = snap.val();
+        personalBest = data ? (data.wins || 0) : 0;
+        document.getElementById('personalBestDisplay').innerHTML = `${personalBest} <span class="text-sm text-[#12131a]">pts</span>`;
+      });
+    }
+
+    function openGameView(startFresh = false) {
+      viewLobby.classList.add('hidden');
+      viewGame.classList.remove('hidden');
+      viewGame.classList.add('flex');
+      localStorage.setItem(`imb_active_room_${GAME_ID}`, 'SOLO');
+      
+      if (startFresh || !gameState.isPlaying) {
+        resetAndStartGame();
+      }
+    }
+
+    function quitToMenu() {
+      gameState.isPlaying = false;
+      localStorage.removeItem(`imb_active_room_${GAME_ID}`);
+      viewGame.classList.add('hidden');
+      viewGame.classList.remove('flex');
+      viewLobby.classList.remove('hidden');
+      btnResumeActiveRoom.classList.add('hidden');
+      btnResumeActiveRoom.classList.remove('flex');
+    }
+
+    /* ================= MOTEUR DU JEU (CANVAS) ================= */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreUI = document.getElementById('inGameScore');
+    const overlayOver = document.getElementById('gameOverOverlay');
+    
+    let frames = 0;
+    let reqAnimFrame = null;
+    let currentScore = 0;
+    
+    const gameState = {
+      isPlaying: false,
+      isGameOver: false
+    };
+
+    const bird = {
+      x: 80, y: 300, radius: 14, velocity: 0, gravity: 0.35, lift: -6.5
+    };
+    
+    let pipes = [];
+
+    // Courbe de difficulté adaptative
+    function getDifficulty(score) {
+      if (score < 15) return { speed: 3, gap: 140, pipeFreq: 100, maxOsc: 0, redChance: 0 };
+      if (score < 30) return { speed: 4, gap: 110, pipeFreq: 85, maxOsc: 0, redChance: 0 };
+      if (score < 50) return { 
+        speed: 4.5, gap: 95, pipeFreq: 75, maxOsc: 40, 
+        redChance: Math.min(0.70, 0.25 + Math.floor((score - 30) / 5) * 0.05)
+      };
+      // Mode Hardcore
+      return { speed: 5, gap: 85, pipeFreq: 65, maxOsc: 75, redChance: 0.75 };
+    }
+
+    function resetAndStartGame() {
+      bird.y = canvas.height / 2;
+      bird.velocity = 0;
+      pipes = [];
+      frames = 0;
+      currentScore = 0;
+      scoreUI.textContent = "0";
+      
+      gameState.isPlaying = true;
+      gameState.isGameOver = false;
+      overlayOver.classList.add('hidden');
+      
+      if (reqAnimFrame) cancelAnimationFrame(reqAnimFrame);
+      gameLoop();
+    }
+
+    function jump(e) {
+      if (e) {
+        if (e.type === 'keydown' && e.code !== 'Space') return;
+        e.preventDefault();
+      }
+      if (gameState.isPlaying && !gameState.isGameOver) {
+        bird.velocity = bird.lift;
+      }
+    }
+
+    window.addEventListener('keydown', jump);
+    canvas.addEventListener('pointerdown', jump);
+
+    function spawnPipe() {
+      const diff = getDifficulty(currentScore);
+      const isRed = Math.random() < diff.redChance;
+      
+      // Marge pour s'assurer que les tuyaux restent dans l'écran malgré l'oscillation
+      const margin = 50 + diff.maxOsc; 
+      const topHeight = Math.max(margin, Math.random() * (canvas.height - diff.gap - (margin*2)) + margin);
+      
+      pipes.push({
+        x: canvas.width,
+        w: 52,
+        topY: topHeight,
+        gap: diff.gap,
+        isRed: isRed,
+        oscAngle: isRed ? Math.random() * Math.PI * 2 : 0,
+        passed: false
+      });
+    }
+
+    function gameLoop() {
+      if (!gameState.isPlaying) return;
+      
+      updatePhysics();
+      render();
+      
+      if (!gameState.isGameOver) {
+        reqAnimFrame = requestAnimationFrame(gameLoop);
+      }
+    }
+
+    function updatePhysics() {
+      frames++;
+      const diff = getDifficulty(currentScore);
+      
+      // Physique Bird
+      bird.velocity += bird.gravity;
+      bird.y += bird.velocity;
+
+      // Collisions sol/plafond
+      if (bird.y + bird.radius >= canvas.height || bird.y - bird.radius <= 0) {
+        triggerGameOver();
+      }
+
+      // Génération tuyaux
+      if (frames % diff.pipeFreq === 0) spawnPipe();
+
+      // Mise à jour Tuyaux
+      for (let i = 0; i < pipes.length; i++) {
+        let p = pipes[i];
+        p.x -= diff.speed;
+
+        // Oscillation des tuyaux rouges
+        let offsetY = 0;
+        if (p.isRed) {
+          p.oscAngle += 0.06;
+          offsetY = Math.sin(p.oscAngle) * diff.maxOsc;
+        }
+
+        const currentTopBorder = p.topY + offsetY;
+        const currentBottomBorder = p.topY + offsetY + p.gap;
+
+        // Hitbox rectangulaire autour de l'oiseau (cercle approché)
+        if (bird.x + bird.radius - 4 > p.x && bird.x - bird.radius + 4 < p.x + p.w) {
+          if (bird.y - bird.radius + 4 < currentTopBorder || bird.y + bird.radius - 4 > currentBottomBorder) {
+            triggerGameOver();
+          }
+        }
+
+        // Scoring
+        if (p.x + p.w < bird.x && !p.passed) {
+          currentScore++;
+          p.passed = true;
+          scoreUI.textContent = currentScore;
+        }
+      }
+
+      // Nettoyage tuyaux hors écran
+      pipes = pipes.filter(p => p.x + p.w > 0);
+    }
+
+    function render() {
+      // Fond géré par le CSS du canvas (transparent = laisse voir le bleu)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Dessin des tuyaux
+      for (let p of pipes) {
+        let offsetY = p.isRed ? Math.sin(p.oscAngle) * getDifficulty(currentScore).maxOsc : 0;
+        
+        ctx.fillStyle = p.isRed ? '#ef4444' : '#00e599'; // Rouge ou Vert
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#12131a';
+        
+        // Tuyau Haut
+        ctx.fillRect(p.x, 0, p.w, p.topY + offsetY);
+        ctx.strokeRect(p.x, 0, p.w, p.topY + offsetY);
+        // Rebord Haut
+        ctx.fillRect(p.x - 2, p.topY + offsetY - 20, p.w + 4, 20);
+        ctx.strokeRect(p.x - 2, p.topY + offsetY - 20, p.w + 4, 20);
+
+        // Tuyau Bas
+        const bottomY = p.topY + offsetY + p.gap;
+        ctx.fillRect(p.x, bottomY, p.w, canvas.height - bottomY);
+        ctx.strokeRect(p.x, bottomY, p.w, canvas.height - bottomY);
+        // Rebord Bas
+        ctx.fillRect(p.x - 2, bottomY, p.w + 4, 20);
+        ctx.strokeRect(p.x - 2, bottomY, p.w + 4, 20);
+      }
+
+      // Dessin Bird (Tête de Giroud simulée par l'émoji ⚽)
+      ctx.font = "24px 'Plus Jakarta Sans'";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      
+      ctx.save();
+      ctx.translate(bird.x, bird.y);
+      // Rotation selon la vélocité
+      let angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (bird.velocity * 0.1)));
+      ctx.rotate(angle);
+      ctx.fillText('⚽', 0, 0);
+      ctx.restore();
+    }
+
+    function triggerGameOver() {
+      gameState.isGameOver = true;
+      document.getElementById('endGameScore').textContent = currentScore;
+      
+      const isNewRecord = currentScore > personalBest;
+      if (isNewRecord) personalBest = currentScore;
+      
+      document.getElementById('endGameBest').textContent = `${personalBest} pts`;
+      overlayOver.classList.remove('hidden');
+
+      // Sauvegarde Firebase
+      if (currentUser && currentScore > 0) {
+        const dbRef = firebase.database().ref(`scores/${GAME_ID}/${currentUser.tag}`);
+        dbRef.once('value').then(snap => {
+          const data = snap.val();
+          const currentDbBest = data ? (data.wins || 0) : 0;
+          
+          if (currentScore > currentDbBest) {
+            dbRef.set({
+              nickname: currentUser.nickname,
+              tag: currentUser.tag,
+              avatarEmoji: currentUser.avatarEmoji,
+              flagEmoji: currentUser.flagEmoji || '🇫🇷',
+              wins: currentScore // On utilise 'wins' pour que le tableau des scores général fonctionne
+            });
+            
+            // Confettis !
+            if (typeof GameShell !== 'undefined' && GameShell.fireConfetti) {
+              GameShell.fireConfetti();
+            } else if (typeof confetti === 'function') {
+              confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+            }
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
