@@ -41,7 +41,6 @@ body {
   box-shadow: 1px 1px 0px var(--border-dark) !important;
 }
 
-/* Animation mascotte au survol */
 .mascotte-container {
   position: relative;
   cursor: pointer;
@@ -57,7 +56,6 @@ body {
   box-shadow: 6px 8px 0px var(--border-dark);
 }
 
-/* Bulle de BD */
 .bd-bubble {
   position: absolute;
   bottom: 12px;
@@ -95,7 +93,6 @@ body {
   transform: scale(1) rotate(-3deg);
 }
 
-/* Boutons de catégorie style cartoon */
 .neo-tag-cartoon {
   border: 2.5px solid var(--border-dark);
   box-shadow: 3px 4px 0px var(--border-dark);
@@ -114,7 +111,6 @@ body {
   box-shadow: 1px 1px 0px var(--border-dark) !important;
 }
 
-/* Carte de jeu */
 .game-card {
   border: 3px solid var(--border-dark);
   box-shadow: 4px 5px 0px var(--border-dark);
@@ -139,7 +135,6 @@ body {
   box-shadow: 2px 2px 0px var(--border-dark);
 }
 
-/* Animation de ping */
 @keyframes pingPulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
