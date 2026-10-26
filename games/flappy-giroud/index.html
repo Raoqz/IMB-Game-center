@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Flappy Giroud - IMB Game Center</title>
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
-  
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/style.css">
 
@@ -16,16 +16,490 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  
-  <!-- Confetti & GameShell -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <script src="/shared/game-shell.js" defer></script>
-</head>
-<body class="bg-[#1d4ed8] text-[#12131a] flex flex-col min-h-screen pt-16 select-none">
 
-  <!-- ================= ÉCRAN D'ACCUEIL (LOBBY) ================= -->
-  <div id="viewLobby" class="flex-1 flex items-center justify-center p-4 z-10 relative">
-    <div class="neo-box bg-white max-w-md w-full p-8 text-center border-[3px] border-[#12131a] shadow-[4px_6px_0px_#12131a] rounded-2xl">
-      <div class="w-24 h-24 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-6 overflow-hidden">
-        <img src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
+  <!-- Confetti & Shell commun -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="/shared/game-shell.js"></script>
+</head>
+<body class="bg-[#1d4ed8] text-[#12131a] flex flex-col min-h-screen pt-16 select-none items-center justify-center p-4">
+
+  <!-- ================= ÉCRAN D'ACCUEIL (LOBBY DU JEU) ================= -->
+  <main id="viewLobby" class="flex-1 flex items-center justify-center w-full max-w-md py-6">
+    <div class="neo-box bg-white w-full p-6 sm:p-8 text-center">
+      
+      <!-- Avatar Giroud -->
+      <div class="w-24 h-24 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-4 overflow-hidden">
+        <img id="lobbyGiroudImg" src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
       </div>
+
+      <h2 class="text-3xl font-black italic tracking-tight text-[#12131a] uppercase leading-none mb-1">
+        FLAPPY GIROUD
+      </h2>
+      <p class="text-xs font-bold text-slate-500 mb-4">
+        Esquive les tacles et les tuyaux rouges en coup de tête !
+      </p>
+
+      <!-- Badge Record Personnel -->
+      <div class="p-3 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl flex items-center justify-between mb-5 shadow-[2px_2px_0px_#12131a]">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🏆</span>
+          <span class="text-xs font-black text-slate-600 uppercase">Mon record :</span>
+        </div>
+        <span id="lobbyPersonalRecord" class="font-mono text-sm font-black text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg">
+          0 pts
+        </span>
+      </div>
+
+      <button onclick="startGame()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 mb-3 shadow-[3px_4px_0px_#12131a]">
+        <span>⚽</span>
+        <span>Coup d'envoi (Jouer)</span>
+      </button>
+
+      <button onclick="GameShell.openRules()" class="w-full text-xs font-bold text-slate-500 hover:text-black underline flex items-center justify-center gap-1">
+        <span>📖</span>
+        <span>Les règles du jeu</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- ================= PLATEAU DE JEU (CANVAS) ================= -->
+  <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center w-full max-w-md py-2">
+    
+    <!-- En-tête de la manche -->
+    <div class="w-full max-w-[360px] flex items-center justify-between mb-3 px-1">
+      <button onclick="exitToLobby()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1 rounded-xl text-xs font-black">
+        ← Menu
+      </button>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-mono font-black bg-white border-2 border-[#12131a] px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_#12131a]">
+          Record : <strong id="inGameRecord" class="text-indigo-600">0</strong>
+        </span>
+        <span class="text-xs font-mono font-black bg-[#fed72d] border-2 border-[#12131a] px-3 py-1 rounded-xl shadow-[2px_2px_0px_#12131a]">
+          Score : <strong id="inGameScore">0</strong>
+        </span>
+      </div>
+    </div>
+
+    <!-- Conteneur Canvas et Overlays -->
+    <div class="relative w-[360px] h-[540px]">
+      <canvas id="flappyCanvas" width="360" height="540" class="border-[3px] border-[#12131a] rounded-2xl shadow-[4px_6px_0px_#12131a] bg-[#70c5ce] block"></canvas>
+
+      <!-- Overlay Démarrage / Tap to flap -->
+      <div id="startOverlay" class="absolute inset-0 bg-black/25 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none">
+        <div class="bg-white border-[2.5px] border-[#12131a] px-4 py-3 rounded-2xl shadow-[3px_4px_0px_#12131a] animate-pulse">
+          <p class="font-black text-sm text-[#12131a]">ESPACE ou CLIC</p>
+          <p class="text-[11px] font-bold text-slate-500 mt-0.5">pour t'envoler !</p>
+        </div>
+      </div>
+
+      <!-- Overlay Game Over -->
+      <div id="gameOverOverlay" class="hidden absolute inset-0 bg-[#121422]/85 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 text-center">
+        <div class="neo-box bg-white w-full p-6 text-center border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] rounded-2xl">
+          <div class="text-3xl mb-1">🛑</div>
+          <h3 class="text-xl font-black italic tracking-tight text-rose-600 uppercase mb-3 leading-none">
+            Coup de sifflet !
+          </h3>
+
+          <div class="bg-slate-50 border-2 border-[#12131a] rounded-xl p-3 mb-4 space-y-1">
+            <div class="flex justify-between text-xs font-black">
+              <span class="text-slate-500 uppercase">Score final :</span>
+              <span id="finalScore" class="text-base text-[#12131a] font-mono font-black">0</span>
+            </div>
+            <div class="flex justify-between text-xs font-black pt-1 border-t border-slate-200">
+              <span class="text-slate-500 uppercase">Meilleur record :</span>
+              <span id="finalBest" class="text-indigo-600 font-mono font-black">0 pts</span>
+            </div>
+          </div>
+
+          <div id="newRecordBanner" class="hidden mb-3 py-1 bg-amber-100 border-2 border-amber-400 rounded-lg text-amber-900 text-[11px] font-black uppercase animate-bounce">
+            🎉 Nouveau record personnel !
+          </div>
+
+          <button onclick="restartGame()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+            Rejouer (Espace) ⚽
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= LOGIQUE DU JEU & SHELL ================= -->
+  <script>
+    const canvas = document.getElementById('flappyCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Chargement de l'avatar Giroud pour le canvas
+    const giroudImg = new Image();
+    giroudImg.src = '/games/flappy-giroud/giroud.png';
+    let imgLoaded = false;
+    giroudImg.onload = () => { imgLoaded = true; };
+
+    // État du jeu
+    let gameState = 'LOBBY'; // LOBBY, READY, PLAYING, GAMEOVER
+    let personalBest = 0;
+    let score = 0;
+    let animationFrameId = null;
+
+    // Constantes physiques
+    const GRAVITY = 0.38;
+    const JUMP_FORCE = -6.8;
+    const PIPE_WIDTH = 58;
+    const GROUND_HEIGHT = 44;
+
+    // Joueur (Giroud)
+    let player = {
+      x: 65,
+      y: 220,
+      radius: 19,
+      velocity: 0,
+      rotation: 0
+    };
+
+    // Tuyaux
+    let pipes = [];
+    let frameCount = 0;
+
+    // 1. Initialisation du GameShell commun
+    GameShell.init({
+      gameId: 'flappy-giroud',
+      gameTitle: 'Flappy Giroud',
+      rulesHtml: `
+        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique sur l'écran ou touche l'écran tactile pour donner un coup de tête vers le haut.</p>
+        <p>• <strong>Objectif :</strong> Franchis le maximum de tuyaux sans toucher les obstacles, le plafond ou la pelouse.</p>
+        <p>• <strong>Échauffement (0 à 15 pts) :</strong> Vitesse modérée et ouvertures stables.</p>
+        <p>• <strong>Montée en régime (16 à 29 pts) :</strong> Le rythme accélère et les variations de hauteur s'accentuent.</p>
+        <p>• <strong>Mode Giroud Rouge (30+ pts) :</strong> Des tuyaux rouges apparaissent et oscillent de haut en bas ! Plus ton score grimpe, plus ils sont fréquents.</p>
+        <p>• <strong>Palmarès :</strong> Seul ton score maximal est sauvegardé et comparé au classement général de la promo !</p>
+      `
+    });
+
+    // Chargement du record personnel depuis Firebase dès connexion
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) return;
+      const snap = await db.ref(`users/${user.uid}`).once('value');
+      const uData = snap.val();
+      if (!uData) return;
+
+      const scoreSnap = await db.ref(`scores/flappy-giroud/${uData.tag}`).once('value');
+      const sData = scoreSnap.val();
+      if (sData && (sData.wins !== undefined || sData.score !== undefined)) {
+        personalBest = sData.wins || sData.score || 0;
+      }
+      updateRecordDisplays();
+    });
+
+    function updateRecordDisplays() {
+      document.getElementById('lobbyPersonalRecord').textContent = `${personalBest} pts`;
+      document.getElementById('inGameRecord').textContent = personalBest;
+    }
+
+    // Basculer du Lobby au Jeu
+    function startGame() {
+      document.getElementById('viewLobby').classList.add('hidden');
+      document.getElementById('viewGame').classList.remove('hidden');
+      resetGame();
+      gameState = 'READY';
+      document.getElementById('startOverlay').classList.remove('hidden');
+      document.getElementById('gameOverOverlay').classList.add('hidden');
+      renderLoop();
+    }
+
+    function exitToLobby() {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      gameState = 'LOBBY';
+      document.getElementById('viewGame').classList.add('hidden');
+      document.getElementById('viewLobby').classList.remove('hidden');
+      updateRecordDisplays();
+    }
+
+    function resetGame() {
+      player.y = 220;
+      player.velocity = 0;
+      player.rotation = 0;
+      pipes = [];
+      score = 0;
+      frameCount = 0;
+      document.getElementById('inGameScore').textContent = '0';
+      document.getElementById('newRecordBanner').classList.add('hidden');
+    }
+
+    function flap() {
+      if (gameState === 'READY') {
+        gameState = 'PLAYING';
+        document.getElementById('startOverlay').classList.add('hidden');
+        player.velocity = JUMP_FORCE;
+      } else if (gameState === 'PLAYING') {
+        player.velocity = JUMP_FORCE;
+      } else if (gameState === 'GAMEOVER') {
+        restartGame();
+      }
+    }
+
+    function restartGame() {
+      resetGame();
+      gameState = 'PLAYING';
+      document.getElementById('gameOverOverlay').classList.add('hidden');
+      document.getElementById('startOverlay').classList.add('hidden');
+    }
+
+    // Paramètres dynamiques de difficulté selon le score
+    function getDifficultyParams(currentScore) {
+      let gap = 142;
+      let speed = 2.4;
+      let redProb = 0;
+
+      if (currentScore >= 50) {
+        gap = 108;
+        speed = 3.3;
+        redProb = 0.65;
+      } else if (currentScore >= 30) {
+        gap = 116;
+        speed = 2.9;
+        redProb = 0.25 + (currentScore - 30) * 0.015;
+      } else if (currentScore >= 16) {
+        gap = 126;
+        speed = 2.65;
+        redProb = 0;
+      }
+
+      return { gap, speed, redProb };
+    }
+
+    function spawnPipe() {
+      const { gap, redProb } = getDifficultyParams(score);
+      const isRed = score >= 30 && (Math.random() < redProb);
+      const minTop = 50;
+      const maxTop = canvas.height - GROUND_HEIGHT - gap - 50;
+      const topHeight = Math.floor(minTop + Math.random() * (maxTop - minTop));
+
+      pipes.push({
+        x: canvas.width + 10,
+        topHeight: topHeight,
+        gap: gap,
+        passed: false,
+        isRed: isRed,
+        oscillationAngle: Math.random() * Math.PI * 2,
+        oscillationSpeed: 0.045
+      });
+    }
+
+    // Boucle principale du jeu
+    function update() {
+      if (gameState !== 'PLAYING') return;
+
+      frameCount++;
+      const { speed } = getDifficultyParams(score);
+
+      // Gravité
+      player.velocity += GRAVITY;
+      player.y += player.velocity;
+      player.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.08));
+
+      // Spawn des tuyaux
+      const spawnInterval = Math.max(85, Math.floor(115 - score * 0.4));
+      if (frameCount % spawnInterval === 0) {
+        spawnPipe();
+      }
+
+      // Mise à jour des tuyaux
+      for (let i = pipes.length - 1; i >= 0; i--) {
+        const p = pipes[i];
+        p.x -= speed;
+
+        // Oscillation verticale pour tuyaux rouges
+        if (p.isRed) {
+          p.oscillationAngle += p.oscillationSpeed;
+          p.topHeight += Math.sin(p.oscillationAngle) * 1.6;
+          // Garder des limites
+          p.topHeight = Math.max(35, Math.min(canvas.height - GROUND_HEIGHT - p.gap - 35, p.topHeight));
+        }
+
+        // Passage du tuyau -> Score
+        if (!p.passed && p.x + PIPE_WIDTH < player.x) {
+          p.passed = true;
+          score++;
+          document.getElementById('inGameScore').textContent = score;
+        }
+
+        // Nettoyage hors écran
+        if (p.x + PIPE_WIDTH < -20) {
+          pipes.splice(i, 1);
+          continue;
+        }
+
+        // Collisions hitbox
+        const bottomPipeY = p.topHeight + p.gap;
+        const playerBox = {
+          left: player.x - player.radius + 3,
+          right: player.x + player.radius - 3,
+          top: player.y - player.radius + 3,
+          bottom: player.y + player.radius - 3
+        };
+
+        const inPipeX = playerBox.right > p.x && playerBox.left < p.x + PIPE_WIDTH;
+        const hitsTop = inPipeX && playerBox.top < p.topHeight;
+        const hitsBottom = inPipeX && playerBox.bottom > bottomPipeY;
+
+        if (hitsTop || hitsBottom) {
+          triggerGameOver();
+          return;
+        }
+      }
+
+      // Collision sol ou plafond
+      if (player.y + player.radius >= canvas.height - GROUND_HEIGHT || player.y - player.radius <= 0) {
+        triggerGameOver();
+      }
+    }
+
+    function triggerGameOver() {
+      gameState = 'GAMEOVER';
+      document.getElementById('finalScore').textContent = score;
+      document.getElementById('finalBest').textContent = `${Math.max(score, personalBest)} pts`;
+
+      let isNewRecord = false;
+      if (score > personalBest) {
+        personalBest = score;
+        isNewRecord = true;
+        document.getElementById('newRecordBanner').classList.remove('hidden');
+        updateRecordDisplays();
+        saveScoreToFirebase(score);
+        GameShell.fireConfetti();
+      }
+
+      document.getElementById('gameOverOverlay').classList.remove('hidden');
+    }
+
+    async function saveScoreToFirebase(newRecord) {
+      if (!GameShell.currentUser) return;
+      const tag = GameShell.currentUser.tag;
+      const ref = db.ref(`scores/flappy-giroud/${tag}`);
+
+      await ref.set({
+        tag: tag,
+        nickname: GameShell.currentUser.nickname,
+        avatarEmoji: '⚽',
+        wins: newRecord, // 'wins' permet le tri automatique du classement
+        updatedAt: Date.now()
+      });
+    }
+
+    // Dessin
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Ciel et nuages cartoon
+      ctx.fillStyle = '#70c5ce';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.beginPath();
+      ctx.arc(80, 100, 24, 0, Math.PI * 2);
+      ctx.arc(110, 95, 30, 0, Math.PI * 2);
+      ctx.arc(140, 100, 24, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(260, 160, 20, 0, Math.PI * 2);
+      ctx.arc(285, 155, 26, 0, Math.PI * 2);
+      ctx.arc(310, 160, 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tuyaux néo-brutalistes
+      pipes.forEach(p => {
+        const pipeColor = p.isRed ? '#ef4444' : '#22c55e';
+        const capColor = p.isRed ? '#b91c1c' : '#15803d';
+
+        // Tuyau Haut
+        ctx.fillStyle = pipeColor;
+        ctx.strokeStyle = '#12131a';
+        ctx.lineWidth = 3;
+        ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topHeight);
+        ctx.strokeRect(p.x, -2, PIPE_WIDTH, p.topHeight + 2);
+
+        // Chapeau Tuyau Haut
+        ctx.fillStyle = capColor;
+        ctx.fillRect(p.x - 3, p.topHeight - 20, PIPE_WIDTH + 6, 20);
+        ctx.strokeRect(p.x - 3, p.topHeight - 20, PIPE_WIDTH + 6, 20);
+
+        // Tuyau Bas
+        const bottomY = p.topHeight + p.gap;
+        const bottomHeight = canvas.height - GROUND_HEIGHT - bottomY;
+        ctx.fillStyle = pipeColor;
+        ctx.fillRect(p.x, bottomY, PIPE_WIDTH, bottomHeight);
+        ctx.strokeRect(p.x, bottomY, PIPE_WIDTH, bottomHeight + 5);
+
+        // Chapeau Tuyau Bas
+        ctx.fillStyle = capColor;
+        ctx.fillRect(p.x - 3, bottomY, PIPE_WIDTH + 6, 20);
+        ctx.strokeRect(p.x - 3, bottomY, PIPE_WIDTH + 6, 20);
+      });
+
+      // Pelouse / Sol
+      ctx.fillStyle = '#ded895';
+      ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+      ctx.strokeStyle = '#12131a';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-2, canvas.height - GROUND_HEIGHT, canvas.width + 4, GROUND_HEIGHT + 4);
+
+      ctx.fillStyle = '#65a30d';
+      ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, 10);
+      ctx.strokeRect(-2, canvas.height - GROUND_HEIGHT, canvas.width + 4, 10);
+
+      // Dessin de Giroud
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.rotation);
+
+      if (imgLoaded) {
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#12131a';
+        ctx.lineWidth = 3;
+        ctx.fillStyle = '#fed72d';
+        ctx.fill();
+        ctx.stroke();
+        ctx.clip();
+        ctx.drawImage(giroudImg, -player.radius, -player.radius, player.radius * 2, player.radius * 2);
+      } else {
+        // Fallback ballon si l'image charge lentement
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#fed72d';
+        ctx.fill();
+        ctx.strokeStyle = '#12131a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚽', 0, 1);
+      }
+
+      ctx.restore();
+    }
+
+    function renderLoop() {
+      if (gameState === 'LOBBY') return;
+      update();
+      draw();
+      animationFrameId = requestAnimationFrame(renderLoop);
+    }
+
+    // Gestion des entrées
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        flap();
+      }
+    });
+
+    canvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      flap();
+    });
+  </script>
+</body>
+</html>
