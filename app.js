@@ -12,9 +12,10 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.database();
 
-const STORAGE_AUTH_SESSION = 'imb_session_v4';
+const ADMIN_EMAILS = ['sayaralex@gmail.com'];
 const STORAGE_FAVS = 'imb_favs_v4';
 
 const AVATAR_EMOJIS = ['🍺', '🍷', '👑', '🗿', '🎆', '💩', '🎲', '⚡'];
@@ -122,32 +123,77 @@ let soundMuted = false;
 let initialChatTimestamp = Date.now();
 let lastNotifiedMsgKey = null;
 
-/* ---------------- DÉMARRAGE ---------------- */
+/* ---------------- DÉMARRAGE & SURVEILLANCE AUTHENTIFICATION ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
   renderPickers();
-  checkAuthSession();
   renderGamesCatalog();
-  listenToUsersAndPresence();
-  listenToLiveChat();
-  listenToUndercoverLiveActivity();
-});
 
-function checkAuthSession() {
-  const stored = localStorage.getItem(STORAGE_AUTH_SESSION);
-  const overlay = document.getElementById('authOverlay');
+  // Écouteur global de session Firebase Auth
+  auth.onAuthStateChanged(async (firebaseUser) => {
+    const authOverlay = document.getElementById('authOverlay');
+    const pendingOverlay = document.getElementById('pendingOverlay');
 
-  if (stored) {
-    currentUser = JSON.parse(stored);
-    overlay.classList.add('hidden');
-    updateUserUI();
-    setupMyRealtimePresence();
-    if (location.hash.startsWith('#imposteur=')) {
-      window.location.href = 'games/undercover/' + location.hash;
+    if (!firebaseUser) {
+      // Déconnecté
+      currentUser = null;
+      authOverlay.classList.remove('hidden');
+      pendingOverlay.classList.add('hidden');
+      document.getElementById('navAdminBtn').classList.add('hidden');
+      return;
     }
-  } else {
-    overlay.classList.remove('hidden');
-  }
-}
+
+    // Connecté : écouter son profil en temps réel dans Realtime Database
+    db.ref(`users/${firebaseUser.uid}`).on('value', async (snap) => {
+      let userData = snap.val();
+
+      // Si c'est sa toute première connexion
+      if (!userData) {
+        const userEmail = (firebaseUser.email || '').toLowerCase();
+        const isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+        // Profil par défaut pour Alex ou pour un nouvel arrivant
+        userData = {
+          uid: firebaseUser.uid,
+          email: userEmail,
+          nickname: isAdmin ? 'Alex' : (firebaseUser.displayName || 'Joueur'),
+          tag: isAdmin ? 'alexs' : ('joueur_' + Math.floor(1000 + Math.random() * 9000)),
+          role: isAdmin ? 'admin' : 'member',
+          status: isAdmin ? 'approved' : 'pending',
+          avatarEmoji: '🍺',
+          flagEmoji: '🇫🇷',
+          createdAt: Date.now()
+        };
+
+        await db.ref(`users/${firebaseUser.uid}`).set(userData);
+      }
+
+      currentUser = userData;
+
+      // 1. Vérification du statut d'approbation
+      if (currentUser.status === 'pending') {
+        authOverlay.classList.add('hidden');
+        pendingOverlay.classList.remove('hidden');
+        document.getElementById('pendingUserNick').textContent = currentUser.nickname;
+        document.getElementById('pendingUserTag').textContent = `@${currentUser.tag}`;
+        return;
+      }
+
+      // 2. Compte approuvé : déblocage du lobby
+      authOverlay.classList.add('hidden');
+      pendingOverlay.classList.add('hidden');
+      updateUserUI();
+      setupMyRealtimePresence();
+      listenToUsersAndPresence();
+      listenToLiveChat();
+      listenToUndercoverLiveActivity();
+
+      // 3. Si c'est un admin, activer le panneau modérateur
+      if (currentUser.role === 'admin') {
+        setupAdminWatcher();
+      }
+    });
+  });
+});
 
 function updateUserUI() {
   if (!currentUser) return;
@@ -155,6 +201,218 @@ function updateUserUI() {
   document.getElementById('navUserTag').textContent = `@${currentUser.tag}`;
   document.getElementById('navUserEmojis').textContent = `${currentUser.avatarEmoji || '🍺'} ${currentUser.flagEmoji || '🇫🇷'}`;
   document.getElementById('heroGreeting').textContent = `SALUT ${currentUser.nickname} !`;
+}
+
+/* ---------------- CONNEXION GOOGLE & EMAIL ---------------- */
+async function handleGoogleSignIn() {
+  hideAuthError();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (err) {
+    showAuthError("Erreur Google : " + err.message);
+  }
+}
+
+async function handleEmailLogin(e) {
+  e.preventDefault();
+  hideAuthError();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  const btn = document.getElementById('btnSubmitLogin');
+  btn.disabled = true;
+  btn.textContent = "Connexion...";
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (err) {
+    showAuthError("Identifiants incorrects ou compte inexistant.");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<span>Se connecter</span><span class="text-base">🔑</span>`;
+  }
+}
+
+async function handleEmailRegister(e) {
+  e.preventDefault();
+  hideAuthError();
+
+  const nickname = document.getElementById('regNickname').value.trim();
+  const tag = document.getElementById('regTag').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const password = document.getElementById('regPassword').value;
+
+  if (!nickname || !tag || !email || !password) {
+    showAuthError("Tous les champs sont requis.");
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitReg');
+  btn.disabled = true;
+  btn.textContent = "Création du compte...";
+
+  try {
+    // Vérifier si le tag est déjà pris
+    const tagSnap = await db.ref('users').orderByChild('tag').equalTo(tag).once('value');
+    if (tagSnap.exists()) {
+      showAuthError(`Le tag @${tag} est déjà utilisé.`);
+      btn.disabled = false;
+      btn.innerHTML = `<span>Créer mon compte</span><span class="text-base">🚀</span>`;
+      return;
+    }
+
+    const res = await auth.createUserWithEmailAndPassword(email, password);
+    const isAdmin = ADMIN_EMAILS.includes(email);
+
+    const newUser = {
+      uid: res.user.uid,
+      email: email,
+      nickname: nickname,
+      tag: tag,
+      role: isAdmin ? 'admin' : 'member',
+      status: isAdmin ? 'approved' : 'pending',
+      avatarEmoji: selectedAvatarReg,
+      flagEmoji: selectedFlagReg,
+      createdAt: Date.now()
+    };
+
+    await db.ref(`users/${res.user.uid}`).set(newUser);
+  } catch (err) {
+    showAuthError("Erreur : " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<span>Créer mon compte</span><span class="text-base">🚀</span>`;
+  }
+}
+
+function logout() {
+  if (currentUser && currentUser.tag) {
+    db.ref(`presence/${currentUser.tag}`).remove();
+  }
+  auth.signOut().then(() => {
+    location.reload();
+  });
+}
+
+function switchAuthTab(tab) {
+  hideAuthError();
+  const formReg = document.getElementById('formRegister');
+  const formLog = document.getElementById('formLogin');
+  const btnReg = document.getElementById('tabBtnRegister');
+  const btnLog = document.getElementById('tabBtnLogin');
+
+  if (tab === 'register') {
+    formReg.classList.remove('hidden');
+    formLog.classList.add('hidden');
+    btnReg.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
+    btnLog.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
+  } else {
+    formLog.classList.remove('hidden');
+    formReg.classList.add('hidden');
+    btnLog.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
+    btnReg.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
+  }
+}
+
+function showAuthError(msg) {
+  const banner = document.getElementById('authErrorBanner');
+  banner.textContent = msg;
+  banner.classList.remove('hidden');
+}
+
+function hideAuthError() {
+  const banner = document.getElementById('authErrorBanner');
+  banner.textContent = '';
+  banner.classList.add('hidden');
+}
+
+/* =========================================================
+   PANNEAU DE MODÉRATION ADMIN
+   ========================================================= */
+let pendingUsersList = [];
+
+function setupAdminWatcher() {
+  const navAdminBtn = document.getElementById('navAdminBtn');
+  navAdminBtn.classList.remove('hidden');
+  navAdminBtn.classList.add('flex');
+
+  db.ref('users').on('value', snap => {
+    const users = snap.val() || {};
+    pendingUsersList = Object.values(users).filter(u => u && u.status === 'pending');
+
+    const badge = document.getElementById('navAdminBadge');
+    const modalCount = document.getElementById('adminPendingCount');
+
+    if (pendingUsersList.length > 0) {
+      badge.textContent = pendingUsersList.length;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+
+    if (modalCount) modalCount.textContent = pendingUsersList.length;
+    renderAdminPendingList();
+  });
+}
+
+function renderAdminPendingList() {
+  const container = document.getElementById('adminPendingList');
+  if (!container) return;
+
+  if (pendingUsersList.length === 0) {
+    container.innerHTML = `<p class="text-xs font-bold text-slate-400 italic py-4 text-center">Aucune demande en attente actuellement.</p>`;
+    return;
+  }
+
+  container.innerHTML = pendingUsersList.map(u => `
+    <div class="neo-box-sm bg-slate-50 p-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-10 h-10 rounded-xl bg-white border-2 border-[#12131a] flex items-center justify-center text-lg shadow-[1px_2px_0px_#12131a]">
+          ${u.avatarEmoji || '🍺'}
+        </span>
+        <div class="min-w-0">
+          <div class="text-xs font-black text-[#12131a] truncate">${escapeHtml(u.nickname)} ${u.flagEmoji || ''}</div>
+          <div class="text-[10px] font-mono text-indigo-600 font-bold truncate">@${escapeHtml(u.tag)}</div>
+          <div class="text-[10px] font-mono text-slate-400 truncate">${escapeHtml(u.email || 'Google Auth')}</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button onclick="approveUser('${u.uid}', '${escapeHtml(u.nickname)}')" class="neo-btn bg-emerald-400 hover:bg-emerald-500 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
+          ✓ Accepter
+        </button>
+        <button onclick="rejectUser('${u.uid}')" class="neo-btn bg-rose-200 hover:bg-rose-300 text-rose-900 px-2.5 py-1.5 rounded-xl text-xs font-black">
+          ✕
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function approveUser(uid, nickname) {
+  db.ref(`users/${uid}`).update({
+    status: 'approved'
+  }).then(() => {
+    showToast(`${nickname} a été accepté dans la promo !`, '✅');
+    sendSystemChat(`🎉 ${nickname} a rejoint la promo après validation !`);
+  });
+}
+
+function rejectUser(uid) {
+  if (confirm("Refuser cette inscription ?")) {
+    db.ref(`users/${uid}`).remove().then(() => {
+      showToast('Inscription refusée et supprimée.', '🗑️');
+    });
+  }
+}
+
+function openAdminModal() {
+  document.getElementById('modalAdmin').classList.remove('hidden');
+}
+
+function closeAdminModal() {
+  document.getElementById('modalAdmin').classList.add('hidden');
 }
 
 /* ---------------- PRÉSENCE EN LIGNE ---------------- */
@@ -190,7 +448,9 @@ function listenToUsersAndPresence() {
 
 function updatePresenceCountersAndDirectory() {
   const onlineCount = Object.keys(onlinePresenceMap).length || (currentUser ? 1 : 0);
-  const registeredCount = Object.keys(allUsersMap).length || onlineCount;
+  // Ne compter que les membres approuvés
+  const approvedUsers = Object.values(allUsersMap).filter(u => u && u.status === 'approved');
+  const registeredCount = approvedUsers.length || onlineCount;
 
   document.getElementById('navOnlineCount').textContent = onlineCount;
   document.getElementById('navRegisteredCount').textContent = registeredCount;
@@ -231,30 +491,25 @@ function renderUsersDirectory() {
   const searchInput = document.getElementById('userDirectorySearch');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-  const combinedTags = new Set([
-    ...Object.keys(allUsersMap),
-    ...Object.keys(onlinePresenceMap)
-  ]);
-
+  const approvedUsers = Object.values(allUsersMap).filter(u => u && u.status === 'approved');
   const onlineUsers = [];
   const offlineUsers = [];
 
-  combinedTags.forEach(tag => {
-    const reg = allUsersMap[tag] || {};
-    const pres = onlinePresenceMap[tag] || null;
+  approvedUsers.forEach(u => {
+    const isOnline = Boolean(onlinePresenceMap[u.tag]);
     const userObj = {
-      tag: tag,
-      nickname: (pres && pres.nickname) || reg.nickname || tag,
-      avatarEmoji: (pres && pres.avatarEmoji) || reg.avatarEmoji || '🍺',
-      flagEmoji: (pres && pres.flagEmoji) || reg.flagEmoji || '🇫🇷',
-      isOnline: Boolean(pres)
+      tag: u.tag,
+      nickname: u.nickname || u.tag,
+      avatarEmoji: u.avatarEmoji || '🍺',
+      flagEmoji: u.flagEmoji || '🇫🇷',
+      isOnline: isOnline
     };
 
     if (query && !userObj.nickname.toLowerCase().includes(query) && !userObj.tag.toLowerCase().includes(query)) {
       return;
     }
 
-    if (userObj.isOnline) {
+    if (isOnline) {
       onlineUsers.push(userObj);
     } else {
       offlineUsers.push(userObj);
@@ -334,13 +589,12 @@ function handleChatInputKey(e) {
     { tag: 'promo', nickname: 'Toute la promo', avatarEmoji: '📢', isOnline: true }
   ];
 
-  Object.keys(allUsersMap).forEach(tag => {
-    const u = allUsersMap[tag];
+  Object.values(allUsersMap).filter(u => u && u.status === 'approved').forEach(u => {
     candidates.push({
-      tag: tag,
-      nickname: u.nickname || tag,
+      tag: u.tag,
+      nickname: u.nickname || u.tag,
       avatarEmoji: u.avatarEmoji || '🍺',
-      isOnline: Boolean(onlinePresenceMap[tag])
+      isOnline: Boolean(onlinePresenceMap[u.tag])
     });
   });
 
@@ -472,141 +726,6 @@ function pickRandomGame() {
   }, 650);
 }
 
-/* ---------------- AUTHENTIFICATION ---------------- */
-function switchAuthTab(tab) {
-  hideAuthError();
-  const formReg = document.getElementById('formRegister');
-  const formLog = document.getElementById('formLogin');
-  const btnReg = document.getElementById('tabBtnRegister');
-  const btnLog = document.getElementById('tabBtnLogin');
-
-  if (tab === 'register') {
-    formReg.classList.remove('hidden');
-    formLog.classList.add('hidden');
-    btnReg.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
-    btnLog.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
-  } else {
-    formLog.classList.remove('hidden');
-    formReg.classList.add('hidden');
-    btnLog.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
-    btnReg.className = 'bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all';
-  }
-}
-
-function showAuthError(msg) {
-  const banner = document.getElementById('authErrorBanner');
-  banner.textContent = msg;
-  banner.classList.remove('hidden');
-}
-
-function hideAuthError() {
-  const banner = document.getElementById('authErrorBanner');
-  banner.textContent = '';
-  banner.classList.add('hidden');
-}
-
-async function handleRegister(e) {
-  e.preventDefault();
-  hideAuthError();
-
-  const nickname = document.getElementById('regNickname').value.trim();
-  let tag = document.getElementById('regTag').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-  const password = document.getElementById('regPassword').value;
-
-  if (!nickname || !tag || !password) {
-    showAuthError('Tous les champs sont requis.');
-    return;
-  }
-
-  const submitBtn = document.getElementById('btnSubmitReg');
-  submitBtn.disabled = true;
-  submitBtn.innerText = "Création du compte...";
-
-  try {
-    const tagSnapshot = await db.ref(`users/${tag}`).get();
-    if (tagSnapshot.exists()) {
-      showAuthError(`Le tag @${tag} est déjà pris par un autre camarade.`);
-      submitBtn.disabled = false;
-      submitBtn.innerText = "Créer mon compte & Entrer";
-      return;
-    }
-
-    const newUser = {
-      nickname,
-      tag,
-      password,
-      avatarEmoji: selectedAvatarReg,
-      flagEmoji: selectedFlagReg,
-      createdAt: Date.now()
-    };
-
-    await db.ref(`users/${tag}`).set(newUser);
-
-    localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(newUser));
-    currentUser = newUser;
-
-    checkAuthSession();
-    showToast(`Bienvenue dans la promo, ${nickname} !`, '🚀');
-    sendSystemChat(`${newUser.nickname} (@${newUser.tag}) a rejoint le Game Center !`);
-  } catch (err) {
-    showAuthError("Erreur : " + err.message);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerText = "Créer mon compte & Entrer";
-  }
-}
-
-async function handleLogin(e) {
-  e.preventDefault();
-  hideAuthError();
-
-  const tag = document.getElementById('loginTag').value.trim().toLowerCase().replace(/^@/, '');
-  const password = document.getElementById('loginPassword').value;
-
-  const submitBtn = document.getElementById('btnSubmitLogin');
-  submitBtn.disabled = true;
-  submitBtn.innerText = "Connexion...";
-
-  try {
-    const userSnap = await db.ref(`users/${tag}`).get();
-    const userData = userSnap.val();
-
-    if (!userData) {
-      showAuthError(`Aucun compte trouvé avec le tag @${tag}. Crée ton compte d'abord !`);
-      submitBtn.disabled = false;
-      submitBtn.innerText = "Se connecter";
-      return;
-    }
-
-    if (userData.password !== password) {
-      showAuthError("Mot de passe incorrect pour ce tag.");
-      submitBtn.disabled = false;
-      submitBtn.innerText = "Se connecter";
-      return;
-    }
-
-    localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(userData));
-    currentUser = userData;
-    checkAuthSession();
-    showToast(`Ravi de te revoir, ${userData.nickname} !`, '👋');
-  } catch (err) {
-    showAuthError("Erreur : " + err.message);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerText = "Se connecter";
-  }
-}
-
-function logout() {
-  if (confirm('Te déconnecter du Game Center ?')) {
-    if (currentUser && currentUser.tag) {
-      db.ref(`presence/${currentUser.tag}`).remove();
-    }
-    localStorage.removeItem(STORAGE_AUTH_SESSION);
-    location.reload();
-  }
-}
-
 /* ---------------- CHAT TEMPS RÉEL ---------------- */
 function listenToLiveChat() {
   const container = document.getElementById('chatMessagesContainer');
@@ -705,7 +824,7 @@ function openInternalInvite(game, code) {
   if (game === 'MORPION') {
     window.location.href = `games/morpion/#room=${code}`;
   } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
-    window.location.href = 'games/undercover/#imposteur=' + code;
+    window.location.href = `games/undercover/#imposteur=${code}`;
   }
 }
 
@@ -740,7 +859,7 @@ function sendSystemChat(text) {
   });
 }
 
-/* ---------------- CATALOGUE DE JEUX ---------------- */
+/* ---------------- CATALOGUE DE JEUX EXTERNES ---------------- */
 function renderGamesCatalog() {
   const container = document.getElementById('gamesCatalogGrid');
   const search = document.getElementById('gameSearchInput').value.toLowerCase();
@@ -893,13 +1012,12 @@ async function handleSaveProfile(e) {
   currentUser.avatarEmoji = selectedAvatarEdit;
   currentUser.flagEmoji = selectedFlagEdit;
 
-  await db.ref(`users/${currentUser.tag}`).update({
+  await db.ref(`users/${currentUser.uid}`).update({
     nickname: nick,
     avatarEmoji: selectedAvatarEdit,
     flagEmoji: selectedFlagEdit
   });
 
-  localStorage.setItem(STORAGE_AUTH_SESSION, JSON.stringify(currentUser));
   updateUserUI();
   setupMyRealtimePresence();
   closeProfileModal();
