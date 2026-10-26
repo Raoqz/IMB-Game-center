@@ -247,6 +247,7 @@ function updateUserUI() {
   document.getElementById('heroGreeting').textContent = `SALUT ${currentUser.nickname} !`;
 }
 
+
 /* =========================================================
    GESTION DU MENU REPRENDRE (PARTIES RÉCENTES)
    ========================================================= */
@@ -886,6 +887,56 @@ function formatChatMessageWithMentions(rawText) {
     return `${space}<span onclick="mentionUserInChat('${tag}')" class="cursor-pointer inline-block bg-[#fed72d] text-[#12131a] border border-[#12131a] px-1.5 py-0.2 rounded-md font-mono text-[11px] font-black">@${tag}</span>`;
   });
 }
+/* =========================================================
+   GESTION DES INVITATIONS INDIVIDUELLES
+   ========================================================= */
+function listenLobbyInvitations() {
+  if (!currentUser) return;
+  const stack = document.getElementById('lobbyInviteStack');
+  if (!stack) return;
+
+  db.ref(`invitations/${currentUser.tag}`).on('value', snap => {
+    const data = snap.val();
+    if (!data) {
+      stack.innerHTML = '';
+      return;
+    }
+
+    const list = Object.entries(data).map(([key, val]) => ({ ...val, key }));
+    stack.innerHTML = list.map(inv => `
+      <div class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 sm:p-3.5 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-3 animate-bounce">
+        <div class="min-w-0">
+          <span class="text-xs font-black text-[#12131a] block truncate">
+            ${escapeHtml(inv.fromNick)} t'invite à jouer à ${escapeHtml(inv.gameTitle)} !
+          </span>
+          <span class="text-[10px] font-bold text-slate-700 block">Salle : <strong>${inv.roomCode}</strong></span>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <button onclick="acceptLobbyInvite('${inv.gameId}', '${inv.roomCode}', '${inv.key}')" class="neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] px-2.5 py-1.5 rounded-xl text-xs font-black">
+            Rejoindre
+          </button>
+          <button onclick="dismissLobbyInvite('${inv.key}')" class="neo-btn bg-white hover:bg-slate-100 text-slate-700 px-2 py-1.5 rounded-xl text-xs font-bold">
+            ✕
+          </button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function acceptLobbyInvite(gameId, roomCode, key) {
+  dismissLobbyInvite(key);
+  trackGameLaunch(gameId);
+  window.location.href = `/games/${gameId}/index.html#room=${roomCode}`;
+}
+
+function dismissLobbyInvite(key) {
+  if (currentUser && key) {
+    db.ref(`invitations/${currentUser.tag}/${key}`).remove();
+  }
+}
+
 
 /* ---------------- ACTIVITÉ SOUS-MARIN ---------------- */
 function listenToUndercoverLiveActivity() {
