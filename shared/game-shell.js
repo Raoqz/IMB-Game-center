@@ -1,5 +1,5 @@
 /* =========================================================
-   IMB GAME CENTER - SHARED GAME SHELL (v3)
+   IMB GAME CENTER - SHARED GAME SHELL (v4)
    ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
@@ -36,7 +36,7 @@ window.GameShell = {
   onGameInit: null,
   onStateUpdate: null,
   onPlayerJoined: null,
-  onRoomConnected: null, // Callback déclenché dès qu'une salle est active
+  onRoomConnected: null,
 
   init(config) {
     this.gameId = config.gameId;
@@ -73,7 +73,6 @@ window.GameShell = {
       this.listenStackedInvitations();
       this.listenLiveChat();
 
-      // Vérifier si un code de salle est présent dans l'URL (#room=CODE)
       const hash = window.location.hash;
       const match = hash.match(/room=([A-Z0-9]{4})/i);
       if (match) {
@@ -102,7 +101,6 @@ window.GameShell = {
     });
   },
 
-  /* ---------------- INJECTION DOM ---------------- */
   buildShellDom() {
     const shellHtml = `
       <!-- TOPBAR RÉTRACTABLE -->
@@ -127,11 +125,21 @@ window.GameShell = {
               🏆
             </button>
 
-            <!-- BOUTON LISTE CONNECTÉS -->
-            <button onclick="GameShell.toggleUsersDropdown(event)" id="shellOnlineBadgeBtn" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
-              <span id="shellOnlineCountText">1 en ligne</span>
-            </button>
+            <!-- BOUTON + DROPDOWN DES CONNECTÉS PLACÉ DIRECTEMENT EN DESSOUS -->
+            <div class="relative">
+              <button onclick="GameShell.toggleUsersDropdown(event)" id="shellOnlineBadgeBtn" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
+                <span id="shellOnlineCountText">1 en ligne</span>
+              </button>
+
+              <div id="shellUsersDropdown" class="hidden absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[4px_5px_0px_#12131a] p-3 text-[#12131a] max-h-96 overflow-y-auto custom-scrollbar z-50">
+                <div class="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-200">
+                  <span class="text-xs font-black uppercase text-[#12131a]"><span id="shellDropdownOnline">0</span> en ligne</span>
+                  <span class="text-[11px] font-mono font-bold text-slate-500"><span id="shellDropdownTotal">0</span> membres</span>
+                </div>
+                <div id="shellOnlineUsersList" class="space-y-1.5"></div>
+              </div>
+            </div>
 
             <button onclick="GameShell.toggleFullScreen()" title="Plein écran" class="hidden sm:flex neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
               ⛶ Plein écran
@@ -146,28 +154,17 @@ window.GameShell = {
             </button>
           </div>
         </div>
-
-        <!-- DROPDOWN UTILISATEURS -->
-        <div id="shellUsersDropdown" class="hidden absolute right-4 top-14 w-80 bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[4px_5px_0px_#12131a] p-3 text-[#12131a] max-h-96 overflow-y-auto custom-scrollbar z-50">
-          <div class="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-200">
-            <span class="text-xs font-black uppercase text-[#12131a]"><span id="shellDropdownOnline">0</span> en ligne</span>
-            <span class="text-[11px] font-mono font-bold text-slate-500"><span id="shellDropdownTotal">0</span> membres</span>
-          </div>
-          <div id="shellOnlineUsersList" class="space-y-1.5"></div>
-        </div>
       </header>
 
-      <!-- BOUTON RESTAURATION BARRE -->
+      <!-- BOUTON POUR REVOIR LA BARRE -->
       <button id="shellBtnRestoreBar" onclick="GameShell.toggleBarVisibility()" class="hidden fixed top-2 right-4 z-40 neo-btn bg-[#fed72d] text-[#12131a] px-3 py-1 rounded-xl text-xs font-black shadow-lg">
         ▼ Menu
       </button>
 
-      <!-- PILE D'INVITATIONS PERSISTANTES (EN BAS À DROITE, MAX 3) -->
-      <div id="shellInviteStack" class="fixed bottom-20 right-4 z-50 flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none">
-        <!-- Cartes d'invitation générées -->
-      </div>
+      <!-- PILE D'INVITATIONS EN BAS À DROITE (MAX 3) -->
+      <div id="shellInviteStack" class="fixed bottom-20 right-4 z-50 flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none"></div>
 
-      <!-- CHAT FLOTTANT DU SHELL -->
+      <!-- CHAT DU SHELL -->
       <div class="fixed bottom-4 right-4 z-40 flex flex-col items-end">
         <div id="shellChatBox" class="hidden mb-3 w-80 sm:w-96 h-[460px] bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[5px_6px_0px_#12131a] flex flex-col overflow-hidden relative">
           
@@ -211,7 +208,7 @@ window.GameShell = {
         </div>
       </div>
 
-      <!-- MODALE CLASSEMENT AVEC PODIUM (OR, ARGENT, BRONZE) -->
+      <!-- MODALE CLASSEMENT AVEC PODIUM -->
       <div id="shellModalLeaderboard" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[88vh] overflow-y-auto custom-scrollbar">
           <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
@@ -219,7 +216,7 @@ window.GameShell = {
               <span class="text-2xl">🏆</span>
               <div>
                 <h3 class="text-base font-black text-[#12131a] uppercase leading-none">${this.gameTitle} : Classement</h3>
-                <span class="text-[10px] font-mono text-slate-500" id="shellLeaderboardSubtitle">Victoires enregistrées</span>
+                <span class="text-[10px] font-mono text-slate-500">Victoires enregistrées</span>
               </div>
             </div>
             <button onclick="GameShell.closeLeaderboard()" class="text-xl font-bold">✕</button>
@@ -249,7 +246,7 @@ window.GameShell = {
     });
   },
 
-  /* ---------------- GESTION DES SALLES (4 LETTRES) ---------------- */
+  /* ---------------- GESTION DES SALLES ---------------- */
   generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -264,6 +261,9 @@ window.GameShell = {
     this.currentRoomCode = code;
     this.isHost = true;
     this.myRole = 'X';
+
+    // Sauvegarder la salle pour la reprise
+    localStorage.setItem(`imb_active_room_${this.gameId}`, code);
 
     this.roomRef = db.ref(`rooms/${this.gameId}/${code}`);
     const initialData = {
@@ -301,11 +301,13 @@ window.GameShell = {
 
     const snap = await this.roomRef.once('value');
     if (!snap.exists()) {
-      alert("Salle introuvable ! Vérifie le code.");
+      localStorage.removeItem(`imb_active_room_${this.gameId}`);
+      alert("Salle introuvable ou fermée !");
       return false;
     }
 
     const data = snap.val();
+    localStorage.setItem(`imb_active_room_${this.gameId}`, code);
 
     if (data.playerX && data.playerX.tag === this.currentUser.tag) {
       this.isHost = true;
@@ -326,7 +328,6 @@ window.GameShell = {
     this.attachRoomListener();
     window.location.hash = `room=${code}`;
 
-    // Basculement immédiat vers le jeu
     if (this.onRoomConnected) {
       this.onRoomConnected(code, data);
     }
@@ -387,14 +388,9 @@ window.GameShell = {
     });
   },
 
-  /* ---------------- CONFETTIS EN CAS DE VICTOIRE ---------------- */
   fireConfetti() {
     if (typeof confetti === 'function') {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       setTimeout(() => {
         confetti({ particleCount: 50, angle: 60, spread: 60, origin: { x: 0 } });
         confetti({ particleCount: 50, angle: 120, spread: 60, origin: { x: 1 } });
@@ -402,7 +398,7 @@ window.GameShell = {
     }
   },
 
-  /* ---------------- INVITATIONS EN BAS À DROITE (MAX 3) ---------------- */
+  /* ---------------- INVITATIONS (SANS ALERT, MAX 3 EN BAS À DROITE) ---------------- */
   async sendDirectInvite(targetTag) {
     if (!this.currentRoomCode) {
       alert("Crée d'abord une salle avant d'inviter un camarade !");
@@ -419,8 +415,7 @@ window.GameShell = {
       roomCode: this.currentRoomCode,
       timestamp: Date.now()
     });
-
-    alert(`Invitation envoyée à @${targetTag} !`);
+    // Notification de navigateur alert(...) retirée !
   },
 
   listenStackedInvitations() {
@@ -434,9 +429,8 @@ window.GameShell = {
         return;
       }
 
-      // Conserver uniquement les 3 invitations les plus récentes
       const allInvites = Object.entries(data).map(([key, val]) => ({ ...val, key }));
-      const recentInvites = allInvites.slice(-3);
+      const recentInvites = allInvites.slice(-3); // Maximum 3
 
       stackContainer.innerHTML = recentInvites.map(inv => `
         <div id="inviteCard_${inv.key}" class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
@@ -478,7 +472,7 @@ window.GameShell = {
     }
   },
 
-  /* ---------------- CLASSEMENT (OR, ARGENT, BRONZE, TOP 5) ---------------- */
+  /* ---------------- CLASSEMENT TOP 3 / FULL ---------------- */
   openLeaderboard() {
     const modal = document.getElementById('shellModalLeaderboard');
     modal.classList.remove('hidden');
@@ -511,17 +505,14 @@ window.GameShell = {
       let rankBadge = `<span class="font-black text-xs w-5 text-center text-slate-400">${idx + 1}.</span>`;
 
       if (idx === 0) {
-        // 1er : Jaune doré avec trophée or
         cardStyle = "bg-[#fef08a] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-        rankBadge = `<span class="text-base" title="1er - Or">🥇</span>`;
+        rankBadge = `<span class="text-base">🥇</span>`;
       } else if (idx === 1) {
-        // 2e : Gris argenté avec trophée argent
         cardStyle = "bg-[#e2e8f0] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-        rankBadge = `<span class="text-base" title="2e - Argent">🥈</span>`;
+        rankBadge = `<span class="text-base">🥈</span>`;
       } else if (idx === 2) {
-        // 3e : Bronze / marron clair
         cardStyle = "bg-[#fed7aa] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-        rankBadge = `<span class="text-base" title="3e - Bronze">🥉</span>`;
+        rankBadge = `<span class="text-base">🥉</span>`;
       }
 
       return `
@@ -845,7 +836,7 @@ window.GameShell = {
     document.getElementById('shellChatBox').classList.remove('hidden');
   },
 
-  /* ---------------- OUTILS NAVIGATEUR ---------------- */
+  /* ---------------- OUTILS ---------------- */
   toggleBarVisibility() {
     const bar = document.getElementById('shellTopBar');
     const restoreBtn = document.getElementById('shellBtnRestoreBar');
