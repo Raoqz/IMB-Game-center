@@ -25,7 +25,7 @@
 </head>
 <body class="flex flex-col min-h-screen pt-16 select-none bg-[#1d4ed8]">
 
-  <!-- ================= ACCUEIL DU JEU ================= -->
+  <!-- ================= ACCUEIL DU MORPION ================= -->
   <main id="viewLobby" class="flex-1 flex flex-col items-center justify-center p-4">
     
     <div class="text-center mb-6">
@@ -43,7 +43,7 @@
         Salut <span id="shellUserNick" class="text-black font-black">Joueur</span> 👋 Crée une salle ou rejoins un pote.
       </p>
 
-      <button onclick="handleCreateRoom()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 mb-4">
+      <button onclick="handleCreateRoom()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 mb-3">
         <span>🎲</span>
         <span>Créer une salle</span>
       </button>
@@ -54,14 +54,20 @@
         <div class="flex-grow border-t-2 border-slate-200"></div>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex gap-2 mb-3">
         <input type="text" id="shellInputRoomCode" maxlength="4" placeholder="CODE" class="flex-1 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl px-3 py-2 text-center text-xs font-mono font-black uppercase tracking-widest focus:outline-none focus:bg-white">
         <button onclick="handleJoinRoom()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2 rounded-xl text-xs font-black">
           Rejoindre
         </button>
       </div>
 
-      <button onclick="GameShell.openRules()" class="w-full mt-4 text-[11px] font-bold text-slate-500 hover:text-black underline flex items-center justify-center gap-1">
+      <!-- BOUTON REPRENDRE LA SALLE EN COURS -->
+      <button id="btnResumeActiveRoom" onclick="handleResumeSavedRoom()" class="hidden w-full neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 mb-3 border-2 border-[#12131a]">
+        <span>⮌</span>
+        <span>Revenir dans la salle <strong id="resumeRoomCodeLabel" class="font-mono text-indigo-600">----</strong></span>
+      </button>
+
+      <button onclick="GameShell.openRules()" class="w-full mt-2 text-[11px] font-bold text-slate-500 hover:text-black underline flex items-center justify-center gap-1">
         <span>📖</span>
         <span>Les règles</span>
       </button>
@@ -72,11 +78,14 @@
   <!-- ================= PLATEAU DE JEU 1v1 ================= -->
   <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center p-4">
     
-    <div class="neo-box bg-white max-w-sm w-full p-5 flex flex-col items-center">
+    <div class="neo-box bg-white max-w-sm w-full p-5 flex flex-col items-center relative">
       
-      <!-- Barre d'état -->
+      <!-- Barre d'état + Bouton retour au lobby Morpion -->
       <div class="w-full flex items-center justify-between pb-3 mb-3 border-b-2 border-slate-200">
         <div class="flex items-center gap-2">
+          <button onclick="leaveToMorpionLobby()" class="neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] px-2 py-0.5 rounded-lg text-[10px] font-black" title="Revenir au menu du morpion">
+            ← Menu
+          </button>
           <span class="text-xs font-mono font-bold bg-[#fed72d] border border-[#12131a] px-2 py-0.5 rounded-lg shadow-[1px_1px_0px_#12131a]" id="gameRoomCodeDisplay">SALLE</span>
         </div>
         <div id="gameStatusBadge" class="text-[11px] font-bold text-amber-600 animate-pulse">
@@ -84,7 +93,7 @@
         </div>
       </div>
 
-      <!-- Duel -->
+      <!-- Duel Joueurs -->
       <div class="w-full grid grid-cols-2 gap-2 mb-4">
         <div id="boxPlayerX" class="p-2 rounded-xl border-2 border-transparent bg-slate-50 flex items-center gap-2">
           <span class="text-xl">❌</span>
@@ -138,7 +147,6 @@
         <p>• Chaque victoire rapporte <strong>+1 victoire</strong> au palmarès général !</p>
       `,
       onRoomConnected: (code) => {
-        // Déclenché automatiquement dès que la salle est rejointe
         showGameView(code);
       },
       onPlayerJoined: (roomData) => {
@@ -165,7 +173,6 @@
             const winnerNick = state.winner === 'X' ? roomData.playerX.nickname : roomData.playerO.nickname;
             document.getElementById('turnIndicator').textContent = `Victoire de ${winnerNick} ! 🎉`;
             
-            // Déclenchement des confettis pour le gagnant
             if (state.winner === GameShell.myRole) {
               GameShell.fireConfetti();
             }
@@ -175,6 +182,30 @@
         }
       }
     });
+
+    // Vérifier si une salle en cours existe au chargement du lobby
+    window.addEventListener('DOMContentLoaded', () => {
+      checkSavedActiveRoom();
+    });
+
+    function checkSavedActiveRoom() {
+      const saved = localStorage.getItem('imb_active_room_morpion');
+      const btn = document.getElementById('btnResumeActiveRoom');
+      const label = document.getElementById('resumeRoomCodeLabel');
+      if (saved && saved.length === 4) {
+        label.textContent = saved;
+        btn.classList.remove('hidden');
+      } else {
+        btn.classList.add('hidden');
+      }
+    }
+
+    function handleResumeSavedRoom() {
+      const saved = localStorage.getItem('imb_active_room_morpion');
+      if (saved) {
+        GameShell.joinRoom(saved);
+      }
+    }
 
     async function handleCreateRoom() {
       await GameShell.createRoom();
@@ -194,6 +225,12 @@
       document.getElementById('viewGame').classList.remove('hidden');
       document.getElementById('gameRoomCodeDisplay').textContent = `SALLE : ${code}`;
       renderBoard();
+    }
+
+    function leaveToMorpionLobby() {
+      document.getElementById('viewGame').classList.add('hidden');
+      document.getElementById('viewLobby').classList.remove('hidden');
+      checkSavedActiveRoom();
     }
 
     function renderBoard() {
