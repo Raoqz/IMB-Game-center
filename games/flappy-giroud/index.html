@@ -35,7 +35,7 @@
         FLAPPY GIROUD
       </h2>
       <p class="text-xs sm:text-sm font-bold text-slate-500 mb-6">
-        Format panoramique grand écran : esquive les tuyaux en coup de tête !
+        Format panoramique grand écran : esquive les tuyaux rapprochés en coup de tête !
       </p>
 
       <div class="p-3.5 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl flex items-center justify-between mb-6 shadow-[2px_3px_0px_#12131a]">
@@ -60,10 +60,10 @@
     </div>
   </main>
 
-  <!-- ================= PLATEAU GRAND ÉCRAN ================= -->
+  <!-- ================= PLATEAU DE JEU ================= -->
   <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center w-full max-w-6xl py-1">
     
-    <!-- En-tête -->
+    <!-- Barre de commandes du haut -->
     <div class="w-full flex items-center justify-between mb-2.5 px-2">
       <button onclick="exitToLobby()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2 rounded-xl text-xs sm:text-sm font-black shadow-[2px_2px_0px_#12131a]">
         ← Menu
@@ -73,21 +73,25 @@
         <span class="text-xs sm:text-sm font-mono font-black bg-white border-2 border-[#12131a] px-3.5 py-1.5 rounded-xl shadow-[2px_2px_0px_#12131a]">
           Record : <strong id="inGameRecord" class="text-indigo-600">0</strong>
         </span>
-        <span class="text-xs sm:text-sm font-mono font-black bg-[#fed72d] border-2 border-[#12131a] px-4 py-1.5 rounded-xl shadow-[2px_2px_0px_#12131a]">
-          Score : <strong id="inGameScore">0</strong>
-        </span>
       </div>
     </div>
 
-    <!-- Conteneur Canvas XXL -->
+    <!-- Conteneur Canvas XXL avec Score en direct flottant au-dessus -->
     <div id="canvasWrapper" class="relative w-full">
+      
+      <!-- GROS SCORE FLOTTANT AU-DESSUS DE L'ÉCRAN -->
+      <div id="liveScoreHud" class="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none flex items-center gap-2 bg-[#fed72d] border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] px-6 py-2 rounded-2xl">
+        <span class="text-2xl">⚽</span>
+        <span id="inGameScore" class="font-mono text-3xl sm:text-4xl font-black text-[#12131a] leading-none">0</span>
+      </div>
+
       <canvas id="flappyCanvas" width="1200" height="640" class="w-full h-auto border-[3px] border-[#12131a] rounded-2xl shadow-[5px_7px_0px_#12131a] bg-[#70c5ce] block"></canvas>
 
       <!-- Overlay Prêt à jouer -->
-      <div id="startOverlay" class="absolute inset-0 bg-black/25 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none">
+      <div id="startOverlay" class="absolute inset-0 bg-black/25 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none z-10">
         <div class="bg-white border-[3px] border-[#12131a] px-6 py-4 rounded-2xl shadow-[4px_5px_0px_#12131a] animate-pulse">
           <p class="font-black text-base sm:text-lg text-[#12131a]">ESPACE ou CLIC</p>
-          <p class="text-xs font-bold text-slate-500 mt-0.5">pour t'envoler en douceur !</p>
+          <p class="text-xs font-bold text-slate-500 mt-0.5">pour donner un coup de tête !</p>
         </div>
       </div>
 
@@ -150,20 +154,19 @@
     let personalBest = 0;
     let score = 0;
     let animationFrameId = null;
-    let bgScrollX = 0;
 
-    // Physique ultra ralentie et flottante
-    const GRAVITY = 0.085;
-    const JUMP_FORCE = -3.1;
+    // Physique
+    const GRAVITY = 0.088;
+    const JUMP_FORCE = -3.2;
     const PIPE_WIDTH = 84;
     const GROUND_HEIGHT = 42;
 
-    // Tête de Giroud doublée (130 px visuels, hitbox 34 px)
+    // Tête de Giroud
     let player = {
       x: 180,
       y: 260,
       visualSize: 130,
-      hitboxRadius: 34,
+      hitboxRadius: 32,
       velocity: 0,
       rotation: 0
     };
@@ -175,10 +178,10 @@
       gameId: 'flappy-giroud',
       gameTitle: 'Flappy Giroud',
       rulesHtml: `
-        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour flotter vers le haut.</p>
-        <p>• <strong>Physique :</strong> La chute est très douce et ralentie pour permettre des esquives précises.</p>
+        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour planer vers le haut.</p>
+        <p>• <strong>Obstacles rapprochés :</strong> Les poteaux s'enchaînent à un rythme soutenu, reste concentré !</p>
         <p>• <strong>Mode rouge (30+ pts) :</strong> Des tuyaux rouges mobiles oscillent de haut en bas.</p>
-        <p>• <strong>Classement :</strong> Ton meilleur record est automatiquement enregistré dans le classement général de la promo !</p>
+        <p>• <strong>Classement :</strong> Ton meilleur score est automatiquement enregistré dans le classement général de la promo !</p>
       `
     });
 
@@ -249,23 +252,23 @@
       document.getElementById('startOverlay').classList.add('hidden');
     }
 
-    // Ouvertures élargies adaptées à la grande tête
+    // Difficulté : tuyaux plus rapprochés verticalement et vitesse progressive
     function getDifficultyParams(currentScore) {
-      let gap = 250;
-      let speed = 1.65;
+      let gap = 205;
+      let speed = 2.1;
       let redProb = 0;
 
       if (currentScore >= 50) {
-        gap = 220;
-        speed = 2.2;
+        gap = 175;
+        speed = 2.7;
         redProb = 0.65;
       } else if (currentScore >= 30) {
-        gap = 230;
-        speed = 1.95;
+        gap = 185;
+        speed = 2.45;
         redProb = 0.25 + (currentScore - 30) * 0.015;
       } else if (currentScore >= 16) {
-        gap = 240;
-        speed = 1.8;
+        gap = 195;
+        speed = 2.25;
         redProb = 0;
       }
 
@@ -286,7 +289,7 @@
         passed: false,
         isRed: isRed,
         oscillationAngle: Math.random() * Math.PI * 2,
-        oscillationSpeed: 0.024
+        oscillationSpeed: 0.026
       });
     }
 
@@ -296,14 +299,13 @@
       frameCount++;
       const { speed } = getDifficultyParams(score);
 
-      bgScrollX = (bgScrollX - speed * 0.35) % canvas.width;
-
       // Descente lente
       player.velocity += GRAVITY;
       player.y += player.velocity;
       player.rotation = Math.min(Math.PI / 7, Math.max(-Math.PI / 8, player.velocity * 0.06));
 
-      const spawnInterval = Math.max(160, Math.floor(210 - score * 0.5));
+      // Poteaux beaucoup plus rapprochés horizontalement
+      const spawnInterval = Math.max(95, Math.floor(130 - score * 0.4));
       if (frameCount % spawnInterval === 0) {
         spawnPipe();
       }
@@ -314,7 +316,7 @@
 
         if (p.isRed) {
           p.oscillationAngle += p.oscillationSpeed;
-          p.topHeight += Math.sin(p.oscillationAngle) * 1.2;
+          p.topHeight += Math.sin(p.oscillationAngle) * 1.3;
           p.topHeight = Math.max(40, Math.min(canvas.height - GROUND_HEIGHT - p.gap - 40, p.topHeight));
         }
 
@@ -383,9 +385,9 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Fond fixe (sans aucun défilement)
       if (fondLoaded) {
-        ctx.drawImage(fondImg, bgScrollX, 0, canvas.width, canvas.height);
-        ctx.drawImage(fondImg, bgScrollX + canvas.width, 0, canvas.width, canvas.height);
+        ctx.drawImage(fondImg, 0, 0, canvas.width, canvas.height);
       } else {
         ctx.fillStyle = '#101528';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -430,7 +432,7 @@
       ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, 8);
       ctx.strokeRect(-2, canvas.height - GROUND_HEIGHT, canvas.width + 4, 8);
 
-      // Tête de Giroud agrandie x2 sans cercle
+      // Tête de Giroud
       ctx.save();
       ctx.translate(player.x, player.y);
       ctx.rotate(player.rotation);
