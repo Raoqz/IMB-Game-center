@@ -347,22 +347,34 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- Morpion -->
-          <a href="games/morpion/index.html" onclick="trackGameLaunch('morpion')" class="game-card">
-            <div class="w-full h-32 bg-[#ffd166] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
-              <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">⭕❌</span>
-            </div>
-            <div class="p-4 flex flex-col justify-between flex-1">
-              <div>
-                <h4 class="text-lg font-black text-[#12131a]">Morpion (Tic-Tac-Toe)</h4>
-                <p class="text-xs font-bold text-slate-500 mt-1">Défie un camarade en local ou en créant une salle en ligne.</p>
-              </div>
-              <div class="flex items-center gap-2 mt-3">
-                <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Jeu IMB ↗</span>
-                <span class="text-[11px] font-mono font-black text-slate-600">2 joueurs</span>
-              </div>
-            </div>
-          </a>
+          <!-- Carte Morpion avec boîte Top 3 -->
+<div class="game-card flex flex-col justify-between">
+  <div>
+    <div class="w-full h-32 bg-[#ffd166] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
+      <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">⭕❌</span>
+      <span id="morpionActiveRoomBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#fed72d] border-2 border-[#fed72d] text-[10px] font-mono font-black px-2 py-0.5 rounded-full animate-pulse">
+        ⮌ En cours
+      </span>
+    </div>
+    <div class="p-4">
+      <h4 class="text-lg font-black text-[#12131a]">Morpion (Tic-Tac-Toe)</h4>
+      <p class="text-xs font-bold text-slate-500 mt-1 mb-3">Défie un camarade en local ou en créant une salle en ligne.</p>
+
+      <!-- ENCART TOP 3 DU CLASSEMENT (STYLE CHADGANG) -->
+      <div class="border-2 border-dashed border-amber-300 bg-[#fffbeb] rounded-2xl p-2.5 space-y-1.5 mb-3" id="morpionTop3Box">
+        <div class="text-[10px] font-bold text-slate-400 italic text-center py-2">Chargement du Top 3...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-4 pt-0 flex items-center justify-between gap-2">
+    <a href="/games/morpion/index.html" onclick="trackGameLaunch('morpion')" id="btnLaunchMorpion" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+      <span>Jouer</span>
+      <span>↗</span>
+    </a>
+    <span class="text-[11px] font-mono font-black text-slate-600">2 joueurs</span>
+  </div>
+</div>
 
           <!-- L'Imposteur -->
           <a href="games/undercover/" onclick="trackGameLaunch('undercover')" class="game-card">
@@ -577,7 +589,7 @@
     <span id="toastIcon">💬</span>
     <span id="toastMsg">Notification</span>
   </div>
-<!-- CONTENEUR DES INVITATIONS REÇUES EN DIRECT (BANDE GAUCHE) -->
-  <div id="lobbyInviteStack" class="fixed bottom-4 left-4 z-50 flex flex-col-reverse gap-2.5 max-w-sm pointer-events-none"></div>
+  <!-- PILE D'INVITATIONS SUR LE LOBBY (EN BAS À DROITE, MAX 3) -->
+<div id="lobbyInviteStack" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none"></div>
 </body>
 </html>
