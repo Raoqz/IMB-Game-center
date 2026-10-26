@@ -231,6 +231,9 @@ window.addEventListener('DOMContentLoaded', () => {
       listenToLiveChat();
       listenToUndercoverLiveActivity();
       renderRecentGames();
+      loadMorpionTop3Card();
+      listenLobbyInvitations();
+      checkLobbyMorpionActiveRoom();
 
       if (currentUser.role === 'admin') {
         setupAdminWatcher();
@@ -1239,6 +1242,110 @@ function dispatchGameToChat() {
 
   closeExternalModal();
   showToast('Partie annoncée dans le général !', '📣');
+}
+
+/* ---------------- CHARGEMENT DU TOP 3 DU MORPION SUR LA CARTE ---------------- */
+function loadMorpionTop3Card() {
+  const container = document.getElementById('morpionTop3Box');
+  if (!container) return;
+
+  db.ref('scores/morpion').on('value', snap => {
+    const data = snap.val() || {};
+    const sorted = Object.values(data).sort((a, b) => (b.wins || 0) - (a.wins || 0)).slice(0, 3);
+
+    if (sorted.length === 0) {
+      container.innerHTML = `
+        <div class="text-[10px] font-bold text-slate-400 italic text-center py-1">
+          Aucune victoire enregistrée. Sois le premier !
+        </div>
+      `;
+      return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    container.innerHTML = sorted.map((p, idx) => `
+      <div class="flex items-center justify-between gap-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="text-sm">${medals[idx]}</span>
+          <span class="text-xs font-black text-[#12131a] truncate">${escapeHtml(p.nickname)}</span>
+        </div>
+        <span class="bg-[#121526] text-white px-2 py-0.5 rounded-full font-mono text-[9px] font-black flex-shrink-0">
+          ${p.wins || 0} victoire${(p.wins || 0) > 1 ? 's' : ''}
+        </span>
+      </div>
+    `).join('') + `
+      <div class="text-right pt-1 border-t border-amber-200/60">
+        <a href="/games/morpion/index.html" class="text-[10px] font-black text-amber-900 hover:underline">
+          Classement >
+        </a>
+      </div>
+    `;
+  });
+}
+
+/* ---------------- GESTION DES INVITATIONS SUR LE LOBBY (MAX 3) ---------------- */
+function listenLobbyInvitations() {
+  if (!currentUser) return;
+  const stack = document.getElementById('lobbyInviteStack');
+  if (!stack) return;
+
+  db.ref(`invitations/${currentUser.tag}`).on('value', snap => {
+    const data = snap.val();
+    if (!data) {
+      stack.innerHTML = '';
+      return;
+    }
+
+    const allInvites = Object.entries(data).map(([key, val]) => ({ ...val, key }));
+    const recentInvites = allInvites.slice(-3); // Maximum 3
+
+    stack.innerHTML = recentInvites.map(inv => `
+      <div class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
+        <div class="min-w-0">
+          <span class="text-xs font-black text-[#12131a] block truncate">
+            ${escapeHtml(inv.fromNick)} t'invite !
+          </span>
+          <span class="text-[10px] font-bold text-slate-700 block truncate">
+            ${escapeHtml(inv.gameTitle)} (Salle <strong>${inv.roomCode}</strong>)
+          </span>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <button onclick="acceptLobbyInvite('${inv.gameId}', '${inv.roomCode}', '${inv.key}')" class="neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
+            Rejoindre
+          </button>
+          <button onclick="dismissLobbyInvite('${inv.key}')" class="neo-btn bg-white hover:bg-slate-100 text-slate-700 px-2 py-1 rounded-xl text-xs font-bold">
+            ✕
+          </button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function acceptLobbyInvite(gameId, roomCode, key) {
+  dismissLobbyInvite(key);
+  trackGameLaunch(gameId);
+  window.location.href = `/games/${gameId}/index.html#room=${roomCode}`;
+}
+
+function dismissLobbyInvite(key) {
+  if (currentUser && key) {
+    db.ref(`invitations/${currentUser.tag}/${key}`).remove();
+  }
+}
+
+function checkLobbyMorpionActiveRoom() {
+  const activeRoom = localStorage.getItem('imb_active_room_morpion');
+  const badge = document.getElementById('morpionActiveRoomBadge');
+  const btn = document.getElementById('btnLaunchMorpion');
+  if (activeRoom && activeRoom.length === 4) {
+    if (badge) badge.classList.remove('hidden');
+    if (btn) {
+      btn.href = `/games/morpion/index.html#room=${activeRoom}`;
+      btn.innerHTML = `<span>Reprendre (${activeRoom})</span><span>➔</span>`;
+    }
+  }
 }
 
 /* ---------------- PROFIL UTILISATEUR ---------------- */
