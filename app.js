@@ -33,7 +33,7 @@ const INTERNAL_GAMES = {
     title: 'Morpion',
     icon: '⭕',
     bg: '#ffd166',
-    path: 'games/morpion/'
+    path: 'games/morpion/index.html'
   },
   undercover: {
     id: 'undercover',
