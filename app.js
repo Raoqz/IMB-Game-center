@@ -455,17 +455,19 @@ function listenToUndercoverLiveActivity() {
 /* ---------------- JEU ALÉATOIRE ---------------- */
 function pickRandomGame() {
   const allGames = [
-    { type: 'morpion', title: 'Morpion' },
-    { type: 'undercover', title: "L'Imposteur (Undercover)" },
+    { type: 'internal', path: 'games/morpion/', title: 'Morpion' },
+    { type: 'internal', path: 'undercover.html', title: "L'Imposteur (Undercover)" },
     ...GAMES_CATALOG.map(g => ({ type: 'external', id: g.id, title: g.title }))
   ];
   const chosen = allGames[Math.floor(Math.random() * allGames.length)];
   showToast(`La roulette a choisi : ${chosen.title} ! 🎲`, '🎰');
 
   setTimeout(() => {
-    if (chosen.type === 'morpion') openMorpionModal();
-    else if (chosen.type === 'undercover') window.location.href = 'undercover.html';
-    else openExternalGameModal(chosen.id);
+    if (chosen.type === 'internal') {
+      window.location.href = chosen.path;
+    } else {
+      openExternalGameModal(chosen.id);
+    }
   }, 650);
 }
 
@@ -700,10 +702,7 @@ function safeRoomCode(code) {
 function openInternalInvite(game, code) {
   if (!currentUser || !code) return;
   if (game === 'MORPION') {
-    openMorpionModal();
-    setMorpionMode('online');
-    document.getElementById('morpionInputRoom').value = code;
-    joinMorpionOnlineRoom();
+    window.location.href = `games/morpion/#room=${code}`;
   } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
     window.location.href = 'undercover.html#imposteur=' + code;
   }
@@ -867,269 +866,6 @@ function dispatchGameToChat() {
 
   closeExternalModal();
   showToast('Partie annoncée dans le général !', '📣');
-}
-
-/* ---------------- JEU INTERNE : MORPION ---------------- */
-let morpionMode = 'local';
-let morpionBoard = Array(9).fill('');
-let morpionTurn = 'X';
-let morpionScoreX = 0;
-let morpionScoreO = 0;
-let morpionRoomCode = null;
-let morpionMySymbol = 'X';
-
-function normalizeMorpionBoard(raw) {
-  const board = Array(9).fill('');
-  if (raw) {
-    Object.keys(raw).forEach(k => {
-      const i = Number(k);
-      if (i >= 0 && i < 9 && (raw[k] === 'X' || raw[k] === 'O')) board[i] = raw[k];
-    });
-  }
-  return board;
-}
-
-function leaveMorpionRoom() {
-  if (morpionRoomCode) {
-    db.ref(`rooms_morpion/${morpionRoomCode}`).off();
-  }
-  morpionRoomCode = null;
-  morpionMySymbol = 'X';
-  document.getElementById('morpionRoomStatus').textContent = "Crée une salle ou rejoins celle d'un pote !";
-  setMorpionPlayerNames(null, null);
-}
-
-function setMorpionPlayerNames(nameX, nameO) {
-  document.getElementById('morpionNameX').textContent = nameX ? `❌ ${nameX}` : 'Joueur X';
-  document.getElementById('morpionNameO').textContent = nameO ? `⭕ ${nameO}` : 'Joueur O';
-}
-
-function openMorpionModal() {
-  document.getElementById('modalMorpion').classList.remove('hidden');
-  setMorpionMode('local');
-}
-
-function closeMorpionModal() {
-  document.getElementById('modalMorpion').classList.add('hidden');
-  leaveMorpionRoom();
-}
-
-function setMorpionMode(mode) {
-  morpionMode = mode;
-  const btnLoc = document.getElementById('morpionBtnLocal');
-  const btnOnl = document.getElementById('morpionBtnOnline');
-  const controls = document.getElementById('morpionOnlineControls');
-  const btnShare = document.getElementById('btnAnnounceMorpion');
-
-  if (mode === 'local') {
-    btnLoc.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
-    btnOnl.className = 'bg-transparent text-slate-600 font-extrabold text-xs py-2 rounded-xl';
-    controls.classList.add('hidden');
-    btnShare.classList.add('hidden');
-    leaveMorpionRoom();
-    resetMorpionBoard(true);
-  } else {
-    btnOnl.className = 'neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl';
-    btnLoc.className = 'bg-transparent text-slate-600 font-extrabold text-xs py-2 rounded-xl';
-    controls.classList.remove('hidden');
-    btnShare.classList.remove('hidden');
-    if (!morpionRoomCode) resetMorpionBoard(true);
-  }
-}
-
-function renderMorpionBoard() {
-  const container = document.getElementById('morpionGrid');
-  container.innerHTML = morpionBoard.map((val, idx) => `
-    <button onclick="handleMorpionCellClick(${idx})" class="w-20 h-20 sm:w-24 sm:h-24 bg-white border-[3px] border-[#12131a] rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-black shadow-[2px_3px_0px_#12131a] active:translate-x-0.5 active:translate-y-0.5 transition-transform ${val === 'X' ? 'text-blue-600' : 'text-rose-600'}">
-      ${val ? val : ''}
-    </button>
-  `).join('');
-
-  document.getElementById('morpionTurnIndicator').textContent = `Tour de ${morpionTurn}`;
-  document.getElementById('morpionScoreX').textContent = morpionScoreX;
-  document.getElementById('morpionScoreO').textContent = morpionScoreO;
-}
-
-function handleMorpionCellClick(idx) {
-  if (morpionBoard[idx] || checkMorpionWinner(morpionBoard)) return;
-
-  if (morpionMode === 'local') {
-    morpionBoard[idx] = morpionTurn;
-    const winner = checkMorpionWinner(morpionBoard);
-    if (winner) {
-      if (winner === 'X') morpionScoreX++;
-      if (winner === 'O') morpionScoreO++;
-      showToast(`Joueur ${winner} a gagné ! 🎉`, '🏆');
-    } else if (morpionBoard.every(c => c)) {
-      showToast("Match nul !", '🤝');
-    } else {
-      morpionTurn = morpionTurn === 'X' ? 'O' : 'X';
-    }
-    renderMorpionBoard();
-  } else {
-    if (!morpionRoomCode) {
-      showToast("Crée ou rejoins une salle d'abord !", '⚠️');
-      return;
-    }
-
-    if (morpionTurn !== morpionMySymbol) {
-      showToast(`Ce n'est pas ton tour ! (Tu es ${morpionMySymbol})`, '⏳');
-      return;
-    }
-
-    morpionBoard = [...morpionBoard];
-    morpionBoard[idx] = morpionMySymbol;
-    const winner = checkMorpionWinner(morpionBoard);
-    let newTurn = morpionTurn === 'X' ? 'O' : 'X';
-
-    let updates = {
-      board: morpionBoard,
-      turn: newTurn
-    };
-
-    if (winner) {
-      if (winner === 'X') updates.scoreX = morpionScoreX + 1;
-      if (winner === 'O') updates.scoreO = morpionScoreO + 1;
-    }
-
-    db.ref(`rooms_morpion/${morpionRoomCode}`).update(updates);
-  }
-}
-
-function checkMorpionWinner(b) {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8],
-    [0, 3, 6], [1, 4, 7], [2, 5, 8],
-    [0, 4, 8], [2, 4, 6]
-  ];
-  for (let [x, y, z] of lines) {
-    if (b[x] && b[x] === b[y] && b[x] === b[z]) return b[x];
-  }
-  return null;
-}
-
-function resetMorpionBoard(fullReset = false) {
-  morpionBoard = Array(9).fill('');
-  morpionTurn = 'X';
-  if (fullReset) {
-    morpionScoreX = 0;
-    morpionScoreO = 0;
-  }
-
-  if (morpionMode === 'online' && morpionRoomCode) {
-    db.ref(`rooms_morpion/${morpionRoomCode}`).update({
-      board: morpionBoard,
-      turn: 'X'
-    });
-  }
-  renderMorpionBoard();
-}
-
-function createMorpionOnlineRoom() {
-  leaveMorpionRoom();
-  const code = 'MORPION-' + Math.floor(100 + Math.random() * 900);
-  morpionRoomCode = code;
-  morpionMySymbol = 'X';
-
-  document.getElementById('morpionInputRoom').value = code;
-  document.getElementById('morpionRoomStatus').textContent = `Salle ${code} créée ! Tu as les ❌ (en attente d'un adversaire...)`;
-
-  morpionBoard = Array(9).fill('');
-  morpionTurn = 'X';
-  morpionScoreX = 0;
-  morpionScoreO = 0;
-  renderMorpionBoard();
-
-  db.ref(`rooms_morpion/${code}`).set({
-    board: Array(9).fill(''),
-    turn: 'X',
-    playerX: currentUser ? currentUser.nickname : 'Hôte',
-    playerO: null,
-    scoreX: 0,
-    scoreO: 0
-  });
-
-  listenToMorpionRoom(code);
-  showToast(`Salle ${code} créée !`, '🎲');
-}
-
-function joinMorpionOnlineRoom() {
-  const code = document.getElementById('morpionInputRoom').value.trim().toUpperCase();
-  if (!code) {
-    showToast('Entre un code de salle !', '⚠️');
-    return;
-  }
-
-  db.ref(`rooms_morpion/${code}`).get().then(snap => {
-    if (!snap.exists()) {
-      showToast('Salle introuvable !', '❌');
-      return;
-    }
-
-    leaveMorpionRoom();
-    morpionRoomCode = code;
-    morpionMySymbol = 'O';
-
-    db.ref(`rooms_morpion/${code}`).update({
-      playerO: currentUser ? currentUser.nickname : 'Invité'
-    });
-
-    document.getElementById('morpionRoomStatus').textContent = `Connecté au salon ${code} ! Tu as les ⭕.`;
-    listenToMorpionRoom(code);
-    showToast(`Salle ${code} rejointe !`, '🚀');
-  }).catch(() => showToast('Connexion à la salle impossible, réessaie !', '❌'));
-}
-
-function listenToMorpionRoom(code) {
-  db.ref(`rooms_morpion/${code}`).on('value', snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    const previousBoard = morpionBoard.join(',');
-    morpionBoard = normalizeMorpionBoard(data.board);
-    morpionTurn = data.turn || 'X';
-    morpionScoreX = data.scoreX || 0;
-    morpionScoreO = data.scoreO || 0;
-
-    setMorpionPlayerNames(data.playerX, data.playerO);
-    const opponent = morpionMySymbol === 'X' ? data.playerO : data.playerX;
-    const mySign = morpionMySymbol === 'X' ? '❌' : '⭕';
-    document.getElementById('morpionRoomStatus').textContent = opponent
-      ? `Salle ${code} : tu affrontes ${opponent} ! Tu as les ${mySign}.`
-      : `Salle ${code} : en attente d'un adversaire... Tu as les ${mySign}.`;
-
-    renderMorpionBoard();
-
-    if (previousBoard === morpionBoard.join(',')) return;
-    const winner = checkMorpionWinner(morpionBoard);
-    if (winner) {
-      showToast(`Joueur ${winner} a gagné la manche ! 🎉`, '🏆');
-    } else if (morpionBoard.every(c => c)) {
-      showToast("Match nul !", '🤝');
-    }
-  });
-}
-
-function announceMorpionInChat() {
-  if (!morpionRoomCode) {
-    showToast("Crée une salle d'abord !", '⚠️');
-    return;
-  }
-  db.ref('chat').push({
-    authorNick: currentUser.nickname,
-    authorTag: currentUser.tag,
-    authorAvatar: currentUser.avatarEmoji || '⭕',
-    authorFlag: currentUser.flagEmoji || '🇫🇷',
-    isInvite: true,
-    gameTitle: 'Morpion en direct',
-    roomUrl: '#',
-    internalGame: 'morpion',
-    internalRoom: morpionRoomCode,
-    text: `@promo Qui veut me défier au Morpion ? Code de la salle : ${morpionRoomCode}`,
-    time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-    timestamp: Date.now()
-  });
-  showToast('Défi Morpion envoyé dans le chat !', '📣');
 }
 
 /* ---------------- PROFIL UTILISATEUR ---------------- */
