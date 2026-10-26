@@ -26,7 +26,7 @@
   <!-- ================= ÉCRAN D'ACCUEIL (LOBBY) ================= -->
   <div id="viewLobby" class="flex-1 flex items-center justify-center p-4 z-10 relative">
     <div class="neo-box bg-white max-w-md w-full p-8 text-center border-[3px] border-[#12131a] shadow-[4px_6px_0px_#12131a] rounded-2xl">
-      <div class="w-20 h-20 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-6 overflow-hidden">
+      <div class="w-24 h-24 mx-auto rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-5xl mb-6 overflow-hidden">
         <img src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
       </div>
       
@@ -53,7 +53,8 @@
 
   <!-- ================= ÉCRAN DE JEU ================= -->
   <div id="viewGame" class="hidden flex-1 flex-col items-center justify-center p-4 z-10 relative">
-    <div class="w-full max-w-[400px] relative">
+    <!-- Conteneur élargi pour le mode horizontal (max-w-3xl = 768px) -->
+    <div class="w-full max-w-3xl relative">
       <!-- Barre d'infos in-game -->
       <div class="flex items-center justify-between mb-3">
         <button id="btnQuitGame" class="neo-btn bg-white hover:bg-slate-50 text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border-[2.5px] border-[#12131a] shadow-[2px_2px_0px_#12131a]">
@@ -64,13 +65,13 @@
         </div>
       </div>
 
-      <!-- Zone de jeu (Canvas) -->
+      <!-- Zone de jeu (Canvas Horizontal 16:9) -->
       <div class="relative bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[4px_6px_0px_#12131a] overflow-hidden bg-[#1d4ed8]">
-        <canvas id="gameCanvas" width="400" height="600" class="w-full h-auto cursor-pointer touch-none block"></canvas>
+        <canvas id="gameCanvas" width="800" height="450" class="w-full h-auto cursor-pointer touch-none block"></canvas>
         
         <!-- Overlay Game Over -->
         <div id="gameOverOverlay" class="hidden absolute inset-0 bg-[#121422]/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-10 text-center">
-          <div class="bg-white border-[3px] border-[#12131a] rounded-2xl p-6 shadow-[3px_4px_0px_#12131a] w-full">
+          <div class="bg-white border-[3px] border-[#12131a] rounded-2xl p-6 shadow-[3px_4px_0px_#12131a] max-w-sm w-full mx-auto">
             <h2 class="text-2xl font-black italic uppercase text-rose-500 mb-2">Game Over</h2>
             <div class="mb-4">
               <span class="text-xs font-bold text-slate-500">Score de la manche</span>
@@ -177,26 +178,27 @@
       isGameOver: false
     };
 
-    // PHYISIQUE ADOUCIE : gravité réduite, impulsion (lift) ajustée
+    // PHYISIQUE HORIZONTALE ADOUCIE
     const bird = {
-      x: 80, 
-      y: 300, 
-      radius: 16,     // Légèrement agrandi pour l'image
+      x: 120,          // Décalé un peu plus vers la droite pour voir arriver l'arrière
+      y: 225,          // Moitié de la nouvelle hauteur (450)
+      radius: 24,      // Hitbox beaucoup plus grande (avant 16)
       velocity: 0, 
-      gravity: 0.22,  // Plus lent (avant: 0.35)
-      lift: -5.2      // Impulsion adoucie en conséquence (avant: -6.5)
+      gravity: 0.18,   // Gravité très douce pour compenser la largeur
+      lift: -4.8       // Petit saut sec pour plus de précision
     };
     
     let pipes = [];
 
+    // VITESSE RALENTIE : la speed passe de (3~5) à (1.8~3.2)
     function getDifficulty(score) {
-      if (score < 15) return { speed: 3, gap: 140, pipeFreq: 100, maxOsc: 0, redChance: 0 };
-      if (score < 30) return { speed: 4, gap: 110, pipeFreq: 85, maxOsc: 0, redChance: 0 };
+      if (score < 15) return { speed: 1.8, gap: 160, pipeFreq: 180, maxOsc: 0, redChance: 0 };
+      if (score < 30) return { speed: 2.2, gap: 140, pipeFreq: 150, maxOsc: 0, redChance: 0 };
       if (score < 50) return { 
-        speed: 4.5, gap: 95, pipeFreq: 75, maxOsc: 40, 
+        speed: 2.6, gap: 120, pipeFreq: 130, maxOsc: 40, 
         redChance: Math.min(0.70, 0.25 + Math.floor((score - 30) / 5) * 0.05)
       };
-      return { speed: 5, gap: 85, pipeFreq: 65, maxOsc: 75, redChance: 0.75 };
+      return { speed: 3.2, gap: 110, pipeFreq: 110, maxOsc: 75, redChance: 0.75 };
     }
 
     function resetAndStartGame() {
@@ -233,11 +235,12 @@
       const diff = getDifficulty(currentScore);
       const isRed = Math.random() < diff.redChance;
       const margin = 50 + diff.maxOsc; 
+      // Calcul de la hauteur dispo en fonction du canvas de 450px
       const topHeight = Math.max(margin, Math.random() * (canvas.height - diff.gap - (margin*2)) + margin);
       
       pipes.push({
         x: canvas.width,
-        w: 52,
+        w: 64, // Tuyaux plus larges (avant 52) pour s'adapter à la largeur de l'écran
         topY: topHeight,
         gap: diff.gap,
         isRed: isRed,
@@ -261,8 +264,8 @@
       frames++;
       const diff = getDifficulty(currentScore);
       
-      // Vitesse de défilement du fond (Parallaxe)
-      bgScrollX -= (diff.speed * 0.5); 
+      // Vitesse de défilement du fond (Parallaxe ultra douce)
+      bgScrollX -= (diff.speed * 0.25); 
       if (bgScrollX <= -canvas.width) bgScrollX = 0;
 
       // Physique Bird
@@ -284,16 +287,16 @@
 
         let offsetY = 0;
         if (p.isRed) {
-          p.oscAngle += 0.06;
+          p.oscAngle += 0.05; // Oscillation légèrement ralentie aussi
           offsetY = Math.sin(p.oscAngle) * diff.maxOsc;
         }
 
         const currentTopBorder = p.topY + offsetY;
         const currentBottomBorder = p.topY + offsetY + p.gap;
 
-        // Hitbox
-        if (bird.x + bird.radius - 4 > p.x && bird.x - bird.radius + 4 < p.x + p.w) {
-          if (bird.y - bird.radius + 4 < currentTopBorder || bird.y + bird.radius - 4 > currentBottomBorder) {
+        // Hitbox ajustée pour pardonner un tout petit peu sur les bords de l'image
+        if (bird.x + bird.radius - 8 > p.x && bird.x - bird.radius + 8 < p.x + p.w) {
+          if (bird.y - bird.radius + 8 < currentTopBorder || bird.y + bird.radius - 8 > currentBottomBorder) {
             triggerGameOver();
           }
         }
@@ -316,7 +319,6 @@
         ctx.drawImage(imgFond, bgScrollX, 0, canvas.width, canvas.height);
         ctx.drawImage(imgFond, bgScrollX + canvas.width, 0, canvas.width, canvas.height);
       } else {
-        // Fallback si l'image ne charge pas : fond transparent (laissera voir le fond bleu CSS)
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
@@ -331,17 +333,17 @@
         // Tuyau Haut
         ctx.fillRect(p.x, 0, p.w, p.topY + offsetY);
         ctx.strokeRect(p.x, 0, p.w, p.topY + offsetY);
-        // Rebord Haut
-        ctx.fillRect(p.x - 2, p.topY + offsetY - 20, p.w + 4, 20);
-        ctx.strokeRect(p.x - 2, p.topY + offsetY - 20, p.w + 4, 20);
+        // Rebord Haut (un peu plus débordant)
+        ctx.fillRect(p.x - 4, p.topY + offsetY - 20, p.w + 8, 20);
+        ctx.strokeRect(p.x - 4, p.topY + offsetY - 20, p.w + 8, 20);
 
         // Tuyau Bas
         const bottomY = p.topY + offsetY + p.gap;
         ctx.fillRect(p.x, bottomY, p.w, canvas.height - bottomY);
         ctx.strokeRect(p.x, bottomY, p.w, canvas.height - bottomY);
         // Rebord Bas
-        ctx.fillRect(p.x - 2, bottomY, p.w + 4, 20);
-        ctx.strokeRect(p.x - 2, bottomY, p.w + 4, 20);
+        ctx.fillRect(p.x - 4, bottomY, p.w + 8, 20);
+        ctx.strokeRect(p.x - 4, bottomY, p.w + 8, 20);
       }
 
       // 3. Dessin de Giroud
@@ -352,12 +354,12 @@
       ctx.rotate(angle);
       
       if (imgGiroud.complete && imgGiroud.naturalHeight !== 0) {
-        // Affiche l'image centrée (la taille d'affichage est légèrement plus grande que la hitbox pour que ce soit joli)
-        const renderSize = bird.radius * 2.8; 
+        // Taille de rendu XXL (3.2x le rayon pour bien occuper l'espace)
+        const renderSize = bird.radius * 3.2; 
         ctx.drawImage(imgGiroud, -renderSize/2, -renderSize/2, renderSize, renderSize);
       } else {
         // Fallback émoji
-        ctx.font = "24px 'Plus Jakarta Sans'";
+        ctx.font = "32px 'Plus Jakarta Sans'";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText('⚽', 0, 0);
