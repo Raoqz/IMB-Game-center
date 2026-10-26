@@ -27,7 +27,7 @@
   <main id="viewLobby" class="flex-1 flex items-center justify-center w-full max-w-lg py-6">
     <div class="neo-box bg-white w-full p-6 sm:p-8 text-center border-[3px] border-[#12131a] shadow-[4px_6px_0px_#12131a] rounded-2xl">
       
-      <div class="w-36 h-36 mx-auto flex items-center justify-center mb-4">
+      <div class="w-32 h-32 mx-auto flex items-center justify-center mb-4">
         <img id="lobbyGiroudImg" src="/games/flappy-giroud/giroud.png" alt="Giroud" class="w-full h-full object-contain drop-shadow-[4px_6px_0px_#12131a]" onerror="this.style.display='none'; this.parentElement.innerHTML='⚽';">
       </div>
 
@@ -35,7 +35,7 @@
         FLAPPY GIROUD
       </h2>
       <p class="text-xs sm:text-sm font-bold text-slate-500 mb-6">
-        Format panoramique grand écran : esquive les tuyaux rapprochés en coup de tête !
+        Format panoramique : esquive les tuyaux en coup de tête !
       </p>
 
       <div class="p-3.5 bg-[#f8fafc] border-[2.5px] border-[#12131a] rounded-xl flex items-center justify-between mb-6 shadow-[2px_3px_0px_#12131a]">
@@ -63,7 +63,6 @@
   <!-- ================= PLATEAU DE JEU ================= -->
   <div id="viewGame" class="hidden flex-1 flex flex-col items-center justify-center w-full max-w-6xl py-1">
     
-    <!-- Barre de commandes du haut -->
     <div class="w-full flex items-center justify-between mb-2.5 px-2">
       <button onclick="exitToLobby()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2 rounded-xl text-xs sm:text-sm font-black shadow-[2px_2px_0px_#12131a]">
         ← Menu
@@ -76,10 +75,8 @@
       </div>
     </div>
 
-    <!-- Conteneur Canvas XXL avec Score en direct flottant au-dessus -->
+    <!-- Canvas avec score en direct au centre supérieur -->
     <div id="canvasWrapper" class="relative w-full">
-      
-      <!-- GROS SCORE FLOTTANT AU-DESSUS DE L'ÉCRAN -->
       <div id="liveScoreHud" class="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none flex items-center gap-2 bg-[#fed72d] border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] px-6 py-2 rounded-2xl">
         <span class="text-2xl">⚽</span>
         <span id="inGameScore" class="font-mono text-3xl sm:text-4xl font-black text-[#12131a] leading-none">0</span>
@@ -87,15 +84,13 @@
 
       <canvas id="flappyCanvas" width="1200" height="640" class="w-full h-auto border-[3px] border-[#12131a] rounded-2xl shadow-[5px_7px_0px_#12131a] bg-[#70c5ce] block"></canvas>
 
-      <!-- Overlay Prêt à jouer -->
       <div id="startOverlay" class="absolute inset-0 bg-black/25 rounded-2xl flex flex-col items-center justify-center text-center p-4 pointer-events-none z-10">
         <div class="bg-white border-[3px] border-[#12131a] px-6 py-4 rounded-2xl shadow-[4px_5px_0px_#12131a] animate-pulse">
           <p class="font-black text-base sm:text-lg text-[#12131a]">ESPACE ou CLIC</p>
-          <p class="text-xs font-bold text-slate-500 mt-0.5">pour donner un coup de tête !</p>
+          <p class="text-xs font-bold text-slate-500 mt-0.5">pour t'envoler !</p>
         </div>
       </div>
 
-      <!-- Overlay Fin de match -->
       <div id="gameOverOverlay" class="hidden absolute inset-0 bg-[#121422]/85 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 text-center z-20">
         <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center border-[3px] border-[#12131a] shadow-[5px_7px_0px_#12131a] rounded-2xl">
           <div class="text-4xl mb-1">🛑</div>
@@ -132,7 +127,6 @@
     const canvas = document.getElementById('flappyCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Images
     const giroudImg = new Image();
     giroudImg.src = '/games/flappy-giroud/giroud.png';
     let imgLoaded = false;
@@ -149,24 +143,22 @@
       }
     };
 
-    // État
     let gameState = 'LOBBY';
     let personalBest = 0;
     let score = 0;
     let animationFrameId = null;
 
-    // Physique
     const GRAVITY = 0.088;
     const JUMP_FORCE = -3.2;
-    const PIPE_WIDTH = 84;
+    const PIPE_WIDTH = 80;
     const GROUND_HEIGHT = 42;
 
-    // Tête de Giroud
+    // Tête de Giroud réduite de 20 % (104 px visuels, hitbox à 25 px)
     let player = {
       x: 180,
       y: 260,
-      visualSize: 130,
-      hitboxRadius: 32,
+      visualSize: 104,
+      hitboxRadius: 25,
       velocity: 0,
       rotation: 0
     };
@@ -178,10 +170,9 @@
       gameId: 'flappy-giroud',
       gameTitle: 'Flappy Giroud',
       rulesHtml: `
-        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour planer vers le haut.</p>
-        <p>• <strong>Obstacles rapprochés :</strong> Les poteaux s'enchaînent à un rythme soutenu, reste concentré !</p>
-        <p>• <strong>Mode rouge (30+ pts) :</strong> Des tuyaux rouges mobiles oscillent de haut en bas.</p>
-        <p>• <strong>Classement :</strong> Ton meilleur score est automatiquement enregistré dans le classement général de la promo !</p>
+        <p>• <strong>Commandes :</strong> Appuie sur <kbd class="bg-slate-100 px-1 border rounded">Espace</kbd>, clique ou touche l'écran pour t'envoler en coup de tête.</p>
+        <p>• <strong>Mode rouge (15+ pts) :</strong> Des tuyaux rouges mobiles apparaissent dès 15 points et oscillent verticalement.</p>
+        <p>• <strong>Classement :</strong> Seul ton score record est enregistré dans le palmarès général de la promo !</p>
       `
     });
 
@@ -231,6 +222,9 @@
       frameCount = 0;
       document.getElementById('inGameScore').textContent = '0';
       document.getElementById('newRecordBanner').classList.add('hidden');
+
+      // Premier tuyau placé plus proche (x: 620 au lieu d'attendre 1200)
+      spawnPipe(620);
     }
 
     function flap() {
@@ -252,38 +246,38 @@
       document.getElementById('startOverlay').classList.add('hidden');
     }
 
-    // Difficulté : tuyaux plus rapprochés verticalement et vitesse progressive
+    // Paramètres : ouvertures verticales agrandies (225 px) et tuyaux rouges dès 15 pts
     function getDifficultyParams(currentScore) {
-      let gap = 205;
-      let speed = 2.1;
+      let gap = 225;
+      let speed = 2.0;
       let redProb = 0;
 
       if (currentScore >= 50) {
-        gap = 175;
-        speed = 2.7;
-        redProb = 0.65;
+        gap = 190;
+        speed = 2.5;
+        redProb = 0.60;
       } else if (currentScore >= 30) {
-        gap = 185;
-        speed = 2.45;
-        redProb = 0.25 + (currentScore - 30) * 0.015;
-      } else if (currentScore >= 16) {
-        gap = 195;
-        speed = 2.25;
-        redProb = 0;
+        gap = 200;
+        speed = 2.3;
+        redProb = 0.35 + (currentScore - 30) * 0.012;
+      } else if (currentScore >= 15) {
+        gap = 210;
+        speed = 2.15;
+        redProb = 0.20 + (currentScore - 15) * 0.01;
       }
 
       return { gap, speed, redProb };
     }
 
-    function spawnPipe() {
+    function spawnPipe(customX) {
       const { gap, redProb } = getDifficultyParams(score);
-      const isRed = score >= 30 && (Math.random() < redProb);
+      const isRed = score >= 15 && (Math.random() < redProb);
       const minTop = 50;
       const maxTop = canvas.height - GROUND_HEIGHT - gap - 50;
       const topHeight = Math.floor(minTop + Math.random() * (maxTop - minTop));
 
       pipes.push({
-        x: canvas.width + 10,
+        x: customX !== undefined ? customX : canvas.width + 10,
         topHeight: topHeight,
         gap: gap,
         passed: false,
@@ -299,13 +293,12 @@
       frameCount++;
       const { speed } = getDifficultyParams(score);
 
-      // Descente lente
       player.velocity += GRAVITY;
       player.y += player.velocity;
       player.rotation = Math.min(Math.PI / 7, Math.max(-Math.PI / 8, player.velocity * 0.06));
 
-      // Poteaux beaucoup plus rapprochés horizontalement
-      const spawnInterval = Math.max(95, Math.floor(130 - score * 0.4));
+      // Espacement horizontal accru entre les tuyaux
+      const spawnInterval = Math.max(120, Math.floor(155 - score * 0.35));
       if (frameCount % spawnInterval === 0) {
         spawnPipe();
       }
@@ -385,7 +378,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Fond fixe (sans aucun défilement)
+      // Fond fixe
       if (fondLoaded) {
         ctx.drawImage(fondImg, 0, 0, canvas.width, canvas.height);
       } else {
@@ -441,7 +434,7 @@
         const size = player.visualSize;
         ctx.drawImage(giroudImg, -size / 2, -size / 2, size, size);
       } else {
-        ctx.font = '54px sans-serif';
+        ctx.font = '46px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('⚽', 0, 0);
