@@ -142,7 +142,7 @@ function checkAuthSession() {
     updateUserUI();
     setupMyRealtimePresence();
     if (location.hash.startsWith('#imposteur=')) {
-      window.location.href = 'undercover.html' + location.hash;
+      window.location.href = 'games/undercover/' + location.hash;
     }
   } else {
     overlay.classList.remove('hidden');
@@ -456,7 +456,7 @@ function listenToUndercoverLiveActivity() {
 function pickRandomGame() {
   const allGames = [
     { type: 'internal', path: 'games/morpion/', title: 'Morpion' },
-    { type: 'internal', path: 'undercover.html', title: "L'Imposteur (Undercover)" },
+    { type: 'internal', path: 'games/undercover/', title: "L'Imposteur (Undercover)" }
     ...GAMES_CATALOG.map(g => ({ type: 'external', id: g.id, title: g.title }))
   ];
   const chosen = allGames[Math.floor(Math.random() * allGames.length)];
@@ -704,7 +704,7 @@ function openInternalInvite(game, code) {
   if (game === 'MORPION') {
     window.location.href = `games/morpion/#room=${code}`;
   } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
-    window.location.href = 'undercover.html#imposteur=' + code;
+    window.location.href = 'games/undercover/#imposteur=' + code;
   }
 }
 
