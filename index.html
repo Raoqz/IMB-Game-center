@@ -20,7 +20,7 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-  <!-- ================= AUTH OVERLAY (CONNEXION / INSCRIPTION) ================= -->
+  <!-- ================= AUTH OVERLAY ================= -->
   <div id="authOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 relative max-h-[95vh] overflow-y-auto custom-scrollbar">
       
@@ -36,18 +36,15 @@
         </div>
       </div>
 
-      <!-- Switcher Connexion / Inscription -->
       <div class="grid grid-cols-2 gap-2 p-1.5 bg-[#f1f3fa] rounded-2xl border-2 border-[#12131a] mb-5">
         <button type="button" onclick="switchAuthTab('login')" id="tabBtnLogin" class="neo-btn bg-[#fed72d] text-[#12131a] text-xs py-2 rounded-xl">Connexion</button>
         <button type="button" onclick="switchAuthTab('register')" id="tabBtnRegister" class="bg-transparent text-slate-600 hover:text-black font-extrabold text-xs py-2 rounded-xl transition-all">Inscription</button>
       </div>
 
-      <!-- Bannière d'erreur -->
       <div id="authErrorBanner" class="hidden mb-4 p-3 bg-rose-50 border-2 border-rose-600 rounded-xl text-rose-700 text-xs font-bold leading-relaxed"></div>
 
-      <!-- ================= ONGLET 1 : CONNEXION ================= -->
+      <!-- ONGLET 1 : CONNEXION -->
       <div id="authLoginContainer" class="space-y-4">
-        <!-- Connexion Google -->
         <button type="button" onclick="handleGoogleLogin()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-3">
           <svg class="w-4 h-4" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -82,7 +79,7 @@
         </form>
       </div>
 
-      <!-- ================= ONGLET 2 : INSCRIPTION ================= -->
+      <!-- ONGLET 2 : INSCRIPTION -->
       <div id="authRegisterContainer" class="space-y-4 hidden">
         <form id="formRegister" onsubmit="handleEmailRegister(event)" class="space-y-3">
           <div>
@@ -108,7 +105,6 @@
             <div class="flex flex-wrap gap-1.5" id="flagPickerReg"></div>
           </div>
 
-          <!-- Inscription avec Google -->
           <div class="pt-2">
             <button type="button" onclick="handleGoogleRegister()" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-3">
               <svg class="w-4 h-4" viewBox="0 0 24 24">
@@ -147,7 +143,7 @@
     </div>
   </div>
 
-  <!-- ================= ÉCRAN 1 : VÉRIFICATION D'E-MAIL REQUISE ================= -->
+  <!-- ================= ÉCRAN VÉRIFICATION D'E-MAIL ================= -->
   <div id="verifyEmailOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative">
       <div class="w-16 h-16 rounded-3xl bg-indigo-100 border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4">
@@ -175,7 +171,7 @@
     </div>
   </div>
 
-  <!-- ================= ÉCRAN 2 : SALLE D'ATTENTE (PENDING) ================= -->
+  <!-- ================= ÉCRAN SALLE D'ATTENTE ================= -->
   <div id="pendingOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative">
       <div class="w-16 h-16 rounded-3xl bg-[#fed72d] border-[3px] border-[#12131a] shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
@@ -198,7 +194,7 @@
     </div>
   </div>
 
-  <!-- ================= ÉCRAN 3 : ACCÈS REFUSÉ (REJECTED) ================= -->
+  <!-- ================= ÉCRAN ACCÈS REFUSÉ ================= -->
   <div id="rejectedOverlay" class="fixed inset-0 z-50 bg-[#101322]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 sm:p-8 text-center relative border-rose-600">
       <div class="w-16 h-16 rounded-3xl bg-rose-100 border-[3px] border-rose-600 shadow-[3px_4px_0px_#12131a] flex items-center justify-center text-3xl mx-auto mb-4">
@@ -215,10 +211,9 @@
     </div>
   </div>
 
-  <!-- ================= MODALE MODÉRATION ADMIN ================= -->
+  <!-- ================= MODALE ADMIN ================= -->
   <div id="modalAdmin" class="hidden fixed inset-0 z-50 bg-[#121422]/90 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-xl w-full p-6 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
-      
       <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
         <div class="flex items-center gap-2">
           <span class="text-2xl">🛡️</span>
@@ -232,12 +227,10 @@
 
       <div class="space-y-3">
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-wider">Demandes en attente (<span id="adminPendingCount">0</span>)</h4>
-        
         <div id="adminPendingList" class="space-y-2.5">
           <p class="text-xs font-bold text-slate-400 italic py-4 text-center">Aucune demande en attente actuellement.</p>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -309,7 +302,20 @@
         </div>
       </div>
 
-      <!-- RECHERCHE & FILTRES -->
+      <!-- ================= SECTION REPRENDRE ================= -->
+      <div id="sectionReprendre" class="hidden">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-xl">🕹️</span>
+          <h3 class="text-2xl font-black italic tracking-wide text-white drop-shadow-[1px_2px_0px_rgba(0,0,0,0.6)]">
+            Reprendre
+          </h3>
+        </div>
+        <div id="recentGamesContainer" class="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+          <!-- Injecté dynamiquement par app.js -->
+        </div>
+      </div>
+
+      <!-- RECHERCHE & BOUTON ROULETTE -->
       <div class="flex gap-2.5">
         <div class="relative flex-1">
           <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black">
@@ -323,24 +329,26 @@
         </button>
       </div>
 
+      <!-- BOUTONS DE FILTRE RENOMMÉS -->
       <div class="flex flex-wrap items-center gap-3" id="filterPillsContainer">
         <button onclick="setFilter('all')" class="neo-tag-cartoon bg-[#fed72d] text-[#12131a] px-4 py-2 rounded-full text-xs" data-tag="all">Tous les jeux</button>
-        <button onclick="setFilter('interne')" class="neo-tag-cartoon bg-white text-[#12131a] px-4 py-2 rounded-full text-xs" data-tag="interne">🕹️ Jeux Internes</button>
+        <button onclick="setFilter('interne')" class="neo-tag-cartoon bg-white text-[#12131a] px-4 py-2 rounded-full text-xs" data-tag="interne">🕹️ Jeux IMB</button>
         <button onclick="setFilter('externe')" class="neo-tag-cartoon bg-white text-[#12131a] px-4 py-2 rounded-full text-xs" data-tag="externe">🌐 Jeux en ligne</button>
         <button onclick="setFilter('favoris')" class="neo-tag-cartoon bg-white text-[#12131a] px-4 py-2 rounded-full text-xs" data-tag="favoris">⭐ Favoris</button>
       </div>
 
-      <!-- SECTION 1: JEUX INTERNES -->
+      <!-- SECTION 1 : JEUX IMB (INTERNES) -->
       <div id="sectionInternes">
         <div class="flex items-center gap-2 mb-3">
           <span class="text-xl">🕹️</span>
           <h3 class="text-xl font-black italic tracking-wide text-white uppercase drop-shadow-[1px_2px_0px_rgba(0,0,0,0.6)]">
-            Jeux Intégrés (Jouer directement ici)
+            Jeux IMB
           </h3>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a href="games/morpion/" class="game-card">
+          <!-- Morpion -->
+          <a href="games/morpion/" onclick="trackGameLaunch('morpion')" class="game-card">
             <div class="w-full h-32 bg-[#ffd166] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">⭕❌</span>
             </div>
@@ -350,13 +358,14 @@
                 <p class="text-xs font-bold text-slate-500 mt-1">Défie un camarade en local ou en créant une salle en ligne.</p>
               </div>
               <div class="flex items-center gap-2 mt-3">
-                <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Jeu Interne ↗</span>
+                <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Jeu IMB ↗</span>
                 <span class="text-[11px] font-mono font-black text-slate-600">2 joueurs</span>
               </div>
             </div>
           </a>
 
-          <a href="games/undercover/" class="game-card">
+          <!-- L'Imposteur -->
+          <a href="games/undercover/" onclick="trackGameLaunch('undercover')" class="game-card">
             <div class="w-full h-32 bg-[#00e599] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
               <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
               <span id="undercoverLiveBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#00e599] border-2 border-[#00e599] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full">
@@ -370,7 +379,7 @@
               </div>
               <div class="flex items-center justify-between gap-2 mt-3">
                 <div class="flex items-center gap-2">
-                  <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Page dédiée ↗</span>
+                  <span class="text-[10px] font-black bg-[#12131a] text-white px-2.5 py-1 rounded-full">Jeu IMB ↗</span>
                   <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
                 </div>
               </div>
@@ -379,12 +388,12 @@
         </div>
       </div>
 
-      <!-- SECTION 2: JEUX EXTERNES -->
+      <!-- SECTION 2 : JEUX EN LIGNE (EXTERNES) -->
       <div>
         <div class="flex items-center gap-2 mb-3">
           <span class="text-xl">🌐</span>
           <h3 class="text-xl font-black italic tracking-wide text-white uppercase drop-shadow-[1px_2px_0px_rgba(0,0,0,0.6)]">
-            Jeux en ligne externes
+            Jeux en ligne
           </h3>
         </div>
 
@@ -563,7 +572,7 @@
     </div>
   </div>
 
-  <!-- ================= TOAST NOTIFICATION ================= -->
+  <!-- ================= TOAST ================= -->
   <div id="toastNotification" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-white border-[2.5px] border-[#12131a] shadow-[3px_4px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
     <span id="toastIcon">💬</span>
     <span id="toastMsg">Notification</span>
