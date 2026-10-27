@@ -52,7 +52,7 @@ body::before{
 .screen.on{display:flex !important}
 #game.wide.on{display:grid !important}
 
-/* Protection Z-Index et couleurs pour que le Shell et ses modales soient toujours lisibles et fermables */
+/* Protection Z-Index et couleurs pour le Shell */
 #shellTopBar{z-index:130 !important;}
 #shellBtnRestoreBar{z-index:130 !important;}
 #shellInviteStack{z-index:140 !important;}
@@ -427,6 +427,59 @@ table.sc td.lead{color:var(--green)}
      ===================================================================== -->
 <script>
 (function(){
+  // File d'attente si GameShell reçoit #room=XXXX avant que Skyjo ait terminé son init()
+  let pendingShellRoom = null;
+
+  // IMPORTANT : Surcharger GameShell.joinRoom et sendDirectInvite AVANT d'appeler GameShell.init()
+  // pour que listenAuth() du Shell n'exécute jamais le joinRoom par défaut du Morpion !
+  GameShell.joinRoom = async function(code) {
+    if (!code) return false;
+    const clean = String(code).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!clean) return false;
+    GameShell.currentRoomCode = clean;
+    if (window.__skyjo && typeof window.__skyjo.joinFromShell === 'function') {
+      window.__skyjo.joinFromShell(clean);
+    } else {
+      pendingShellRoom = clean;
+    }
+    return true;
+  };
+
+  GameShell.sendDirectInvite = async function(targetTag) {
+    // Récupérer le code actif de Skyjo ou du Shell
+    const activeCode = (window.__skyjo && window.__skyjo.APP && window.__skyjo.APP.net && window.__skyjo.APP.net.code)
+      || GameShell.currentRoomCode;
+
+    if (!activeCode) {
+      if (window.__skyjo && window.__skyjo.toast) {
+        window.__skyjo.toast("⚠️ Crée d'abord une salle en ligne avant d'inviter un joueur !");
+      } else {
+        alert("Crée d'abord une salle en ligne avant d'inviter un camarade !");
+      }
+      return;
+    }
+
+    if (!GameShell.currentUser) return;
+    GameShell.currentRoomCode = activeCode;
+
+    const newInviteRef = db.ref(`invitations/${targetTag}`).push();
+    await newInviteRef.set({
+      id: newInviteRef.key,
+      fromTag: GameShell.currentUser.tag,
+      fromNick: GameShell.currentUser.nickname,
+      gameId: 'skyjo',
+      gameTitle: 'Skyjo',
+      roomCode: activeCode,
+      timestamp: Date.now()
+    });
+
+    const dropdown = document.getElementById('shellUsersDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    if (window.__skyjo && window.__skyjo.toast) {
+      window.__skyjo.toast(`📨 Invitation envoyée à @${targetTag} (Salle ${activeCode}) !`);
+    }
+  };
+
   // 1. Initialisation du GameShell commun d'IMB Game Center
   GameShell.init({
     gameId: 'skyjo',
@@ -440,7 +493,7 @@ table.sc td.lead{color:var(--green)}
     `
   });
 
-  // Permettre de fermer les modales du Shell en cliquant sur le fond sombre ou avec Échap
+  // Permettre de fermer les modales du Shell en cliquant sur le fond sombre
   document.addEventListener('DOMContentLoaded', () => {
     const mLb = document.getElementById('shellModalLeaderboard');
     const mRl = document.getElementById('shellModalRules');
@@ -458,16 +511,6 @@ table.sc td.lead{color:var(--green)}
     window.dispatchEvent(new Event('resize'));
   };
 
-  // Permettre de rejoindre directement via les invitations du Shell
-  GameShell.joinRoom = async function(code) {
-    if (window.__skyjo && window.__skyjo.joinFromShell) {
-      window.__skyjo.joinFromShell(code);
-      return true;
-    }
-    return false;
-  };
-
-  // Attente de l'utilisateur authentifié Firebase
   function waitForIMBUser() {
     return new Promise((resolve) => {
       if (GameShell.currentUser) return resolve(GameShell.currentUser);
@@ -476,13 +519,14 @@ table.sc td.lead{color:var(--green)}
           clearInterval(iv);
           resolve(GameShell.currentUser);
         }
-      }, 80);
+      }, 60);
     });
   }
 
   // 2. Pont compatible window.ChadGang propulsé par Firebase Realtime Database
   window.ChadGang = {
     hubUrl: window.location.origin,
+    getPendingRoom: function() { return pendingShellRoom; },
 
     me: async function() {
       const u = await waitForIMBUser();
@@ -495,6 +539,7 @@ table.sc td.lead{color:var(--green)}
     },
 
     room: function() {
+      if (pendingShellRoom) return pendingShellRoom;
       const q = new URLSearchParams(location.search).get('room');
       if (q) return q.toUpperCase();
       const m = location.hash.match(/room=([A-Z0-9]{4,12})/i);
@@ -546,7 +591,9 @@ table.sc td.lead{color:var(--green)}
           if (playersRef) playersRef.off();
           if (eventsRef) eventsRef.off();
           if (lastStateRef) lastStateRef.off();
-          if (myPlayerRef) myPlayerRef.remove().catch(() => {});
+          if (myPlayerRef) {
+            myPlayerRef.child('online').set(false).catch(() => {});
+          }
           if (GameShell.currentRoomCode === c) {
             GameShell.currentRoomCode = null;
           }
@@ -566,7 +613,7 @@ table.sc td.lead{color:var(--green)}
           return;
         }
 
-        // Enregistrer le code dans GameShell (pour "Annoncer ma partie" et "Inviter")
+        // Synchroniser le code avec GameShell (pour "Annoncer ma partie" et "Inviter")
         GameShell.currentRoomCode = c;
         localStorage.setItem('imb_active_room_skyjo', c);
         window.location.hash = 'room=' + c;
@@ -575,33 +622,40 @@ table.sc td.lead{color:var(--green)}
         const existingPlayerSnap = await myPlayerRef.once('value');
         const existingPlayer = existingPlayerSnap.val();
 
+        // Conserver impérativement le joinedAt initial pour ne jamais changer l'hôte en cas de refresh !
         await myPlayerRef.set({
           id: u.tag,
           name: u.nickname,
           av: u.avatarEmoji || '🍺',
-          joinedAt: existingPlayer && existingPlayer.joinedAt ? existingPlayer.joinedAt : firebase.database.ServerValue.TIMESTAMP
+          online: true,
+          joinedAt: (existingPlayer && existingPlayer.joinedAt) ? existingPlayer.joinedAt : Date.now()
         });
-        myPlayerRef.onDisconnect().remove();
+        // En cas de fermeture d'onglet ou refresh, on passe seulement online à false sans supprimer l'entrée
+        myPlayerRef.child('online').onDisconnect().set(false);
 
-        // Récupérer l'état courant de la salle
+        // Récupérer l'état complet de la salle
         const roomSnap = await roomRef.once('value');
         const roomData = roomSnap.val() || {};
         const pMap = roomData.players || {};
-        const sortedPlayers = Object.values(pMap).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+        const activePlayers = Object.values(pMap)
+          .filter(p => p && p.online !== false)
+          .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
         const lastData = roomData.lastState ? roomData.lastState.data : null;
 
         emit('ready', {
           me: u.tag,
-          players: sortedPlayers,
+          players: activePlayers,
           last: lastData
         });
 
-        // Écouter les joueurs présents dans la salle
+        // Écouter les joueurs connectés dans la salle
         playersRef = roomRef.child('players');
         playersRef.on('value', (pSnap) => {
           if (closed) return;
           const map = pSnap.val() || {};
-          const list = Object.values(map).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+          const list = Object.values(map)
+            .filter(p => p && p.online !== false)
+            .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
           emit('players', list);
         });
 
@@ -683,7 +737,7 @@ table.sc td.lead{color:var(--green)}
 'use strict';
 
 /* =====================================================================
-   Outils
+   Outils & Normalisation Firebase
    ===================================================================== */
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -703,6 +757,56 @@ const COLORS = ['#ff5f5f','#ff9f43','#f2a900','#26b552','#20a8dc','#5b46e8','#c5
 function colorFor(s){ let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return COLORS[Math.abs(h) % COLORS.length]; }
 const fmt = v => String(v);
 const newGid = () => Date.now().toString(36) + rnd(1296).toString(36);
+
+function toArr(x) {
+  if (!x) return [];
+  if (Array.isArray(x)) return x;
+  if (typeof x === 'object') {
+    const keys = Object.keys(x).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+    return keys.map(k => x[k]);
+  }
+  return [];
+}
+
+/* Reconstruit systématiquement les tableaux supprimés par Firebase lors d'une reprise ou d'un refresh */
+function sanitizeStateForFirebase(S) {
+  if (!S || typeof S !== 'object') return S;
+  S.deck = toArr(S.deck);
+  S.disc = toArr(S.disc);
+  S.log = toArr(S.log);
+  S.ev = toArr(S.ev);
+  S.players = toArr(S.players).map(p => {
+    if (!p) return p;
+    p.rs = toArr(p.rs);
+    p.grid = toArr(p.grid).map(c => c ? { v: Number(c.v || 0), u: c.u ? 1 : 0, g: c.g ? 1 : 0 } : { v: 0, u: 0, g: 0 });
+    p.total = Number(p.total || 0);
+    p.rv = Number(p.rv || 0);
+    p.bot = !!p.bot;
+    p.rb = p.rb ? 1 : 0;
+    p.away = p.away ? 1 : 0;
+    return p;
+  });
+  if (S.last && typeof S.last === 'object') {
+    S.last.sc = toArr(S.last.sc);
+  } else {
+    S.last = null;
+  }
+  if (S.win) {
+    S.win = toArr(S.win);
+  }
+  if (!S.held || S.held.v === undefined) {
+    S.held = null;
+  }
+  S.v = Number(S.v || 0);
+  S.round = Number(S.round || 0);
+  S.target = Number(S.target || 100);
+  S.turn = S.turn !== undefined ? Number(S.turn) : -1;
+  S.fin = S.fin !== undefined ? Number(S.fin) : -1;
+  S.left = Number(S.left || 0);
+  S.mf = S.mf ? 1 : 0;
+  S.starter = S.starter !== undefined ? Number(S.starter) : -1;
+  return S;
+}
 
 /* =====================================================================
    Moteur de règles (pur : agit sur un état S)
@@ -1056,18 +1160,19 @@ function canHostActions(){ return !online() || isAuth(); }
 
 function applyAction(pi, a){
   if (!APP.S) return false;
-  const S2 = clone(APP.S); S2.ev = [];
+  const S2 = sanitizeStateForFirebase(clone(APP.S)); S2.ev = [];
   if (!act(S2, pi, a)) return false;
   commit(S2); return true;
 }
 function commit(S2){
+  sanitizeStateForFirebase(S2);
   S2.v = (APP.S ? APP.S.v : 0) + 1;
   if (online() && APP.net){ S2.code = APP.net.code; try { APP.net.room.send({ t: 'st', s: S2 }, { keep: true }); } catch(e){ console.warn(e); } }
   setState(S2, true);
 }
 function userAct(a){
   const S = APP.S, pi = ctrlPi(); if (!S || pi < 0) return;
-  const T = clone(S); T.ev = [];
+  const T = sanitizeStateForFirebase(clone(S)); T.ev = [];
   if (!act(T, pi, a)){ sfx('nope'); return; }
   if (online() && !isAuth()){
     if (Date.now() < APP.pendingUntil) return;
@@ -1079,6 +1184,7 @@ function userAct(a){
 }
 
 function setState(S2, anim){
+  S2 = sanitizeStateForFirebase(S2);
   const prev = APP.S;
   const evs = anim && prev && S2.v > prev.v ? (S2.ev || []) : [];
   if (!prev || prev.round !== S2.round || prev.gid !== S2.gid || prev.phase !== S2.phase) APP.ovHidden = false;
@@ -1086,9 +1192,13 @@ function setState(S2, anim){
   APP.flips = [];
   for (const e of evs){
     if (e.k === 'flip') APP.flips.push([e.p, e.i, e.v, 0]);
-    if (e.k === 'reveal') e.l.forEach(([p, i], n) => APP.flips.push([p, i, S2.players[p].grid[i].v, n]));
+    if (e.k === 'reveal') toArr(e.l).forEach(([p, i], n) => {
+      if (S2.players[p] && S2.players[p].grid[i]) {
+        APP.flips.push([p, i, S2.players[p].grid[i].v, n]);
+      }
+    });
     if (e.k === 'end'){
-      const nrev = (evs.find(x => x.k === 'reveal') || { l: [] }).l.length;
+      const nrev = toArr((evs.find(x => x.k === 'reveal') || { l: [] }).l).length;
       APP.ovAt = Date.now() + D(1300 + Math.min(nrev, 30) * 110 + (evs.some(x => x.k === 'col') ? 1700 : 0));
       setTimeout(renderOverlay, APP.ovAt - Date.now() + 60);
     }
@@ -1122,7 +1232,6 @@ function cardHTML(c, id, extra, data){
 }
 function avatarHTML(p, cls = ''){
   if (p.av && !p.bot) {
-    // Supporte les émojis d'IMB Game Center ET les URLs d'images
     if (/^(https?:\/\/|\/)/.test(String(p.av))) {
       return `<img class="av ${cls}" src="${esc(p.av)}" alt="" referrerpolicy="no-referrer">`;
     }
@@ -1163,11 +1272,11 @@ function boardHTML(S, pi, big){
 }
 
 function renderGame(){
-  const S = APP.S; if (!S) return;
+  const S = APP.S; if (!S || !S.players.length) return;
   const vp = viewPi(), cp = ctrlPi(), n = S.players.length;
   $('#roundPill').textContent = 'Manche ' + S.round;
   $('#targetPill').textContent = '🎯 ' + S.target;
-  const cpill = $('#codePill'); cpill.hidden = !online(); if (online()) cpill.textContent = APP.net.code;
+  const cpill = $('#codePill'); cpill.hidden = !online(); if (online() && APP.net) cpill.textContent = APP.net.code;
   const order = []; for (let k = 1; k < n; k++) order.push((vp + k) % n);
   $('#opps').innerHTML = order.map(i => boardHTML(S, i, false)).join('');
   $('#mine').innerHTML = boardHTML(S, vp, true);
@@ -1183,7 +1292,7 @@ function renderGame(){
   $('#disc').innerHTML = top != null ? `<div class="card ${canTake || canToss ? 'pile-clk' : ''}" id="discTop">${faces(top)}</div>` : '';
   $('#disc').classList.toggle('filled', top != null);
   $('#held').innerHTML = S.held ? `<div class="card" id="heldCard">${faces(S.held.v)}</div>` : '';
-  $('#heldLab').innerHTML = S.held ? (S.turn >= 0 ? esc(S.players[S.turn].name.split(' ')[0]) + ' tient' : '') : '&nbsp;';
+  $('#heldLab').innerHTML = S.held ? (S.turn >= 0 && S.players[S.turn] ? esc(S.players[S.turn].name.split(' ')[0]) + ' tient' : '') : '&nbsp;';
   renderStatus();
   $('#game').classList.toggle('lastround', S.phase === 'play' && S.fin >= 0);
   fit();
@@ -1194,12 +1303,13 @@ function renderStatus(){
   let txt = '', me = false, btns = '';
   const multi = APP.mode === 'local';
   if (S.phase === 'reveal'){
-    if (cp >= 0 && S.players[cp].rv < 2){
+    if (cp >= 0 && S.players[cp] && S.players[cp].rv < 2){
       const left = 2 - S.players[cp].rv;
       txt = `${multi ? esc(S.players[cp].name) + ', r' : 'R'}etourne ${left} carte${left > 1 ? 's' : ''} 👇`; me = true;
     } else txt = `<span class="dots">Les autres retournent leurs cartes</span>`;
   } else if (S.phase === 'play'){
     const t = S.players[S.turn];
+    if (!t) return;
     const pre = S.fin >= 0 ? '🚨 <b>DERNIER TOUR</b> · ' : '';
     if (cp === S.turn && cp >= 0){
       me = true;
@@ -1529,7 +1639,7 @@ function awayBlocking(S){
   return -1;
 }
 function replaceBot(i){
-  const S2 = clone(APP.S); S2.ev = []; const p = S2.players[i]; if (!p || p.bot) return;
+  const S2 = sanitizeStateForFirebase(clone(APP.S)); S2.ev = []; const p = S2.players[i]; if (!p || p.bot) return;
   p.bot = true; p.rb = 1; p.away = 0; log(S2, `🤖 ${p.name} est remplacé par un bot en attendant son retour`);
   commit(S2);
 }
@@ -1541,7 +1651,6 @@ function reportEnd(S){
   if (!online() || !window.ChadGang || !ChadGang.finPartie) return;
   const i = myIdx(); if (i < 0) return;
 
-  // Vérifier qu'il y a au moins 2 vrais joueurs humains dans la partie
   const realHumansCount = S.players.filter(p => !p.bot && !p.rb).length;
   if (realHumansCount < 2) {
     toast('🤖 Partie contre des bots : non comptée au classement');
@@ -1578,7 +1687,9 @@ function goOnline(code, create){
     APP.net.av[APP.meId] = APP.me.avatar;
     try { room.send({ t: 'hi', av: APP.me.avatar }); } catch(e){}
     let last = info.last; if (last && last.data) last = last.data;
-    if (last && last.t === 'st' && last.s){ setState(last.s, false); }
+    if (last && last.t === 'st' && last.s){
+      setState(sanitizeStateForFirebase(last.s), false);
+    }
     if (!APP.S && isAuth()) createLobby();
     else if (!APP.S) renderLobbyConnecting('En attente de l’hôte');
     onPlayers();
@@ -1614,11 +1725,11 @@ function onPlayers(){
   if (!S){ if (isAuth()) createLobby(); return; }
   if (!isAuth()){ route(); return; }
   if (S.phase === 'lobby'){
-    const S2 = clone(S); S2.ev = []; syncLobby(S2);
+    const S2 = sanitizeStateForFirebase(clone(S)); S2.ev = []; syncLobby(S2);
     if (JSON.stringify(S2.players) !== JSON.stringify(S.players)) commit(S2); else { route(); schedule(); }
     return;
   }
-  const S2 = clone(S); S2.ev = []; let ch = false;
+  const S2 = sanitizeStateForFirebase(clone(S)); S2.ev = []; let ch = false;
   const ids = new Set(APP.net.players.map(p => p.id));
   S2.players.forEach(p => {
     const here = ids.has(p.id);
@@ -1630,13 +1741,14 @@ function onPlayers(){
 function onMsg(d, from){
   if (!d || typeof d !== 'object') return;
   if (d.t === 'st' && d.s){
-    if (!APP.S || d.s.v > APP.S.v) setState(d.s, !!APP.S);
+    const incoming = sanitizeStateForFirebase(d.s);
+    if (!APP.S || incoming.v > APP.S.v) setState(incoming, !!APP.S);
     return;
   }
   if (d.t === 'hi'){
     if (from.id) APP.net.av[from.id] = d.av || null;
     if (isAuth() && APP.S){
-      const S2 = clone(APP.S); S2.ev = []; const p = S2.players.find(p => p.id === from.id);
+      const S2 = sanitizeStateForFirebase(clone(APP.S)); S2.ev = []; const p = S2.players.find(p => p.id === from.id);
       if (p && p.av !== (d.av || null)){ p.av = d.av || null; commit(S2); }
     }
     return;
@@ -1678,7 +1790,7 @@ function renderLobby(){
   h += `<button class="btn outline" id="lobLeave">↩ Quitter la salle</button>`;
   $('#lobwrap').innerHTML = h;
 }
-function lobbyEdit(fn){ if (!isAuth() || !APP.S) return; const S2 = clone(APP.S); S2.ev = []; fn(S2); commit(S2); }
+function lobbyEdit(fn){ if (!isAuth() || !APP.S) return; const S2 = sanitizeStateForFirebase(clone(APP.S)); S2.ev = []; fn(S2); commit(S2); }
 function pickBotName(S){ const used = new Set(S.players.map(p => p.name)); const free = BOT_NAMES.filter(n => !used.has(n)); return free.length ? free[rnd(free.length)] : 'Bot ' + rnd(100); }
 
 /* =====================================================================
@@ -1691,7 +1803,6 @@ function renderMenu(prefill){
   p.innerHTML = `<button class="btn big" id="bCreate">🎲 Créer une salle en ligne</button>
     <div class="row"><input class="field" id="code" name="code" maxlength="4" placeholder="CODE" autocomplete="off" value="${esc(prefill || '')}"><button class="btn white" id="bJoin">Rejoindre</button></div>`;
 
-  // Bouton reprendre la salle en ligne active
   const savedRoom = localStorage.getItem('imb_active_room_skyjo');
   const btnRoom = $('#bResumeRoom');
   if (savedRoom && /^[A-Z0-9]{4,12}$/.test(savedRoom)) {
@@ -1755,7 +1866,7 @@ function startLocal(){
 function resumeLocal(){
   const S = LS.get('local', null); if (!S) return;
   leaveOnline(); APP.mode = S.mode === 'local' ? 'local' : 'solo'; APP.S = null; APP.animUntil = 0;
-  setState(S, false);
+  setState(sanitizeStateForFirebase(S), false);
 }
 function toMenu(){
   leaveOnline();
@@ -1896,7 +2007,7 @@ async function init(){
   else show('menu');
 }
 window.__skyjo = {
-  APP, act, botDecide, makeGame, startRound, applyAction,
+  APP, act, botDecide, makeGame, startRound, applyAction, toast,
   joinFromShell: (code) => goOnline(code, false)
 };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
