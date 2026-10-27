@@ -345,7 +345,7 @@
         <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black">
           🔍
         </div>
-        <input type="text" id="gameSearchInput" oninput="renderGamesCatalog()" placeholder="Chercher un jeu (Morpion, Undercover, Pop Sauce, Loup-Garou...)..." class="w-full bg-white border-[3px] border-[#12131a] rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-[#12131a] placeholder-slate-400 shadow-[4px_5px_0px_#12131a] focus:outline-none focus:bg-[#fffdf0] focus:translate-x-0.5 focus:translate-y-0.5 transition-all">
+        <input type="text" id="gameSearchInput" oninput="renderGamesCatalog()" placeholder="Chercher un jeu (Skyjo, Morpion, Undercover, Pop Sauce...)..." class="w-full bg-white border-[3px] border-[#12131a] rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-[#12131a] placeholder-slate-400 shadow-[4px_5px_0px_#12131a] focus:outline-none focus:bg-[#fffdf0] focus:translate-x-0.5 focus:translate-y-0.5 transition-all">
       </div>
       <button onclick="pickRandomGame()" title="Choisir un jeu au hasard" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-4 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 flex-shrink-0">
         <span class="text-lg">🎰</span>
@@ -412,30 +412,34 @@
           </div>
         </div>
 
-        <!-- CARTE L'IMPOSTEUR -->
+        <!-- CARTE SKYJO (NOUVEAU) -->
         <div class="game-card flex flex-col justify-between">
           <div>
-            <div class="w-full h-32 bg-[#00e599] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
-              <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
-              <span id="undercoverLiveBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#00e599] border-2 border-[#00e599] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full">
-                🟢 0 en mission
+            <div class="w-full h-32 bg-[#3fd0ff] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
+              <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🃏🌈</span>
+              <span id="skyjoActiveRoomBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#fed72d] border-2 border-[#fed72d] text-[10px] font-mono font-black px-2 py-0.5 rounded-full animate-pulse">
+                ⮌ En cours
               </span>
             </div>
             <div class="p-4">
-              <h4 class="text-lg font-black text-[#12131a]">L'Imposteur (Undercover)</h4>
-              <p class="text-xs font-bold text-slate-500 mt-1">3 mots pour prouver ton alibi, 60s pour voter et démasquer l'infiltré !</p>
+              <h4 class="text-lg font-black text-[#12131a]">Skyjo</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1 mb-3">Le moins de points gagne ! Fais exploser tes colonnes en ligne ou contre des bots.</p>
+
+              <div class="border-2 border-dashed border-amber-300 bg-[#fffbeb] rounded-2xl p-2.5 space-y-1.5 mb-3" id="skyjoTop3Box">
+                <div class="text-[10px] font-bold text-slate-400 italic text-center py-2">Chargement du Top 3...</div>
+              </div>
             </div>
           </div>
           <div class="p-4 pt-0 flex items-center justify-between gap-2">
-            <a href="/games/undercover/" onclick="trackGameLaunch('undercover')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+            <a href="/games/skyjo/index.html" onclick="trackGameLaunch('skyjo')" id="btnLaunchSkyjo" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
               <span>Jouer</span>
               <span>↗</span>
             </a>
-            <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
+            <span class="text-[11px] font-mono font-black text-slate-600">2-8 joueurs</span>
           </div>
         </div>
 
-        <!-- CARTE FLAPPY GIROUD (NOUVEAU) -->
+        <!-- CARTE FLAPPY GIROUD -->
         <div class="game-card flex flex-col justify-between">
           <div>
             <div class="w-full h-32 bg-[#fed72d] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
@@ -459,6 +463,29 @@
               <span>↗</span>
             </a>
             <span class="text-[11px] font-mono font-black text-slate-600">Solo</span>
+          </div>
+        </div>
+
+        <!-- CARTE L'IMPOSTEUR -->
+        <div class="game-card flex flex-col justify-between">
+          <div>
+            <div class="w-full h-32 bg-[#00e599] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
+              <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🕵️‍♂️🎭</span>
+              <span id="undercoverLiveBadge" class="hidden absolute top-2.5 right-2.5 bg-[#12131a] text-[#00e599] border-2 border-[#00e599] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full">
+                🟢 0 en mission
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-lg font-black text-[#12131a]">L'Imposteur (Undercover)</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1">3 mots pour prouver ton alibi, 60s pour voter et démasquer l'infiltré !</p>
+            </div>
+          </div>
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <a href="/games/undercover/" onclick="trackGameLaunch('undercover')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+              <span>Jouer</span>
+              <span>↗</span>
+            </a>
+            <span class="text-[11px] font-mono font-black text-slate-600">3+ joueurs</span>
           </div>
         </div>
 
