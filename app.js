@@ -35,12 +35,12 @@ const INTERNAL_GAMES = {
     bg: '#ffd166',
     path: '/games/morpion/index.html'
   },
-  undercover: {
-    id: 'undercover',
-    title: "L'Imposteur",
-    icon: '🕵️‍♂️',
-    bg: '#00e599',
-    path: '/games/undercover/'
+  skyjo: {
+    id: 'skyjo',
+    title: 'Skyjo',
+    icon: '🃏',
+    bg: '#3fd0ff',
+    path: '/games/skyjo/index.html'
   },
   'flappy-giroud': {
     id: 'flappy-giroud',
@@ -48,6 +48,13 @@ const INTERNAL_GAMES = {
     icon: '⚽',
     bg: '#fed72d',
     path: '/games/flappy-giroud/index.html'
+  },
+  undercover: {
+    id: 'undercover',
+    title: "L'Imposteur",
+    icon: '🕵️‍♂️',
+    bg: '#00e599',
+    path: '/games/undercover/'
   }
 };
 
@@ -154,7 +161,7 @@ let lastNotifiedMsgKey = null;
 /* Données du classement modale */
 let lobbyLeaderboardData = [];
 let isLobbyLeaderboardExpanded = false;
-let currentLeaderboardGameId = null; // Déduit l'unité à afficher
+let currentLeaderboardGameId = null;
 
 /* ---------------- DÉMARRAGE ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
@@ -255,6 +262,8 @@ window.addEventListener('DOMContentLoaded', () => {
       // Top 3 Cartes & Salles Actives
       loadMorpionTop3Card();
       checkLobbyMorpionActiveRoom();
+      loadSkyjoTop3Card();
+      checkLobbySkyjoActiveRoom();
       loadFlappyGiroudTop3Card();
       checkLobbyFlappyGiroudActiveRoom();
       
@@ -322,11 +331,12 @@ function renderRecentGames() {
     
     // Récupérer la salle active
     const activeRoom = localStorage.getItem(`imb_active_room_${game.id}`);
-    const targetUrl = (activeRoom && activeRoom.length === 4) 
+    const hasValidRoom = activeRoom && activeRoom.length >= 4;
+    const targetUrl = hasValidRoom 
       ? `${game.path}#room=${activeRoom}` 
       : game.path;
 
-    const labelAction = (activeRoom && activeRoom.length === 4)
+    const labelAction = hasValidRoom
       ? `Reprendre (${activeRoom})`
       : 'Reprendre';
 
@@ -349,7 +359,16 @@ function checkLobbyMorpionActiveRoom() {
   const activeRoom = localStorage.getItem('imb_active_room_morpion');
   const badge = document.getElementById('morpionActiveRoomBadge');
   if (badge) {
-    if (activeRoom && activeRoom.length === 4) badge.classList.remove('hidden');
+    if (activeRoom && activeRoom.length >= 4) badge.classList.remove('hidden');
+    else badge.classList.add('hidden');
+  }
+}
+
+function checkLobbySkyjoActiveRoom() {
+  const activeRoom = localStorage.getItem('imb_active_room_skyjo');
+  const badge = document.getElementById('skyjoActiveRoomBadge');
+  if (badge) {
+    if (activeRoom && activeRoom.length >= 4) badge.classList.remove('hidden');
     else badge.classList.add('hidden');
   }
 }
@@ -393,6 +412,35 @@ function loadMorpionTop3Card() {
   });
 }
 
+function loadSkyjoTop3Card() {
+  const container = document.getElementById('skyjoTop3Box');
+  if (!container) return;
+  db.ref('scores/skyjo').on('value', snap => {
+    const data = snap.val() || {};
+    const sorted = Object.values(data).sort((a, b) => (b.wins || 0) - (a.wins || 0)).slice(0, 3);
+    if (sorted.length === 0) {
+      container.innerHTML = `<div class="text-[10px] font-bold text-slate-400 italic text-center py-1">Aucune victoire enregistrée. Sois le premier !</div>`;
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    container.innerHTML = sorted.map((p, idx) => `
+      <div class="flex items-center justify-between gap-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="text-sm">${medals[idx]}</span>
+          <span class="text-xs font-black text-[#12131a] truncate">${escapeHtml(p.nickname)}</span>
+        </div>
+        <span class="bg-[#121526] text-white px-2 py-0.5 rounded-full font-mono text-[9px] font-black flex-shrink-0">
+          ${p.wins || 0} victoire${(p.wins || 0) > 1 ? 's' : ''}
+        </span>
+      </div>
+    `).join('') + `
+      <div class="text-right pt-1 border-t border-amber-200/60">
+        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLobbyLeaderboard('skyjo', 'Skyjo');" class="text-[10px] font-black text-amber-900 hover:underline">Classement ></button>
+      </div>
+    `;
+  });
+}
+
 function loadFlappyGiroudTop3Card() {
   const container = document.getElementById('flappyTop3Box');
   if (!container) return;
@@ -426,7 +474,7 @@ function loadFlappyGiroudTop3Card() {
    MODALE DU CLASSEMENT COMPLET SUR LE LOBBY
    ========================================================= */
 function openLobbyLeaderboard(gameId, gameTitle) {
-  currentLeaderboardGameId = gameId; // Enregistrer l'ID pour l'unité (pts ou victoires)
+  currentLeaderboardGameId = gameId;
   const modal = document.getElementById('modalLobbyLeaderboard');
   const titleEl = document.getElementById('modalLeaderboardGameTitle');
   if (titleEl) titleEl.textContent = `${gameTitle} : Classement`;
@@ -470,7 +518,6 @@ function renderLobbyLeaderboardRows() {
       rankBadge = `<span class="text-base">🥉</span>`;
     }
 
-    // Gestion propre de l'unité selon le jeu
     const unitLabel = currentLeaderboardGameId === 'flappy-giroud' 
       ? 'pts' 
       : 'victoire' + ((p.wins || 0) > 1 ? 's' : '');
@@ -843,12 +890,19 @@ function safeRoomCode(code) {
 
 function openInternalInvite(game, code) {
   if (!currentUser || !code) return;
-  if (game === 'MORPION') {
+  const g = String(game || '').toLowerCase();
+  if (g === 'morpion') {
     trackGameLaunch('morpion');
     window.location.href = `/games/morpion/index.html#room=${code}`;
-  } else if (game === 'IMPOSTEUR' || game === 'UNDERCOVER') {
+  } else if (g === 'skyjo') {
+    trackGameLaunch('skyjo');
+    window.location.href = `/games/skyjo/index.html#room=${code}`;
+  } else if (g === 'imposteur' || g === 'undercover') {
     trackGameLaunch('undercover');
     window.location.href = `/games/undercover/#imposteur=${code}`;
+  } else if (INTERNAL_GAMES[g]) {
+    trackGameLaunch(g);
+    window.location.href = `${INTERNAL_GAMES[g].path}#room=${code}`;
   }
 }
 
