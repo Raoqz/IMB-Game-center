@@ -195,12 +195,12 @@ window.GameShell = {
         </button>
       </div>
 
-      <!-- MODALE RÈGLES -->
-      <div id="shellModalRules" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[85vh] overflow-y-auto custom-scrollbar">
+     <!-- MODALE RÈGLES -->
+      <div id="shellModalRules" onclick="if(event.target === this) GameShell.closeRules()" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4 text-[#12131a]">
+        <div class="neo-box bg-white text-[#12131a] max-w-md w-full p-6 relative max-h-[85vh] overflow-y-auto custom-scrollbar">
           <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
             <h3 class="text-base font-black text-[#12131a] uppercase">📖 Règles du jeu</h3>
-            <button onclick="GameShell.closeRules()" class="text-xl font-bold">✕</button>
+            <button type="button" onclick="GameShell.closeRules()" class="w-8 h-8 rounded-lg border-2 border-[#12131a] bg-slate-100 hover:bg-rose-100 text-[#12131a] flex items-center justify-center text-sm font-black shadow-[1px_2px_0px_#12131a]">✕</button>
           </div>
           <div class="text-xs font-bold text-slate-700 leading-relaxed space-y-2">
             ${this.rulesHtml}
@@ -209,17 +209,17 @@ window.GameShell = {
       </div>
 
       <!-- MODALE CLASSEMENT AVEC PODIUM -->
-      <div id="shellModalLeaderboard" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[88vh] overflow-y-auto custom-scrollbar">
+      <div id="shellModalLeaderboard" onclick="if(event.target === this) GameShell.closeLeaderboard()" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4 text-[#12131a]">
+        <div class="neo-box bg-white text-[#12131a] max-w-md w-full p-6 relative max-h-[88vh] overflow-y-auto custom-scrollbar">
           <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
             <div class="flex items-center gap-2">
               <span class="text-2xl">🏆</span>
               <div>
                 <h3 class="text-base font-black text-[#12131a] uppercase leading-none">${this.gameTitle} : Classement</h3>
-                <span class="text-[10px] font-mono text-slate-500">Victoires enregistrées</span>
+                <span class="text-[10px] font-mono text-slate-500">Palmarès enregistré</span>
               </div>
             </div>
-            <button onclick="GameShell.closeLeaderboard()" class="text-xl font-bold">✕</button>
+            <button type="button" onclick="GameShell.closeLeaderboard()" class="w-8 h-8 rounded-lg border-2 border-[#12131a] bg-slate-100 hover:bg-rose-100 text-[#12131a] flex items-center justify-center text-sm font-black shadow-[1px_2px_0px_#12131a]">✕</button>
           </div>
 
           <div id="shellLeaderboardList" class="space-y-2">
@@ -227,13 +227,16 @@ window.GameShell = {
           </div>
 
           <div id="shellLeaderboardExpandWrapper" class="mt-3 hidden">
-            <button onclick="GameShell.toggleFullLeaderboard()" id="shellBtnExpandLeaderboard" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2 rounded-xl text-xs font-black">
+            <button type="button" onclick="GameShell.toggleFullLeaderboard()" id="shellBtnExpandLeaderboard" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2 rounded-xl text-xs font-black">
               Voir le classement complet ▼
             </button>
           </div>
+
+          <button type="button" onclick="GameShell.closeLeaderboard()" class="w-full mt-4 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2 rounded-xl text-xs font-black">
+            Fermer
+          </button>
         </div>
       </div>
-    `;
 
     document.body.insertAdjacentHTML('afterbegin', shellHtml);
 
