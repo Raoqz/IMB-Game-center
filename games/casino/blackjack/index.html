@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IMB Casino - Blackjack 21</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind & Styles -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/games/casino/casino-style.css">
+  <link rel="stylesheet" href="/games/casino/blackjack/blackjack-style.css">
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- Confetti, Shell, API Casino, Moteur & Application Blackjack -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="/shared/game-shell.js"></script>
+  <script src="/games/casino/casino-api.js"></script>
+  <script src="/games/casino/blackjack/blackjack-engine.js"></script>
+  <script src="/games/casino/blackjack/blackjack-app.js" defer></script>
+</head>
+<body class="blackjack-body pt-16 pb-6 select-none">
+
+  <!-- ================= CONTENU PRINCIPAL (SINGLE-SCREEN PC) ================= -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-5 pt-2 flex flex-col gap-3.5">
+
+    <!-- BARRE SUPÉRIEURE COMPACTE -->
+    <section class="bg-[#065f46] border-[3px] border-[#12131a] rounded-2xl px-3.5 py-2.5 shadow-[4px_5px_0px_#12131a] text-white flex flex-wrap items-center justify-between gap-2.5">
+      
+      <div class="flex items-center gap-2.5">
+        <a href="/games/casino/index.html" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-2.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a] flex items-center gap-1">
+          <span>←</span>
+          <span class="hidden sm:inline">Casino</span>
+        </a>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xl">🃏</span>
+            <h2 class="text-base sm:text-lg font-black italic tracking-tight uppercase leading-none">Blackjack 21</h2>
+          </div>
+          <p class="text-[10px] font-bold text-emerald-100 hidden sm:block mt-0.5">
+            Bats le croupier sans dépasser 21 ! Blackjack paie 3:2.
+          </p>
+        </div>
+      </div>
+
+      <!-- Contrôles modes & ATM -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <div class="flex items-center gap-1 bg-[#064e3b] border-2 border-[#12131a] p-1 rounded-xl shadow-[2px_2px_0px_#12131a]">
+          <button type="button" id="btnModeSolo" onclick="BlackjackApp.switchToSolo()" class="neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black">
+            👤 Solo
+          </button>
+          <button type="button" id="btnModeRoom" onclick="BlackjackApp.openRoomModal()" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black">
+            👥 Salon <span id="roomCodeBadge" class="hidden font-mono bg-[#ef4444] text-white px-1.5 py-0.2 rounded ml-1"></span>
+          </button>
+        </div>
+
+        <button type="button" onclick="BlackjackApp.useAtmInGame()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]">
+          <span>🏧</span>
+          <span id="btnInGameAtmText">ATM (+1 000 $)</span>
+        </button>
+
+        <button type="button" onclick="GameShell.openRules()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-2.5 py-1.5 rounded-xl text-[11px] font-black shadow-[2px_2px_0px_#12131a]">
+          📖 Règles
+        </button>
+      </div>
+
+      <!-- HUD Solde -->
+      <div id="casinoHud" class="bj-hud-box">
+        <div class="flex items-center gap-1 pr-1">
+          <span id="hudAvatar" class="text-sm">🎰</span>
+          <span id="hudNickname" class="text-[11px] font-black text-[#12131a] hidden md:inline truncate max-w-[85px]">Joueur</span>
+        </div>
+
+        <div id="hudBalancePill" class="hud-pill balance" title="Solde disponible">
+          <span>💰</span>
+          <span><strong id="hudBalanceValue">1 000</strong> $</span>
+        </div>
+
+        <div class="hud-pill tokens" title="Tokens ATM">
+          <span>🪙</span>
+          <span><strong id="hudTokensValue">0</strong></span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- GRILLE PRINCIPALE : TABLE DE JEU (GAUCHE, 8 COL) | CHAT & SALON (DROITE, 4 COL) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+      <!-- ================= COLONNE GAUCHE : LE TAPIS DE BLACKJACK (8 COL) ================= -->
+      <div class="lg:col-span-8 flex flex-col gap-3.5">
+
+        <div id="bjArena" class="bj-felt-arena">
+          
+          <!-- ZONE CROUPIER EN HAUT -->
+          <div class="flex flex-col items-center gap-2">
+            <div class="flex items-center gap-2 bg-[#047857] border-2 border-[#12131a] px-3 py-1 rounded-full shadow-[2px_2px_0px_#12131a]">
+              <span class="text-xs font-black uppercase tracking-wider text-white">🎩 Le Croupier</span>
+              <span id="dealerScoreBadge" class="bj-score-badge">0</span>
+            </div>
+            <div id="dealerCardsContainer" class="bj-hand-cards">
+              <span class="text-xs font-bold text-emerald-200/70 italic">En attente de mise...</span>
+            </div>
+          </div>
+
+          <!-- MESSAGE CENTRAL DE STATUT / RÉSULTAT -->
+          <div class="my-4 text-center">
+            <div id="bjStatusBanner" class="inline-block bg-[#12131a] text-[#fed72d] border-2 border-[#fed72d] px-4 py-1.5 rounded-2xl font-mono text-xs font-black shadow-[3px_3px_0px_rgba(0,0,0,0.4)]">
+              Place tes jetons pour commencer !
+            </div>
+            <!-- Timer AFK 60s (visible pendant le tour de jeu en salon) -->
+            <div id="afkTimerBox" class="hidden max-w-xs mx-auto mt-2 space-y-1">
+              <div class="flex justify-between text-[10px] font-mono font-bold text-emerald-100">
+                <span>Temps de décision :</span>
+                <span id="afkTimeLeft">60s</span>
+              </div>
+              <div class="afk-timer-wrapper">
+                <div id="afkBarFill" class="afk-timer-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ZONE JOUEUR EN BAS -->
+          <div class="flex flex-col items-center gap-2">
+            <div id="playerHandCardsContainer" class="bj-hand-cards">
+              <span class="text-xs font-bold text-emerald-200/70 italic">—</span>
+            </div>
+            <div class="flex items-center gap-2 bg-[#047857] border-2 border-[#12131a] px-3 py-1 rounded-full shadow-[2px_2px_0px_#12131a]">
+              <span id="playerRoleBadge" class="text-xs font-black uppercase tracking-wider text-white">👤 Ta Main</span>
+              <span id="playerScoreBadge" class="bj-score-badge">0</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ZONE MULTIJOUEUR : SIÈGES DES AUTRES JOUEURS DU SALON -->
+        <div id="multiSeatsPanel" class="hidden bg-[#065f46] border-[3.5px] border-[#12131a] rounded-2xl p-3.5 shadow-[4px_5px_0px_#12131a] text-white">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b-2 border-[#12131a]/40">
+            <span class="text-xs font-black uppercase">👥 Autres joueurs à la table (<span id="multiPlayersCount">0</span>)</span>
+            <span class="text-[10px] font-mono text-emerald-200">Jeu simultané</span>
+          </div>
+          <div id="multiSeatsContainer" class="bj-multi-seats"></div>
+        </div>
+
+        <!-- BARRE DE CONTRÔLE : JETONS & BOUTONS D'ACTION -->
+        <div class="bg-white border-[3.5px] border-[#12131a] rounded-2xl p-3.5 shadow-[5px_6px_0px_#12131a] flex flex-col gap-3">
+          
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <!-- Sélecteur de jetons (actif en phase de mise) -->
+            <div id="chipSelectorBox" class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-black uppercase text-slate-500 mr-1">Jeton :</span>
+              <button type="button" onclick="BlackjackApp.selectChip(10)" id="chip_10" class="chip-btn chip-10">10$</button>
+              <button type="button" onclick="BlackjackApp.selectChip(50)" id="chip_50" class="chip-btn chip-50 active">50$</button>
+              <button type="button" onclick="BlackjackApp.selectChip(100)" id="chip_100" class="chip-btn chip-100">100$</button>
+              <button type="button" onclick="BlackjackApp.selectChip(500)" id="chip_500" class="chip-btn chip-500">500$</button>
+              <button type="button" onclick="BlackjackApp.selectChip('MAX')" id="chip_MAX" class="chip-btn chip-max" title="Miser tout le solde">MAX</button>
+            </div>
+
+            <!-- Affichage mise active -->
+            <div class="bg-emerald-50 border-2 border-[#12131a] rounded-xl px-3.5 py-1.5 text-right shadow-[2px_2px_0px_#12131a]">
+              <span class="text-[9px] font-mono font-bold uppercase text-slate-500 block leading-none">Mise en jeu</span>
+              <span id="currentBetDisplay" class="text-base font-mono font-black text-[#065f46]">0 $</span>
+            </div>
+          </div>
+
+          <!-- PHASE 1 : BOUTONS DE MISE -->
+          <div id="bettingControlsBox" class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t-2 border-slate-100">
+            <button type="button" onclick="BlackjackApp.clearBet()" class="neo-btn bg-slate-100 hover:bg-rose-100 text-[#12131a] py-2.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
+              🗑️ Effacer
+            </button>
+            <button type="button" onclick="BlackjackApp.rebetLast()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-2.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
+              🔁 Re-miser
+            </button>
+            <button type="button" onclick="BlackjackApp.doubleBetAmount()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2.5 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+              ✖️2 Doubler
+            </button>
+            <button type="button" id="btnDeal" onclick="BlackjackApp.dealCards()" disabled class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white py-2.5 rounded-xl text-xs sm:text-sm font-black shadow-[3px_3px_0px_#12131a] opacity-50 cursor-not-allowed">
+              🃏 DISTRIBUER
+            </button>
+          </div>
+
+          <!-- PHASE 2 : BOUTONS D'ACTION PENDANT LE TOUR (Tirer, Rester, Doubler) -->
+          <div id="actionControlsBox" class="hidden grid-cols-3 gap-2.5 pt-2 border-t-2 border-slate-100">
+            <button type="button" id="btnHit" onclick="BlackjackApp.playerHit()" class="bj-action-btn bg-[#fed72d] text-[#12131a]">
+              <span>🃏</span> Tirer (Hit)
+            </button>
+            <button type="button" id="btnStand" onclick="BlackjackApp.playerStand()" class="bj-action-btn bg-[#00e599] text-[#12131a]">
+              <span>✋</span> Rester (Stand)
+            </button>
+            <button type="button" id="btnDoubleDown" onclick="BlackjackApp.playerDoubleDown()" class="bj-action-btn bg-white text-[#12131a]">
+              <span>✖️2</span> Doubler
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ================= COLONNE DROITE : SALON MULTI & CHAT CASINO (4 COL) ================= -->
+      <div class="lg:col-span-4 flex flex-col gap-3.5">
+        
+        <!-- SALON MULTIJOUEUR -->
+        <div class="bg-white border-[3.5px] border-[#12131a] rounded-3xl p-4 shadow-[5px_6px_0px_#12131a]">
+          <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-[#12131a]">
+            <span class="text-xs font-black uppercase text-[#12131a]">👥 Salon Multijoueur</span>
+            <span id="roomCodeDisplayBadge" class="hidden font-mono bg-[#ef4444] text-white px-2 py-0.5 rounded text-[10px] font-black"></span>
+          </div>
+
+          <div class="space-y-2.5">
+            <button type="button" onclick="BlackjackApp.createMultiplayerRoom()" class="w-full neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white py-2.5 rounded-2xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+              ➕ Créer un salon 21
+            </button>
+
+            <div class="flex gap-2">
+              <input type="text" id="inputJoinRoomCode" maxlength="4" placeholder="CODE" class="flex-1 uppercase font-mono bg-slate-50 border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-black text-center">
+              <button type="button" onclick="BlackjackApp.joinMultiplayerRoomFromInput()" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-2 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
+                Rejoindre
+              </button>
+            </div>
+            <button type="button" id="btnLeaveRoom" onclick="BlackjackApp.switchToSolo()" class="hidden w-full neo-btn bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-black">
+              Quitter le salon (Mode Solo)
+            </button>
+          </div>
+        </div>
+
+        <!-- CHAT DE TABLE BLACKJACK -->
+        <div class="bg-white border-[3.5px] border-[#12131a] rounded-3xl p-4 shadow-[5px_6px_0px_#12131a]">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-200">
+            <span class="text-xs font-black uppercase text-[#12131a]">🔥 Chat Table & Big Wins</span>
+            <span class="text-[9px] font-mono text-slate-500">Gains ≥ 500$ → QG</span>
+          </div>
+
+          <div id="casinoTableChatList" class="h-44 overflow-y-auto space-y-1.5 bg-slate-50 border-2 border-[#12131a] rounded-xl p-2 mb-2 flex flex-col-reverse space-y-reverse custom-scrollbar">
+            <p class="text-[11px] font-bold text-slate-400 text-center py-6">Chargement du chat...</p>
+          </div>
+
+          <form onsubmit="BlackjackApp.sendCasinoChatMessage(event)" class="flex gap-1.5">
+            <input type="text" id="casinoTableChatInput" maxlength="200" placeholder="Message à la table 21..." class="flex-1 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2.5 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+            <button type="submit" class="neo-btn bg-[#059669] hover:bg-[#047857] text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+              ➤
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MODALE RÉSULTAT DE LA MAIN ================= -->
+  <div id="bjResultModal" class="hidden fixed inset-0 z-[160] bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-sm w-full p-6 text-center rounded-3xl border-[3.5px] border-[#12131a] shadow-[6px_8px_0px_#12131a]">
+      <div id="resultModalIcon" class="text-5xl mb-2">🎉</div>
+      <h3 id="resultModalTitle" class="text-2xl font-black uppercase tracking-tight text-[#12131a]">Victoire !</h3>
+      <p id="resultModalDesc" class="text-xs font-bold text-slate-600 my-2">Le croupier a sauté.</p>
+      <div id="resultModalPayout" class="text-xl font-mono font-black text-emerald-700 bg-emerald-50 border-2 border-[#12131a] py-2.5 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]">
+        + 100 $
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick="BlackjackApp.closeResultModal(true)" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-3 rounded-2xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+          🔁 Re-miser pareil
+        </button>
+        <button type="button" onclick="BlackjackApp.closeResultModal(false)" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+          Continuer ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOAST NOTIFICATION ================= -->
+  <div id="rouletteToast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[170] bg-white border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
+    <span id="rouletteToastIcon">🃏</span>
+    <span id="rouletteToastMsg">Notification</span>
+  </div>
+
+</body>
+</html>
