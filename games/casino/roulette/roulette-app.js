@@ -1,5 +1,7 @@
 /* =========================================================
-   IMB CASINO - ROULETTE APP (Corrigé & Optimisé Single-Screen)
+   IMB CASINO - ROULETTE APP (Flow Fluide & Déduction Directe)
+   Cycle : Faites vos jeux (déduction HUD en direct) ->
+           Rotation immédiate -> Résultat -> Maj Firebase
    ========================================================= */
 (function () {
   'use strict';
@@ -12,8 +14,8 @@
 
   const BIG_WIN_THRESHOLD = 500;
 
-  let myProfile = null;
   let myUser = null;
+  let myProfile = { balance: 1000, tokens: 0, tokensUsed: 0 };
   let isSessionBootstrapped = false;
 
   let activeChip = 50; // 10, 50, 100, 500 ou 'MAX'
@@ -25,15 +27,19 @@
   let soundEnabled = true;
   let audioCtx = null;
 
-  // État Salon Multijoueur
+  // État Salon Multijoueur & Auto-Timer
   let currentRoomCode = null;
   let roomRef = null;
   let lastProcessedSpinId = null;
+  let autoTimerEnabled = false;
+  let autoTimerInterval = null;
+  let autoTimerSeconds = 20;
 
   /* ---------------- 1. INITIALISATION DU JEU ET DU PROFIL CASINO ---------------- */
   window.addEventListener('DOMContentLoaded', () => {
     buildWheelSvg();
     buildInsideBetGrid();
+    renderBetsAndBalanceUI();
     listenCasinoChat();
 
     GameShell.init({
@@ -46,7 +52,7 @@
         <p class="pl-3">– <strong>Numéro plein (0 à 36) :</strong> ×36 ta mise</p>
         <p class="pl-3">– <strong>Douzaines (1-12, 13-24, 25-36) & Colonnes (2:1) :</strong> ×3 ta mise</p>
         <p class="pl-3">– <strong>Chances simples (Rouge/Noir, Pair/Impair, 1-18/19-36) :</strong> ×2 ta mise</p>
-        <p>• 🖱️ <strong>Astuce :</strong> Clic gauche pour poser un jeton, clic droit sur une case pour retirer un jeton.</p>
+        <p>• 💵 <strong>Déduction en direct :</strong> Chaque jeton posé est immédiatement déduit de ton solde disponible en haut à droite. Clic droit ou "Effacer" te rembourse tes jetons tant que la roue ne tourne pas.</p>
         <p>• 🏧 <strong>ATM :</strong> Si ton solde est ≤ 200 $, utilise le bouton ATM directement en haut de la table pour recevoir +1 000 $ (+1 Token, max 20).</p>
       `,
       onGameInit: (user) => {
@@ -54,8 +60,6 @@
       }
     });
 
-    // Sécurité supplémentaire : si GameShell n'a pas passé `user` dans onGameInit,
-    // on récupère automatiquement l'utilisateur dès que Firebase Auth / GameShell est prêt.
     waitForResolvedUser().then((user) => {
       if (user) bootstrapPlayerSession(user);
     });
@@ -98,7 +102,6 @@
     if (avatarEl) avatarEl.textContent = user.avatarEmoji || '🍺';
     if (nickEl) nickEl.textContent = user.nickname || user.tag;
 
-    // Initialisation garantie du profil dans casino/users/<tag>
     const userCasinoRef = db.ref(`casino/users/${user.tag}`);
     const snap = await userCasinoRef.once('value');
 
@@ -125,34 +128,69 @@
       myProfile = existing;
     }
 
-    // Synchronisation avec CasinoAPI
+    // Initialiser CasinoAPI en tâche de fond sans bloquer
     if (window.CasinoAPI && typeof CasinoAPI.initPlayerProfile === 'function') {
-      try {
-        await CasinoAPI.initPlayerProfile(user);
-      } catch (e) {
-        console.warn('Synchronisation directe Firebase utilisée :', e);
-      }
+      CasinoAPI.initPlayerProfile(user).catch(() => {});
     }
 
-    // Écoute temps réel directe sur Firebase pour que myProfile soit toujours synchronisé
+    // Écoute temps réel directe sur Firebase
     userCasinoRef.off();
     userCasinoRef.on('value', (s) => {
       const val = s.val();
       if (!val) return;
       myProfile = val;
-      updateHudAndAtmUI(val);
+      renderBetsAndBalanceUI();
     });
 
-    updateHudAndAtmUI(myProfile);
+    renderBetsAndBalanceUI();
 
-    // Rejoindre un salon si l'URL contient #room=XXXX
     const match = window.location.hash.match(/room=([A-Z0-9]{4})/i);
     if (match) {
       joinMultiplayerRoom(match[1].toUpperCase());
     }
   }
 
-  /* ---------------- 2. CONSTRUCTION DE LA ROUE SVG ROTATIVE ---------------- */
+  /* ---------------- 2. PERSISTANCE DIRECTE DU SOLDE SUR FIREBASE ---------------- */
+  async function commitBalanceDeltaToFirebase(deltaAmount) {
+    const delta = Math.round(Number(deltaAmount));
+    const currentBal = Math.max(0, Number(myProfile?.balance ?? 1000));
+    const nextBal = Math.max(0, currentBal + delta);
+
+    // Mise à jour locale immédiate pour une réactivité instantanée
+    myProfile.balance = nextBal;
+    renderBetsAndBalanceUI();
+
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (!user || !user.tag) return nextBal;
+
+    try {
+      const userCasinoRef = db.ref(`casino/users/${user.tag}`);
+      await userCasinoRef.transaction((cur) => {
+        if (!cur) {
+          return {
+            tag: user.tag,
+            nickname: user.nickname || user.tag,
+            avatarEmoji: user.avatarEmoji || '🍺',
+            flagEmoji: user.flagEmoji || '🇫🇷',
+            balance: nextBal,
+            tokens: Number(myProfile.tokens || 0),
+            tokensUsed: Number(myProfile.tokens || 0),
+            timestamp: Date.now()
+          };
+        }
+        const base = Math.max(0, Number(cur.balance ?? 1000));
+        cur.balance = Math.max(0, base + delta);
+        cur.timestamp = Date.now();
+        return cur;
+      });
+    } catch (err) {
+      console.error('Erreur mise à jour solde Firebase :', err);
+    }
+
+    return nextBal;
+  }
+
+  /* ---------------- 3. CONSTRUCTION DE LA ROUE SVG ROTATIVE ---------------- */
   function buildWheelSvg() {
     const svg = document.getElementById('rouletteWheelSvg');
     if (!svg) return;
@@ -224,7 +262,7 @@
     svg.innerHTML = pathsHtml;
   }
 
-  /* ---------------- 3. CONSTRUCTION DU TAPIS DE MISE ---------------- */
+  /* ---------------- 4. CONSTRUCTION DU TAPIS DE MISE ---------------- */
   function buildInsideBetGrid() {
     const grid = document.getElementById('insideBetGrid');
     if (!grid) return;
@@ -288,67 +326,20 @@
     grid.innerHTML = html;
   }
 
-  /* ---------------- 4. GESTION DU HUD & ATM EN JEU ---------------- */
-  function getCurrentBalance() {
-    if (myProfile && typeof myProfile.balance === 'number') {
+  /* ---------------- 5. DÉDUCTION DU SOLDE EN DIRECT & MISES ---------------- */
+  function getRealBalance() {
+    if (myProfile && typeof myProfile.balance === 'number' && !isNaN(myProfile.balance)) {
       return Math.max(0, myProfile.balance);
-    }
-    const apiProf = window.CasinoAPI && typeof CasinoAPI.getCurrentProfile === 'function'
-      ? CasinoAPI.getCurrentProfile()
-      : null;
-    if (apiProf && typeof apiProf.balance === 'number') {
-      return Math.max(0, apiProf.balance);
     }
     return 1000;
   }
 
-  function updateHudAndAtmUI(profile) {
-    if (!profile) return;
-    const bal = Math.max(0, Number(profile.balance ?? 0));
-    const tok = Number(profile.tokens ?? profile.tokensUsed ?? 0);
-
-    document.getElementById('hudBalanceValue').textContent = bal.toLocaleString('fr-FR');
-    document.getElementById('hudTokensValue').textContent = tok;
-
-    const balPill = document.getElementById('hudBalancePill');
-    const atmBtn = document.getElementById('btnInGameAtm');
-    const atmText = document.getElementById('btnInGameAtmText');
-
-    const threshold = (window.CasinoAPI && CasinoAPI.ATM_THRESHOLD) || 200;
-    const maxTok = (window.CasinoAPI && CasinoAPI.MAX_TOKENS) || 20;
-
-    if (bal <= threshold && tok < maxTok) {
-      balPill.classList.add('low');
-      atmBtn.className = 'neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a] animate-pulse';
-      atmText.textContent = 'ATM Dispo (+1 000 $)';
-    } else if (tok >= maxTok) {
-      balPill.classList.remove('low');
-      atmBtn.className = 'neo-btn bg-slate-200 text-slate-500 px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1';
-      atmText.textContent = 'ATM (20/20 épuisés)';
-    } else {
-      balPill.classList.remove('low');
-      atmBtn.className = 'neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]';
-      atmText.textContent = 'ATM (si ≤ 200 $)';
-    }
-
-    updateBetControlsState();
-  }
-
-  async function useAtmInGame() {
-    if (window.CasinoAPI && typeof CasinoAPI.useATM === 'function') {
-      const res = await CasinoAPI.useATM();
-      if (!res.ok) {
-        showToast(res.error || 'ATM verrouillé.', '⚠️');
-        return;
-      }
-      GameShell.fireConfetti();
-      showToast(`+1 000 $ crédités ! (Token ${res.tokens}/20)`, '💵');
-    }
-  }
-
-  /* ---------------- 5. GESTION DES JETONS ET DES MISES ---------------- */
   function getTotalBet() {
     return Object.values(currentBets).reduce((sum, val) => sum + Number(val || 0), 0);
+  }
+
+  function getAvailableBalance() {
+    return Math.max(0, getRealBalance() - getTotalBet());
   }
 
   function selectChip(value) {
@@ -361,30 +352,30 @@
   function placeBet(betKey) {
     if (isSpinning) return;
 
-    const balance = getCurrentBalance();
-    const totalBet = getTotalBet();
-    const remaining = balance - totalBet;
+    const realBalance = getRealBalance();
+    const available = getAvailableBalance();
 
-    if (balance <= 0) {
+    if (realBalance <= 0) {
       showToast('Ton solde est à 0 $ ! Clique sur le bouton ATM (+1 000 $) en haut de la table.', '🏧');
       return;
     }
 
-    if (remaining <= 0) {
-      showToast(`Tu as déjà posé tout ton solde (${balance.toLocaleString('fr-FR')} $) sur le tapis !`, '⚠️');
+    if (available <= 0) {
+      showToast(`Tout ton solde disponible (${realBalance.toLocaleString('fr-FR')} $) est déjà posé sur le tapis !`, '⚠️');
       return;
     }
 
-    const amountToAdd = activeChip === 'MAX' ? remaining : Number(activeChip);
-    if (amountToAdd > remaining) {
-      showToast(`Solde restant insuffisant (${remaining.toLocaleString('fr-FR')} $ disponibles).`, '⚠️');
+    const amountToAdd = activeChip === 'MAX' ? available : Number(activeChip);
+    if (amountToAdd > available) {
+      showToast(`Il te reste ${available.toLocaleString('fr-FR')} $ disponibles (sélectionne un plus petit jeton ou MAX).`, '⚠️');
       return;
     }
 
     clearWinnerHighlight();
     currentBets[betKey] = (currentBets[betKey] || 0) + amountToAdd;
-    playTickSound(520, 0.03);
-    renderBetsOnTable();
+    playTickSound(540, 0.025);
+    flashHudBox();
+    renderBetsAndBalanceUI();
     syncRoomBets();
   }
 
@@ -397,7 +388,9 @@
     if (currentBets[betKey] <= 0) {
       delete currentBets[betKey];
     }
-    renderBetsOnTable();
+    playTickSound(420, 0.02);
+    flashHudBox();
+    renderBetsAndBalanceUI();
     syncRoomBets();
   }
 
@@ -405,7 +398,8 @@
     if (isSpinning) return;
     currentBets = {};
     clearWinnerHighlight();
-    renderBetsOnTable();
+    flashHudBox();
+    renderBetsAndBalanceUI();
     syncRoomBets();
   }
 
@@ -416,13 +410,14 @@
       showToast('Aucune mise précédente à rejouer.', 'ℹ️');
       return;
     }
-    const balance = getCurrentBalance();
-    if (prevTotal > balance) {
-      showToast('Solde insuffisant pour rejouer la mise précédente !', '⚠️');
+    const realBalance = getRealBalance();
+    if (prevTotal > realBalance) {
+      showToast(`Solde insuffisant (${realBalance.toLocaleString('fr-FR')} $) pour rejouer ${prevTotal.toLocaleString('fr-FR')} $ !`, '⚠️');
       return;
     }
     currentBets = { ...previousBets };
-    renderBetsOnTable();
+    flashHudBox();
+    renderBetsAndBalanceUI();
     syncRoomBets();
   }
 
@@ -431,8 +426,8 @@
     const totalBet = getTotalBet();
     if (totalBet <= 0) return;
 
-    const balance = getCurrentBalance();
-    if (totalBet * 2 > balance) {
+    const realBalance = getRealBalance();
+    if (totalBet * 2 > realBalance) {
       showToast('Solde insuffisant pour doubler tes mises !', '⚠️');
       return;
     }
@@ -440,11 +435,21 @@
     Object.keys(currentBets).forEach(k => {
       currentBets[k] *= 2;
     });
-    renderBetsOnTable();
+    flashHudBox();
+    renderBetsAndBalanceUI();
     syncRoomBets();
   }
 
-  function renderBetsOnTable() {
+  function flashHudBox() {
+    const hud = document.getElementById('casinoHud');
+    if (!hud) return;
+    hud.classList.add('hud-flash');
+    clearTimeout(flashHudBox._t);
+    flashHudBox._t = setTimeout(() => hud.classList.remove('hud-flash'), 160);
+  }
+
+  function renderBetsAndBalanceUI() {
+    // 1. Badges de jetons sur les cases
     document.querySelectorAll('[id^="badge_"]').forEach(el => {
       el.innerHTML = '';
     });
@@ -456,27 +461,109 @@
       }
     }
 
-    const total = getTotalBet();
-    document.getElementById('totalBetDisplay').textContent = `${total.toLocaleString('fr-FR')} $`;
-    updateBetControlsState();
-  }
+    // 2. Calcul du Solde Réel, Mise sur tapis et Solde Disponible (déduit en direct)
+    const realBalance = getRealBalance();
+    const totalBet = getTotalBet();
+    const availableBalance = Math.max(0, realBalance - totalBet);
+    const tok = Number(myProfile?.tokens ?? myProfile?.tokensUsed ?? 0);
 
-  function updateBetControlsState() {
-    const total = getTotalBet();
-    const balance = getCurrentBalance();
+    // Mise à jour du HUD (affiche le solde disponible en direct !)
+    const hudBalEl = document.getElementById('hudBalanceValue');
+    const hudSubEl = document.getElementById('hudBettingSub');
+    const hudTokEl = document.getElementById('hudTokensValue');
+    const balPill = document.getElementById('hudBalancePill');
+
+    if (hudBalEl) hudBalEl.textContent = availableBalance.toLocaleString('fr-FR');
+    if (hudTokEl) hudTokEl.textContent = tok;
+
+    if (hudSubEl) {
+      if (totalBet > 0) {
+        hudSubEl.textContent = `(-${totalBet.toLocaleString('fr-FR')}$)`;
+        hudSubEl.classList.remove('hidden');
+      } else {
+        hudSubEl.classList.add('hidden');
+      }
+    }
+
+    // Mise à jour des compteurs sous le tapis
+    const totalBetEl = document.getElementById('totalBetDisplay');
+    const remBalEl = document.getElementById('remainingBalanceDisplay');
+    if (totalBetEl) totalBetEl.textContent = `${totalBet.toLocaleString('fr-FR')} $`;
+    if (remBalEl) remBalEl.textContent = `${availableBalance.toLocaleString('fr-FR')} $`;
+
+    // État du bouton ATM
+    const atmBtn = document.getElementById('btnInGameAtm');
+    const atmText = document.getElementById('btnInGameAtmText');
+    if (balPill && atmBtn && atmText) {
+      balPill.classList.remove('low', 'betting');
+      if (realBalance <= 200 && tok < 20) {
+        balPill.classList.add('low');
+        atmBtn.className = 'neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a] animate-pulse';
+        atmText.textContent = 'ATM Dispo (+1 000 $)';
+      } else {
+        if (totalBet > 0) balPill.classList.add('betting');
+        atmBtn.className = 'neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]';
+        atmText.textContent = tok >= 20 ? 'ATM (20/20 max)' : 'ATM (si ≤ 200 $)';
+      }
+    }
+
+    // État du bouton Tourner
     const btnSpin = document.getElementById('btnSpin');
-    if (!btnSpin) return;
-
-    const canSpin = !isSpinning && total > 0 && total <= balance;
-    btnSpin.disabled = !canSpin;
-    if (canSpin) {
-      btnSpin.classList.remove('opacity-50', 'cursor-not-allowed');
-    } else {
-      btnSpin.classList.add('opacity-50', 'cursor-not-allowed');
+    if (btnSpin) {
+      const canSpin = !isSpinning && totalBet > 0 && totalBet <= realBalance;
+      btnSpin.disabled = !canSpin;
+      if (canSpin) {
+        btnSpin.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        btnSpin.classList.add('opacity-50', 'cursor-not-allowed');
+      }
     }
   }
 
-  /* ---------------- 6. ROTATION DE LA ROUE & SON TIC-TIC ---------------- */
+  async function useAtmInGame() {
+    if (isSpinning) return;
+    const realBalance = getRealBalance();
+    const tok = Number(myProfile?.tokens ?? myProfile?.tokensUsed ?? 0);
+
+    if (realBalance > 200) {
+      showToast(`ATM verrouillé : ton solde réel (${realBalance.toLocaleString('fr-FR')} $) doit être ≤ 200 $.`, '🔒');
+      return;
+    }
+    if (tok >= 20) {
+      showToast('Limite de 20/20 Tokens atteinte !', '🚫');
+      return;
+    }
+
+    if (window.CasinoAPI && typeof CasinoAPI.useATM === 'function') {
+      const res = await CasinoAPI.useATM();
+      if (res && res.ok) {
+        myProfile.balance = res.balance;
+        myProfile.tokens = res.tokens;
+        renderBetsAndBalanceUI();
+        GameShell.fireConfetti();
+        showToast(`+1 000 $ crédités ! (Token ${res.tokens}/20)`, '💵');
+        return;
+      }
+    }
+
+    // Fallback direct Firebase si CasinoAPI n'était pas initialisé
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (!user || !user.tag) return;
+    const ref = db.ref(`casino/users/${user.tag}`);
+    await ref.transaction((cur) => {
+      if (!cur) return cur;
+      if ((cur.balance || 0) > 200 || (cur.tokens || 0) >= 20) return;
+      cur.balance = (cur.balance || 0) + 1000;
+      cur.tokens = (cur.tokens || 0) + 1;
+      cur.tokensUsed = cur.tokens;
+      cur.timestamp = Date.now();
+      return cur;
+    });
+    GameShell.fireConfetti();
+    showToast('+1 000 $ crédités par l\'ATM !', '💵');
+  }
+
+  /* ---------------- 6. LANCEMENT DE LA ROUE, ROTATION & RÉSULTAT ---------------- */
   function playTickSound(freq = 680, duration = 0.025) {
     if (!soundEnabled) return;
     try {
@@ -507,86 +594,116 @@
     if (btn) btn.textContent = soundEnabled ? '🔊 Son ON' : '🔇 Muet';
   }
 
-  async function spinWheel() {
+  function spinWheel() {
     const totalBet = getTotalBet();
-    if (isSpinning || totalBet <= 0) return;
+    if (isSpinning) return;
+
+    if (totalBet <= 0) {
+      showToast('Pose au moins un jeton sur le tapis avant de tourner la roue !', '⚠️');
+      return;
+    }
 
     const winningNumber = Math.floor(Math.random() * 37);
 
+    // En mode salon multijoueur, synchroniser le tirage avec toute la table
     if (currentRoomCode && roomRef) {
       const spinId = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      await roomRef.child('currentSpin').set({
+      lastProcessedSpinId = spinId;
+      roomRef.child('currentSpin').set({
         spinId,
         winningNumber,
         launchedBy: (myUser && myUser.nickname) || 'Joueur',
         timestamp: Date.now()
       });
+      executeSpinSequence(winningNumber);
       return;
     }
 
+    // En mode solo, lancer immédiatement
     executeSpinSequence(winningNumber);
   }
 
-  async function executeSpinSequence(winningNumber) {
+  function executeSpinSequence(winningNumber) {
+    if (isSpinning) return;
+
     const totalBet = getTotalBet();
     const myBetsSnapshot = { ...currentBets };
+    const participated = totalBet > 0;
 
-    isSpinning = true;
-    clearWinnerHighlight();
-    updateBetControlsState();
-
-    let participated = totalBet > 0;
     if (participated) {
-      const debit = await CasinoAPI.updateCasinoBalance(-totalBet);
-      if (!debit.ok) {
-        showToast(debit.error || 'Mise refusée.', '⚠️');
-        isSpinning = false;
-        updateBetControlsState();
-        return;
-      }
       previousBets = { ...myBetsSnapshot };
     }
 
-    const banner = document.getElementById('wheelStatusBanner');
-    if (banner) banner.textContent = 'Rien ne va plus ! 🎡';
+    isSpinning = true;
+    clearWinnerHighlight();
+    renderBetsAndBalanceUI();
 
+    const banner = document.getElementById('wheelStatusBanner');
+    const liveBanner = document.getElementById('liveResultBanner');
+    if (banner) banner.textContent = '2. Rien ne va plus ! 🎡';
+    if (liveBanner) {
+      liveBanner.className = 'w-full bg-[#12131a] text-[#fed72d] border-2 border-[#fed72d] rounded-xl px-3 py-2 text-center font-mono text-xs font-black animate-pulse';
+      liveBanner.textContent = participated
+        ? `Mise engagée : ${totalBet.toLocaleString('fr-FR')} $ · La roue tourne...`
+        : 'La roue tourne...';
+    }
+
+    // Lancement immédiat de la rotation physique de la roue
     animateWheelRotationToNumber(winningNumber, async () => {
       const winColor = RouletteEngine.getNumberColor(winningNumber);
+      const colorLabel = winColor === 'red' ? 'ROUGE 🔴' : (winColor === 'black' ? 'NOIR ⚫' : 'ZÉRO VERT 🟢');
+
       updateCenterHub(winningNumber, winColor);
       highlightWinningSpot(winningNumber);
       pushToHistory(winningNumber);
 
       if (participated) {
         const payout = RouletteEngine.calculateWinnings(winningNumber, myBetsSnapshot);
-        const netProfit = payout - totalBet;
+        const netDelta = payout - totalBet; // ex: si mise 100$ et gain 200$, netDelta = +100$ ; si perdu, netDelta = -100$
+
+        // Vider les jetons du tapis et mettre à jour le solde réel sur Firebase
+        currentBets = {};
+        await commitBalanceDeltaToFirebase(netDelta);
+        syncRoomBets();
 
         if (payout > 0) {
-          await CasinoAPI.updateCasinoBalance(payout);
-          showResultModal(true, winningNumber, winColor, payout, netProfit);
+          if (liveBanner) {
+            liveBanner.className = 'w-full bg-emerald-500 text-[#12131a] border-2 border-[#12131a] rounded-xl px-3 py-2 text-center font-mono text-xs font-black';
+            liveBanner.textContent = `🎉 NUMÉRO ${winningNumber} (${colorLabel}) · GAGNÉ : +${payout.toLocaleString('fr-FR')} $ (Net +${netDelta.toLocaleString('fr-FR')} $)`;
+          }
+          showResultModal(true, winningNumber, winColor, payout, netDelta);
 
           if (payout >= BIG_WIN_THRESHOLD) {
             GameShell.fireConfetti();
             broadcastBigWin(winningNumber, payout);
           }
         } else {
+          if (liveBanner) {
+            liveBanner.className = 'w-full bg-rose-600 text-white border-2 border-[#12131a] rounded-xl px-3 py-2 text-center font-mono text-xs font-black';
+            liveBanner.textContent = `💀 NUMÉRO ${winningNumber} (${colorLabel}) · PERDU (-${totalBet.toLocaleString('fr-FR')} $)`;
+          }
           showResultModal(false, winningNumber, winColor, 0, -totalBet);
         }
-
-        currentBets = {};
-        renderBetsOnTable();
-        syncRoomBets();
       } else {
-        showToast(`Numéro sorti : ${winningNumber}`, '🎡');
+        if (liveBanner) {
+          liveBanner.className = 'w-full bg-[#12131a] text-white border-2 border-[#fed72d] rounded-xl px-3 py-2 text-center font-mono text-xs font-black';
+          liveBanner.textContent = `Numéro sorti : ${winningNumber} (${colorLabel})`;
+        }
       }
 
-      if (banner) banner.textContent = 'Faites vos jeux !';
+      if (banner) banner.textContent = '1. Faites vos jeux !';
       isSpinning = false;
-      updateBetControlsState();
+      renderBetsAndBalanceUI();
     });
   }
 
   function animateWheelRotationToNumber(winningNumber, onComplete) {
-    const svg = document.getElementById('rouletteWheelSvg');
+    const rotor = document.getElementById('wheelRotorWrapper');
+    if (!rotor) {
+      if (onComplete) onComplete();
+      return;
+    }
+
     const sliceDeg = 360 / 37;
     const targetIdx = WHEEL_SEQUENCE.indexOf(winningNumber);
 
@@ -600,28 +717,29 @@
     const finalAngle = startAngle + extraSpins + deltaDeg;
     currentWheelAngle = finalAngle;
 
-    const duration = 4000;
+    const duration = 3800;
     const startTime = performance.now();
     let lastTickStep = Math.floor(startAngle / sliceDeg);
 
     function step(now) {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
-      const eased = 1 - Math.pow(1 - t, 3.4);
+      // Courbe cubic-out fluide
+      const eased = 1 - Math.pow(1 - t, 3.3);
       const angle = startAngle + (finalAngle - startAngle) * eased;
 
-      svg.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+      rotor.style.transform = `rotate(${angle.toFixed(2)}deg)`;
 
       const currentTickStep = Math.floor(angle / sliceDeg);
       if (currentTickStep > lastTickStep) {
         lastTickStep = currentTickStep;
-        playTickSound(560 + (1 - t) * 280, 0.02);
+        playTickSound(540 + (1 - t) * 300, 0.02);
       }
 
       if (t < 1) {
         requestAnimationFrame(step);
       } else {
-        playTickSound(880, 0.08);
+        playTickSound(880, 0.09);
         if (onComplete) onComplete();
       }
     }
@@ -634,7 +752,7 @@
     const numEl = document.getElementById('wheelCenterNumber');
     const colEl = document.getElementById('wheelCenterColor');
 
-    hub.className = `wheel-center-hub ${color}`;
+    hub.className = `wheel-center-hub ${color} pop`;
     numEl.textContent = num;
     colEl.textContent = color === 'red' ? 'Rouge' : (color === 'black' ? 'Noir' : 'Zéro');
   }
@@ -663,7 +781,7 @@
     }).join('');
   }
 
-  /* ---------------- 7. MODE SALON MULTIJOUEUR (FIREBASE) ---------------- */
+  /* ---------------- 7. MODE SALON MULTIJOUEUR & AUTO-CROUPIER 20S ---------------- */
   function openRoomModal() {
     document.getElementById('rouletteRoomModal').classList.remove('hidden');
   }
@@ -727,6 +845,7 @@
     const badge = document.getElementById('roomCodeBadge');
     badge.textContent = code;
     badge.classList.remove('hidden');
+    document.getElementById('roomPanelCode').textContent = `#${code}`;
     document.getElementById('roomPlayersPanel').classList.remove('hidden');
 
     roomRef.on('value', (snap) => {
@@ -747,6 +866,7 @@
   }
 
   function switchToSolo() {
+    stopAutoTimer();
     const user = myUser || (window.GameShell && GameShell.currentUser);
     if (roomRef && user) {
       roomRef.child(`players/${user.tag}`).remove();
@@ -764,6 +884,41 @@
     showToast('Mode Solo activé.', '👤');
   }
 
+  function toggleAutoTimer() {
+    if (autoTimerEnabled) {
+      stopAutoTimer();
+    } else {
+      autoTimerEnabled = true;
+      autoTimerSeconds = 20;
+      const btn = document.getElementById('btnAutoTimer');
+      if (btn) {
+        btn.className = 'neo-btn bg-emerald-400 text-[#12131a] px-2 py-0.5 rounded-lg text-[10px] font-black';
+        btn.textContent = `⏱️ Auto: ${autoTimerSeconds}s`;
+      }
+      autoTimerInterval = setInterval(() => {
+        if (isSpinning) return;
+        autoTimerSeconds--;
+        if (btn) btn.textContent = `⏱️ Auto: ${autoTimerSeconds}s`;
+        if (autoTimerSeconds <= 0) {
+          autoTimerSeconds = 20;
+          if (getTotalBet() > 0) {
+            spinWheel();
+          }
+        }
+      }, 1000);
+    }
+  }
+
+  function stopAutoTimer() {
+    autoTimerEnabled = false;
+    clearInterval(autoTimerInterval);
+    const btn = document.getElementById('btnAutoTimer');
+    if (btn) {
+      btn.className = 'neo-btn bg-slate-100 text-[#12131a] px-2 py-0.5 rounded-lg text-[10px] font-black';
+      btn.textContent = '⏱️ Auto 20s: OFF';
+    }
+  }
+
   function syncRoomBets() {
     const user = myUser || (window.GameShell && GameShell.currentUser);
     if (roomRef && user) {
@@ -778,7 +933,7 @@
     container.innerHTML = list.map(p => `
       <div class="flex items-center justify-between bg-slate-50 border border-[#12131a] rounded-lg px-2 py-1">
         <span class="font-black truncate text-[11px]">${p.avatarEmoji || '🍺'} ${GameShell.escapeHtml(p.nickname)}</span>
-        <span class="font-mono text-[10px] font-bold text-[#065f46]">${(p.totalBet || 0).toLocaleString('fr-FR')} $</span>
+        <span class="font-mono text-[10px] font-bold text-[#065f46]">Mise : ${(p.totalBet || 0).toLocaleString('fr-FR')} $</span>
       </div>
     `).join('');
   }
@@ -875,7 +1030,7 @@
   }
 
   /* ---------------- 9. MODALE DE RÉSULTAT & TOAST ---------------- */
-  function showResultModal(won, num, color, payout, netProfit) {
+  function showResultModal(won, num, color, payout, netDelta) {
     const modal = document.getElementById('rouletteResultModal');
     const icon = document.getElementById('resultModalIcon');
     const title = document.getElementById('resultModalTitle');
@@ -888,21 +1043,24 @@
       icon.textContent = payout >= BIG_WIN_THRESHOLD ? '🤑' : '🎉';
       title.textContent = payout >= BIG_WIN_THRESHOLD ? 'MEGA WIN !' : 'Gagné !';
       desc.textContent = `La roue s'est arrêtée sur le ${num} (${colorLabel}).`;
-      payoutEl.textContent = `+ ${payout.toLocaleString('fr-FR')} $ (Net : +${netProfit.toLocaleString('fr-FR')} $)`;
-      payoutEl.className = 'text-lg font-mono font-black text-emerald-800 bg-emerald-100 border-2 border-[#12131a] py-2.5 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
+      payoutEl.textContent = `+ ${payout.toLocaleString('fr-FR')} $ (Profit net : +${netDelta.toLocaleString('fr-FR')} $)`;
+      payoutEl.className = 'text-base sm:text-lg font-mono font-black text-emerald-800 bg-emerald-100 border-2 border-[#12131a] py-2.5 px-3 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
     } else {
       icon.textContent = '💀';
       title.textContent = 'Perdu...';
       desc.textContent = `La roue s'est arrêtée sur le ${num} (${colorLabel}).`;
-      payoutEl.textContent = `${netProfit.toLocaleString('fr-FR')} $`;
-      payoutEl.className = 'text-lg font-mono font-black text-rose-700 bg-rose-100 border-2 border-[#12131a] py-2.5 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
+      payoutEl.textContent = `${netDelta.toLocaleString('fr-FR')} $`;
+      payoutEl.className = 'text-lg font-mono font-black text-rose-700 bg-rose-100 border-2 border-[#12131a] py-2.5 px-3 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
     }
 
     modal.classList.remove('hidden');
   }
 
-  function closeResultModal() {
+  function closeResultModal(shouldRebet = false) {
     document.getElementById('rouletteResultModal').classList.add('hidden');
+    if (shouldRebet) {
+      rebetLast();
+    }
   }
 
   function showToast(msg, icon = '🎡') {
@@ -935,6 +1093,7 @@
     createMultiplayerRoom,
     joinMultiplayerRoomFromInput,
     switchToSolo,
+    toggleAutoTimer,
     sendCasinoChatMessage,
     closeResultModal
   };
