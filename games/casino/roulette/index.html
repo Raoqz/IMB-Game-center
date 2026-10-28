@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IMB Casino - La Roulette</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind & Styles -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/games/casino/casino-style.css">
+  <link rel="stylesheet" href="/games/casino/roulette/roulette-style.css">
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- Confetti, Shell, API Casino & Moteur Roulette -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="/shared/game-shell.js"></script>
+  <script src="/games/casino/casino-api.js"></script>
+  <script src="/games/casino/roulette/roulette-engine.js"></script>
+</head>
+<body class="roulette-body pt-16 pb-12 select-none">
+
+  <!-- ================= HUD PERMANENT EN HAUT À DROITE ================= -->
+  <div id="casinoHud" class="casino-hud">
+    <div class="flex items-center gap-1.5 pr-1">
+      <span id="hudAvatar" class="text-base">🎰</span>
+      <span id="hudNickname" class="text-xs font-black text-[#12131a] hidden sm:inline truncate max-w-[110px]">Joueur</span>
+    </div>
+
+    <div id="hudBalancePill" class="hud-pill balance" title="Ton solde Casino actuel">
+      <span>💰</span>
+      <span><strong id="hudBalanceValue">1 000</strong> $</span>
+    </div>
+
+    <div class="hud-pill tokens" title="Tokens ATM utilisés (Max 20)">
+      <span>🪙</span>
+      <span><strong id="hudTokensValue">0</strong>/20</span>
+    </div>
+  </div>
+
+  <!-- ================= CONTENU DE LA ROULETTE ================= -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-12 sm:pt-6 flex flex-col gap-6">
+
+    <!-- EN-TÊTE DU JEU ET BOUTON ATM SI BESOIN -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#065f46] border-[3.5px] border-[#12131a] p-4 sm:p-5 rounded-2xl shadow-[5px_6px_0px_#12131a] text-white">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🎡</span>
+          <h2 class="text-2xl sm:text-3xl font-black italic tracking-tight uppercase">Roulette Européenne</h2>
+        </div>
+        <p class="text-xs text-emerald-100 font-bold mt-0.5">Place tes jetons sur le tapis et tente le numéro plein (×36) !</p>
+      </div>
+
+      <!-- BOUTON ATM DIRECT EN JEU SI SOLDE <= 200$ -->
+      <div id="inGameAtmContainer" class="hidden">
+        <button onclick="openAtmModal()" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 animate-bounce shadow-[3px_4px_0px_#12131a]">
+          <span>🏧</span>
+          <span>Prêt de Tokens ATM (+1 000 $)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LE BARILLET DE LA ROULETTE (ANIMATION DU TIRAGE) -->
+    <div class="roulette-wheel-container">
+      <div class="wheel-pointer"></div>
+      <div id="wheelStrip" class="wheel-strip">
+        <!-- Généré dynamiquement -->
+      </div>
+    </div>
+
+    <!-- TABLE / TAPIS DE MISE -->
+    <div class="roulette-table space-y-4">
+      
+      <div class="grid grid-cols-13 gap-1.5">
+        <!-- Case 0 (Zéro vert spécial sur toute la hauteur de la colonne 1) -->
+        <div onclick="placeBet('straight_0')" class="bet-spot green-spot col-span-1 row-span-3 text-lg font-black" id="spot_straight_0">
+          0
+          <span id="badge_straight_0"></span>
+        </div>
+
+        <!-- Les 36 numéros de la grille (3 rangées x 12 colonnes) -->
+        <!-- Rangée 3 (3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36) -->
+        <script>
+          // Génération rapide des 36 numéros en HTML via script inline pour éviter les répétitions
+          document.write([3,6,9,12,15,18,21,24,27,30,33,36].map(n => `
+            <div onclick="placeBet('straight_${n}')" class="bet-spot ${RouletteEngine.getNumberColor(n) === 'red' ? 'red-spot' : 'black-spot'}" id="spot_straight_${n}">
+              ${n}
+              <span id="badge_straight_${n}"></span>
+            </div>
+          `).join(''));
+        </script>
+      </div>
+
+      <div class="grid grid-cols-13 gap-1.5">
+        <div class="col-span-1"></div> <!-- Espace vide pour aligner sous le 0 -->
+        <!-- Rangée 2 (2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35) -->
+        <script>
+          document.write([2,5,8,11,14,17,20,23,26,29,32,35].map(n => `
+            <div onclick="placeBet('straight_${n}')" class="bet-spot ${RouletteEngine.getNumberColor(n) === 'red' ? 'red-spot' : 'black-spot'}" id="spot_straight_${n}">
+              ${n}
+              <span id="badge_straight_${n}"></span>
+            </div>
+          `).join(''));
+        </script>
+      </div>
+
+      <div class="grid grid-cols-13 gap-1.5">
+        <div class="col-span-1"></div> <!-- Espace vide pour aligner sous le 0 -->
+        <!-- Rangée 1 (1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34) -->
+        <script>
+          document.write([1,4,7,10,13,16,19,22,25,28,31,34].map(n => `
+            <div onclick="placeBet('straight_${n}')" class="bet-spot ${RouletteEngine.getNumberColor(n) === 'red' ? 'red-spot' : 'black-spot'}" id="spot_straight_${n}">
+              ${n}
+              <span id="badge_straight_${n}"></span>
+            </div>
+          `).join(''));
+        </script>
+      </div>
+
+      <!-- DOUZAINES ET COLONNES -->
+      <div class="grid grid-cols-4 gap-2 pt-2 border-t-2 border-[#12131a]/30">
+        <div onclick="placeBet('dozen_1')" class="bet-spot bg-white/90" id="spot_dozen_1">1ère Douzaine (1-12)<span id="badge_dozen_1"></span></div>
+        <div onclick="placeBet('dozen_2')" class="bet-spot bg-white/90" id="spot_dozen_2">2ème Douzaine (13-24)<span id="badge_dozen_2"></span></div>
+        <div onclick="placeBet('dozen_3')" class="bet-spot bg-white/90" id="spot_dozen_3">3ème Douzaine (25-36)<span id="badge_dozen_3"></span></div>
+        <div onclick="placeBet('col_1')" class="bet-spot bg-white/90" id="spot_col_1">Colonne 1<span id="badge_col_1"></span></div>
+      </div>
+
+      <!-- CHANCES SIMPLES -->
+      <div class="grid grid-cols-6 gap-2">
+        <div onclick="placeBet('low')" class="bet-spot bg-white/90" id="spot_low">1 - 18<span id="badge_low"></span></div>
+        <div onclick="placeBet('even')" class="bet-spot bg-white/90" id="spot_even">PAIR<span id="badge_even"></span></div>
+        <div onclick="placeBet('red')" class="bet-spot red-spot" id="spot_red">ROUGE (×2)<span id="badge_red"></span></div>
+        <div onclick="placeBet('black')" class="bet-spot black-spot" id="spot_black">NOIR (×2)<span id="badge_black"></span></div>
+        <div onclick="placeBet('odd')" class="bet-spot bg-white/90" id="spot_odd">IMPAIR<span id="badge_odd"></span></div>
+        <div onclick="placeBet('high')" class="bet-spot bg-white/90" id="spot_high">19 - 36<span id="badge_high"></span></div>
+      </div>
+
+    </div>
+
+    <!-- CONTRÔLES DE MISE ET SÉLECTEUR DE JETONS -->
+    <div class="bg-white border-[3.5px] border-[#12131a] rounded-2xl p-4 sm:p-5 shadow-[5px_6px_0px_#12131a] flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- SÉLECTEUR DE JETONS -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-black uppercase text-slate-500 mr-2">Jeton :</span>
+        <button onclick="selectChip(10)" id="chip_10" class="chip-btn">10$</button>
+        <button onclick="selectChip(50)" id="chip_50" class="chip-btn active">50$</button>
+        <button onclick="selectChip(100)" id="chip_100" class="chip-btn">100$</button>
+        <button onclick="selectChip(500)" id="chip_500" class="chip-btn">500$</button>
+      </div>
+
+      <!-- RÉSUMÉ DES MISES ET ACTIONS -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="text-right font-mono">
+          <div class="text-[10px] text-slate-500 font-bold uppercase">Mise totale</div>
+          <div id="totalBetDisplay" class="text-base font-black text-[#059669]">0 $</div>
+        </div>
+
+        <button onclick="clearBets()" class="neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] px-3.5 py-2.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
+          Effacer tout
+        </button>
+
+        <button id="btnSpin" onclick="spinRoulette()" disabled class="neo-btn bg-[#ef4444] text-white px-6 py-3 rounded-xl text-sm font-black shadow-[3px_4px_0px_#12131a] opacity-50 cursor-not-allowed">
+          Tourner la roue 🎡
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODALE RÉSULTAT TOUR DE ROULETTE -->
+  <div id="rouletteResultModal" class="hidden fixed inset-0 z-[160] bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="neo-box bg-white max-w-sm w-full p-6 text-center rounded-3xl border-[3.5px] border-[#12131a] shadow-[6px_8px_0px_#12131a]">
+      <div id="resultModalIcon" class="text-5xl mb-2">🎉</div>
+      <h3 id="resultModalTitle" class="text-2xl font-black uppercase tracking-tight">Gagné !</h3>
+      <p id="resultModalDesc" class="text-xs font-bold text-slate-600 my-3">Le numéro 17 rouge est sorti.</p>
+      <div id="resultModalPayout" class="text-xl font-mono font-black text-emerald-700 bg-emerald-50 border-2 border-emerald-300 py-2 rounded-xl mb-4">+ 350 $</div>
+      <button onclick="closeResultModal()" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+        Continuer à jouer
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST DE NOTIF -->
+  <div id="rouletteToast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[170] bg-white border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
+    <span>🎡</span>
+    <span id="rouletteToastMsg">Action effectuée</span>
+  </div>
+
+  <!-- SCRIPT LOGIQUE INTERFACE ROULETTE (ÉTAPE 3 & 4) -->
+  <script>
+    let activeChipValue = 50;
+    let currentBets = {}; // Ex: { "straight_17": 50, "red": 100 }
+    let myProfile = null;
+    let isSpinning = false;
+
+    GameShell.init({
+      gameId: 'roulette',
+      gameTitle: '🎡 IMB Roulette',
+      theme: 'casino',
+      rulesHtml: `
+        <p>• 🟢 <strong>Le Zéro :</strong> La roulette possède un seul zéro (0 vert). Si le 0 sort, tous les paris simples (Rouge, Noir, Pair, etc.) sont perdus.</p>
+        <p>• 🎯 <strong>Les Paris :</strong> Place tes jetons sur un numéro plein (×36), les douzaines, colonnes (×3), ou les chances simples (×2).</p>
+        <p>• 💰 <strong>Mise max :</strong> Ton pari total est bridé à ton solde actuel. Aucun solde négatif autorisé !</p>
+      `,
+      onGameInit: async (user) => {
+        document.getElementById('hudAvatar').textContent = user.avatarEmoji || '🍺';
+        document.getElementById('hudNickname').textContent = user.nickname;
+
+        await CasinoAPI.initPlayerProfile(user);
+
+        CasinoAPI.subscribeProfile((profile) => {
+          myProfile = profile;
+          updateHudDisplay(profile);
+        });
+
+        initWheelStrip();
+      }
+    });
+
+    function updateHudDisplay(profile) {
+      if (!profile) return;
+      const bal = Number(profile.balance ?? 0);
+      const tok = Number(profile.tokens ?? profile.tokensUsed ?? 0);
+      
+      document.getElementById('hudBalanceValue').textContent = bal.toLocaleString('fr-FR');
+      document.getElementById('hudTokensValue').textContent = tok;
+
+      const balPill = document.getElementById('hudBalancePill');
+      const atmBox = document.getElementById('inGameAtmContainer');
+
+      if (bal <= CasinoAPI.ATM_THRESHOLD) {
+        balPill.classList.add('low');
+        atmBox.classList.remove('hidden');
+      } else {
+        balPill.classList.remove('low');
+        atmBox.classList.add('hidden');
+      }
+
+      validateSpinButton();
+    }
+
+    function selectChip(val) {
+      activeChipValue = val;
+      document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`chip_${val}`).classList.add('active');
+    }
+
+    function getTotalBetAmount() {
+      return Object.values(currentBets).reduce((acc, val) => acc + val, 0);
+    }
+
+    function validateSpinButton() {
+      const totalBet = getTotalBetAmount();
+      const userBal = Number(myProfile?.balance ?? 0);
+      const btn = document.getElementById('btnSpin');
+
+      if (totalBet > 0 && totalBet <= userBal && !isSpinning) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function placeBet(betKey) {
+      if (isSpinning) return;
+      const userBal = Number(myProfile?.balance ?? 0);
+      const currentTotal = getTotalBetAmount();
+
+      if (currentTotal + activeChipValue > userBal) {
+        showRouletteToast("Solde insuffisant pour poser ce jeton !", "⚠️");
+        return;
+      }
+
+      currentBets[betKey] = (currentBets[betKey] || 0) + activeChipValue;
+      updateBetUI();
+    }
+
+    function clearBets() {
+      if (isSpinning) return;
+      currentBets = {};
+      updateBetUI();
+    }
+
+    function updateBetUI() {
+      // Nettoyer tous les badges
+      document.querySelectorAll('[id^="badge_"]').forEach(el => el.innerHTML = '');
+
+      let total = 0;
+      for (const [key, amount] of Object.entries(currentBets)) {
+        total += amount;
+        const badge = document.getElementById(`badge_${key}`);
+        if (badge) {
+          badge.innerHTML = `<div class="chip-badge">${amount}$</div>`;
+        }
+      }
+
+      document.getElementById('totalBetDisplay').textContent = `${total.toLocaleString('fr-FR')} $`;
+      validateSpinButton();
+    }
+
+    // Initialisation visuelle du barillet de la roulette
+    function initWheelStrip() {
+      const strip = document.getElementById('wheelStrip');
+      const sequence = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+      // On répète la séquence pour l'effet de défilement infini visuel
+      const fullList = [...sequence, ...sequence, ...sequence];
+
+      strip.innerHTML = fullList.map(num => {
+        const color = RouletteEngine.getNumberColor(num);
+        return `<div class="wheel-cell ${color}">${num}</div>`;
+      }).join('');
+    }
+
+    async function spinRoulette() {
+      const totalBet = getTotalBetAmount();
+      if (totalBet <= 0 || isSpinning) return;
+
+      isSpinning = true;
+      validateSpinButton();
+
+      // 1. Débiter immédiatement la mise du solde Firebase
+      const debitRes = await CasinoAPI.updateCasinoBalance(-totalBet);
+      if (!debitRes.ok) {
+        showRouletteToast(debitRes.error, "⚠️");
+        isSpinning = false;
+        validateSpinButton();
+        return;
+      }
+
+      // 2. Tirer le numéro gagnant (0 à 36)
+      const winningNumber = Math.floor(Math.random() * 37);
+      const winColor = RouletteEngine.getNumberColor(winningNumber);
+
+      // 3. Animation du barillet
+      animateWheelToNumber(winningNumber, () => {
+        // 4. Calcul des gains
+        const winnings = RouletteEngine.calculateWinnings(winningNumber, currentBets);
+        const netProfit = winnings - totalBet;
+
+        if (winnings > 0) {
+          CasinoAPI.updateCasinoBalance(winnings).then(() => {
+            showResultModal(true, winningNumber, winColor, winnings);
+            if (winnings >= 500) {
+              GameShell.fireConfetti();
+              annouceBigWinChat(winningNumber, winnings);
+            }
+          });
+        } else {
+          showResultModal(false, winningNumber, winColor, 0);
+        }
+
+        currentBets = {};
+        updateBetUI();
+        isSpinning = false;
+        validateSpinButton();
+      });
+    }
+
+    function animateWheelToNumber(targetNum, callback) {
+      const strip = document.getElementById('wheelStrip');
+      const cellWidth = 78; // 70px width + 8px margin
+      const sequence = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+      
+      // Trouver l'index de la cible dans la 2ème répétition de la bande
+      const baseIdx = sequence.indexOf(targetNum);
+      const targetIdx = baseIdx + sequence.length; // Dans le deuxième set
+      
+      // Calculer l'offset en pixels pour centrer la case sous le pointeur
+      const containerWidth = strip.parentElement.clientWidth;
+      const centerOffset = containerWidth / 2 - cellWidth / 2;
+      const targetTranslateX = -(targetIdx * cellWidth) + centerOffset;
+
+      strip.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.15, 1)';
+      strip.style.transform = `translateX(${targetTranslateX}px)`;
+
+      setTimeout(() => {
+        callback();
+      }, 3600);
+    }
+
+    function showResultModal(won, num, color, amount) {
+      const modal = document.getElementById('rouletteResultModal');
+      const icon = document.getElementById('resultModalIcon');
+      const title = document.getElementById('resultModalTitle');
+      const desc = document.getElementById('resultModalDesc');
+      const payout = document.getElementById('resultModalPayout');
+
+      const colorLabel = color === 'red' ? 'Rouge 🔴' : (color === 'black' ? 'Noir ⚫' : 'Vert 🟢');
+
+      if (won) {
+        icon.textContent = '🎉';
+        title.textContent = 'Gagné !';
+        desc.textContent = `Le numéro ${num} (${colorLabel}) est sorti !`;
+        payout.textContent = `+ ${amount.toLocaleString('fr-FR')} $`;
+        payout.className = 'text-xl font-mono font-black text-emerald-700 bg-emerald-50 border-2 border-emerald-300 py-2 rounded-xl mb-4';
+        SoundFX ? null : GameShell.fireConfetti();
+      } else {
+        icon.textContent = '💀';
+        title.textContent = 'Perdu...';
+        desc.textContent = `Le numéro ${num} (${colorLabel}) est sorti. La banque ramasse la mise.`;
+        payout.textContent = `0 $`;
+        payout.className = 'text-xl font-mono font-black text-rose-600 bg-rose-50 border-2 border-rose-300 py-2 rounded-xl mb-4';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeResultModal() {
+      document.getElementById('rouletteResultModal').classList.add('hidden');
+      // Réinitialiser la position de la roue discrètement
+      const strip = document.getElementById('wheelStrip');
+      strip.style.transition = 'none';
+      strip.style.transform = 'translateX(0px)';
+    }
+
+    function annouceBigWinChat(num, amount) {
+      if (!GameShell.currentUser) return;
+      db.ref('chat').push({
+        authorNick: GameShell.currentUser.nickname,
+        authorTag: GameShell.currentUser.tag,
+        authorAvatar: GameShell.currentUser.avatarEmoji || '🍺',
+        authorFlag: GameShell.currentUser.flagEmoji || '🇫🇷',
+        isInvite: true,
+        gameTitle: '🎰 IMB Roulette (MEGA WIN)',
+        internalGame: 'casino',
+        internalRoom: 'CASINO',
+        text: `@promo 🔥 L'INCROYABLE ! @${GameShell.currentUser.tag} vient de pulvériser la table de roulette sur le numéro ${num} et encaisse ${amount.toLocaleString('fr-FR')} $ ! 💸`,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      });
+    }
+
+    function openAtmModal() {
+      CasinoAPI.useATM().then(res => {
+        if (!res.ok) {
+          showRouletteToast(res.error, "⚠️");
+        } else {
+          showRouletteToast(`+1 000 $ reçus par l'ATM ! (Token ${res.tokens}/20)`, "💵");
+          GameShell.fireConfetti();
+        }
+      });
+    }
+
+    function showRouletteToast(msg, icon = '🎰') {
+      const toast = document.getElementById('rouletteToast');
+      toast.querySelector('span:first-child').textContent = icon;
+      document.getElementById('rouletteToastMsg').textContent = msg;
+
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
