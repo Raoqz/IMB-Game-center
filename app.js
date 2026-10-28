@@ -28,6 +28,13 @@ const FLAG_EMOJIS = [
 
 /* Répertoire des Jeux IMB (Internes) */
 const INTERNAL_GAMES = {
+  casino: {
+    id: 'casino',
+    title: 'IMB Casino',
+    icon: '🎰',
+    bg: '#059669',
+    path: '/games/casino/index.html'
+  },
   morpion: {
     id: 'morpion',
     title: 'Morpion',
@@ -180,101 +187,116 @@ window.addEventListener('DOMContentLoaded', () => {
 
   auth.onAuthStateChanged(async (firebaseUser) => {
     if (isRegisteringProcess) return;
+    await loadAuthenticatedUser(firebaseUser);
+  });
+});
 
-    const authOverlay = document.getElementById('authOverlay');
-    const verifyEmailOverlay = document.getElementById('verifyEmailOverlay');
-    const pendingOverlay = document.getElementById('pendingOverlay');
-    const rejectedOverlay = document.getElementById('rejectedOverlay');
+/* ---------------- GESTION DE LA SESSION UTILISATEUR ---------------- */
+async function loadAuthenticatedUser(firebaseUser) {
+  const authOverlay = document.getElementById('authOverlay');
+  const verifyEmailOverlay = document.getElementById('verifyEmailOverlay');
+  const pendingOverlay = document.getElementById('pendingOverlay');
+  const rejectedOverlay = document.getElementById('rejectedOverlay');
 
-    if (!firebaseUser) {
-      if (userListenerRef) {
-        userListenerRef.off();
-        userListenerRef = null;
+  if (!firebaseUser) {
+    if (userListenerRef) {
+      userListenerRef.off();
+      userListenerRef = null;
+    }
+    currentUser = null;
+    authOverlay.classList.remove('hidden');
+    verifyEmailOverlay.classList.add('hidden');
+    pendingOverlay.classList.add('hidden');
+    rejectedOverlay.classList.add('hidden');
+    document.getElementById('navAdminBtn').classList.add('hidden');
+    return;
+  }
+
+  const snap = await db.ref(`users/${firebaseUser.uid}`).once('value');
+  if (!snap.exists()) {
+    const isGoogle = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+    if (isGoogle) {
+      switchAuthTab('register');
+      const regNick = document.getElementById('regNickname');
+      if (regNick && !regNick.value && firebaseUser.displayName) {
+        regNick.value = firebaseUser.displayName;
       }
-      currentUser = null;
-      authOverlay.classList.remove('hidden');
-      verifyEmailOverlay.classList.add('hidden');
-      pendingOverlay.classList.add('hidden');
-      rejectedOverlay.classList.add('hidden');
-      document.getElementById('navAdminBtn').classList.add('hidden');
+      showAuthError("Choisis ton pseudo et ton @tag puis clique sur « Créer mon compte avec Google ».");
       return;
     }
+    await auth.signOut();
+    showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
+    return;
+  }
 
-    const snap = await db.ref(`users/${firebaseUser.uid}`).once('value');
-    if (!snap.exists()) {
+  if (userListenerRef) userListenerRef.off();
+  userListenerRef = db.ref(`users/${firebaseUser.uid}`);
+  
+  userListenerRef.on('value', async (userSnap) => {
+    const userData = userSnap.val();
+    if (!userData) {
       await auth.signOut();
-      showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
       return;
     }
 
-    if (userListenerRef) userListenerRef.off();
-    userListenerRef = db.ref(`users/${firebaseUser.uid}`);
-    
-    userListenerRef.on('value', async (userSnap) => {
-      const userData = userSnap.val();
-      if (!userData) {
-        await auth.signOut();
-        return;
-      }
+    currentUser = userData;
 
-      currentUser = userData;
-
-      const isGoogle = firebaseUser.providerData.some(p => p.providerId === 'google.com');
-      if (!isGoogle && !firebaseUser.emailVerified) {
-        authOverlay.classList.add('hidden');
-        pendingOverlay.classList.add('hidden');
-        rejectedOverlay.classList.add('hidden');
-        document.getElementById('verifyUserEmail').textContent = firebaseUser.email;
-        verifyEmailOverlay.classList.remove('hidden');
-        return;
-      }
-
-      verifyEmailOverlay.classList.add('hidden');
-
-      if (currentUser.status === 'rejected') {
-        authOverlay.classList.add('hidden');
-        pendingOverlay.classList.add('hidden');
-        document.getElementById('rejectedUserNick').textContent = currentUser.nickname;
-        rejectedOverlay.classList.remove('hidden');
-        return;
-      }
-
-      if (currentUser.status === 'pending') {
-        authOverlay.classList.add('hidden');
-        rejectedOverlay.classList.add('hidden');
-        document.getElementById('pendingUserNick').textContent = currentUser.nickname;
-        document.getElementById('pendingUserTag').textContent = `@${currentUser.tag}`;
-        pendingOverlay.classList.remove('hidden');
-        return;
-      }
-
+    const isGoogle = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+    if (!isGoogle && !firebaseUser.emailVerified) {
       authOverlay.classList.add('hidden');
       pendingOverlay.classList.add('hidden');
       rejectedOverlay.classList.add('hidden');
+      document.getElementById('verifyUserEmail').textContent = firebaseUser.email;
+      verifyEmailOverlay.classList.remove('hidden');
+      return;
+    }
 
-      updateUserUI();
-      setupMyRealtimePresence();
-      listenToUsersAndPresence();
-      listenToLiveChat();
-      listenToUndercoverLiveActivity();
-      renderRecentGames();
-      
-      // Top 3 Cartes & Salles Actives
-      loadMorpionTop3Card();
-      checkLobbyMorpionActiveRoom();
-      loadSkyjoTop3Card();
-      checkLobbySkyjoActiveRoom();
-      loadFlappyGiroudTop3Card();
-      checkLobbyFlappyGiroudActiveRoom();
-      
-      listenLobbyInvitations();
+    verifyEmailOverlay.classList.add('hidden');
 
-      if (currentUser.role === 'admin') {
-        setupAdminWatcher();
-      }
-    });
+    if (currentUser.status === 'rejected') {
+      authOverlay.classList.add('hidden');
+      pendingOverlay.classList.add('hidden');
+      document.getElementById('rejectedUserNick').textContent = currentUser.nickname;
+      rejectedOverlay.classList.remove('hidden');
+      return;
+    }
+
+    if (currentUser.status === 'pending') {
+      authOverlay.classList.add('hidden');
+      rejectedOverlay.classList.add('hidden');
+      document.getElementById('pendingUserNick').textContent = currentUser.nickname;
+      document.getElementById('pendingUserTag').textContent = `@${currentUser.tag}`;
+      pendingOverlay.classList.remove('hidden');
+      return;
+    }
+
+    authOverlay.classList.add('hidden');
+    pendingOverlay.classList.add('hidden');
+    rejectedOverlay.classList.add('hidden');
+
+    updateUserUI();
+    setupMyRealtimePresence();
+    listenToUsersAndPresence();
+    listenToLiveChat();
+    listenToUndercoverLiveActivity();
+    renderRecentGames();
+    
+    // Top 3 Cartes & Salles Actives
+    loadCasinoTop3Card();
+    loadMorpionTop3Card();
+    checkLobbyMorpionActiveRoom();
+    loadSkyjoTop3Card();
+    checkLobbySkyjoActiveRoom();
+    loadFlappyGiroudTop3Card();
+    checkLobbyFlappyGiroudActiveRoom();
+    
+    listenLobbyInvitations();
+
+    if (currentUser.role === 'admin') {
+      setupAdminWatcher();
+    }
   });
-});
+}
 
 function updateUserUI() {
   if (!currentUser) return;
@@ -329,9 +351,8 @@ function renderRecentGames() {
     const game = INTERNAL_GAMES[item.id];
     const timeLabel = formatRelativeTime(item.timestamp);
     
-    // Récupérer la salle active
     const activeRoom = localStorage.getItem(`imb_active_room_${game.id}`);
-    const hasValidRoom = activeRoom && activeRoom.length >= 4;
+    const hasValidRoom = activeRoom && activeRoom.length >= 4 && game.id !== 'casino';
     const targetUrl = hasValidRoom 
       ? `${game.path}#room=${activeRoom}` 
       : game.path;
@@ -382,7 +403,62 @@ function checkLobbyFlappyGiroudActiveRoom() {
   }
 }
 
+/* ---------------- TRI OFFICIEL DU CASINO ---------------- */
+function sortCasinoPlayersLobby(a, b) {
+  const balA = Number(a.balance ?? 0);
+  const balB = Number(b.balance ?? 0);
+  if (balB !== balA) return balB - balA;
+
+  const tokA = Number(a.tokens ?? a.tokensUsed ?? 0);
+  const tokB = Number(b.tokens ?? b.tokensUsed ?? 0);
+  if (tokA !== tokB) return tokA - tokB;
+
+  const tsA = Number(a.timestamp ?? Number.MAX_SAFE_INTEGER);
+  const tsB = Number(b.timestamp ?? Number.MAX_SAFE_INTEGER);
+  return tsA - tsB;
+}
+
 /* ---------------- TOP 3 DES CARTES ---------------- */
+function loadCasinoTop3Card() {
+  const container = document.getElementById('casinoTop3Box');
+  if (!container) return;
+  db.ref('casino/users').on('value', snap => {
+    const data = snap.val() || {};
+    const allSorted = Object.values(data).sort(sortCasinoPlayersLobby);
+    const top3 = allSorted.slice(0, 3);
+
+    if (top3.length === 0) {
+      container.innerHTML = `<div class="text-[10px] font-bold text-slate-400 italic text-center py-1">Aucune fortune enregistrée. Prends tes 1 000 $ !</div>`;
+      return;
+    }
+
+    const medals = ['👑', '🥈', '🥉'];
+    container.innerHTML = top3.map((p, idx) => {
+      const tok = Number(p.tokens ?? p.tokensUsed ?? 0);
+      return `
+        <div class="flex items-center justify-between gap-1.5">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-sm">${medals[idx]}</span>
+            <span class="text-xs font-black text-[#12131a] truncate">${escapeHtml(p.nickname)}</span>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span class="bg-[#065f46] text-white px-2 py-0.5 rounded-full font-mono text-[9px] font-black">
+              ${Number(p.balance ?? 0).toLocaleString('fr-FR')} $
+            </span>
+            <span class="text-[9px] font-mono font-bold text-slate-500" title="Tokens utilisés">
+              (${tok}🪙)
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('') + `
+      <div class="text-right pt-1 border-t border-emerald-200/80">
+        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLobbyLeaderboard('casino', 'IMB Casino');" class="text-[10px] font-black text-emerald-900 hover:underline">Classement des fortunes ></button>
+      </div>
+    `;
+  });
+}
+
 function loadMorpionTop3Card() {
   const container = document.getElementById('morpionTop3Box');
   if (!container) return;
@@ -477,9 +553,24 @@ function openLobbyLeaderboard(gameId, gameTitle) {
   currentLeaderboardGameId = gameId;
   const modal = document.getElementById('modalLobbyLeaderboard');
   const titleEl = document.getElementById('modalLeaderboardGameTitle');
+  const subEl = document.getElementById('modalLeaderboardSubtitle');
   if (titleEl) titleEl.textContent = `${gameTitle} : Classement`;
+  if (subEl) {
+    subEl.textContent = gameId === 'casino'
+      ? 'Trié par Solde ($) › Moins de Tokens › Ancienneté'
+      : 'Palmarès global';
+  }
   modal.classList.remove('hidden');
   isLobbyLeaderboardExpanded = false;
+
+  if (gameId === 'casino') {
+    db.ref('casino/users').once('value', snap => {
+      const data = snap.val() || {};
+      lobbyLeaderboardData = Object.values(data).sort(sortCasinoPlayersLobby);
+      renderLobbyLeaderboardRows();
+    });
+    return;
+  }
 
   db.ref(`scores/${gameId}`).once('value', snap => {
     const data = snap.val() || {};
@@ -492,9 +583,11 @@ function renderLobbyLeaderboardRows() {
   const container = document.getElementById('modalLeaderboardList');
   const expandWrapper = document.getElementById('modalLeaderboardExpandWrapper');
   const btnExpand = document.getElementById('modalBtnExpandLeaderboard');
+  const isCasino = currentLeaderboardGameId === 'casino';
+  const totalPlayers = lobbyLeaderboardData.length;
 
-  if (lobbyLeaderboardData.length === 0) {
-    container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Aucune partie enregistrée.</p>`;
+  if (totalPlayers === 0) {
+    container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Aucune donnée enregistrée.</p>`;
     expandWrapper.classList.add('hidden');
     return;
   }
@@ -504,23 +597,56 @@ function renderLobbyLeaderboardRows() {
     : lobbyLeaderboardData.slice(0, 5);
 
   container.innerHTML = listToDisplay.map((p, idx) => {
+    const isFirst = idx === 0;
+    const isLast = totalPlayers > 1 && idx === totalPlayers - 1;
+
     let cardStyle = "bg-slate-50 border-2 border-slate-200";
     let rankBadge = `<span class="font-black text-xs w-5 text-center text-slate-400">${idx + 1}.</span>`;
 
-    if (idx === 0) {
-      cardStyle = "bg-[#fef08a] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-      rankBadge = `<span class="text-base">🥇</span>`;
-    } else if (idx === 1) {
-      cardStyle = "bg-[#e2e8f0] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-      rankBadge = `<span class="text-base">🥈</span>`;
-    } else if (idx === 2) {
-      cardStyle = "bg-[#fed7aa] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-      rankBadge = `<span class="text-base">🥉</span>`;
+    if (isCasino) {
+      if (isFirst) {
+        cardStyle = "bg-[#fef08a] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base" title="Le plus riche">👑</span>`;
+      } else if (isLast) {
+        cardStyle = "bg-rose-50 border-[2.5px] border-rose-500 shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base" title="Bonnet d'âne">🫏</span>`;
+      } else if (idx === 1) {
+        cardStyle = "bg-[#e2e8f0] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base">🥈</span>`;
+      } else if (idx === 2) {
+        cardStyle = "bg-[#fed7aa] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base">🥉</span>`;
+      }
+    } else {
+      if (idx === 0) {
+        cardStyle = "bg-[#fef08a] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base">🥇</span>`;
+      } else if (idx === 1) {
+        cardStyle = "bg-[#e2e8f0] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base">🥈</span>`;
+      } else if (idx === 2) {
+        cardStyle = "bg-[#fed7aa] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
+        rankBadge = `<span class="text-base">🥉</span>`;
+      }
     }
 
+    const tok = Number(p.tokens ?? p.tokensUsed ?? 0);
     const unitLabel = currentLeaderboardGameId === 'flappy-giroud' 
       ? 'pts' 
       : 'victoire' + ((p.wins || 0) > 1 ? 's' : '');
+
+    const scoreColumnHtml = isCasino
+      ? `
+        <div class="text-right flex-shrink-0">
+          <div class="text-xs font-black text-[#065f46] font-mono">${Number(p.balance ?? 0).toLocaleString('fr-FR')} $</div>
+          <div class="text-[10px] font-mono font-bold ${tok > 0 ? 'text-rose-600' : 'text-slate-500'}">🪙 ${tok}/20 token${tok > 1 ? 's' : ''}</div>
+        </div>
+      `
+      : `
+        <div class="text-right flex-shrink-0">
+          <span class="text-xs font-black text-[#12131a]">${p.wins || 0} ${unitLabel}</span>
+        </div>
+      `;
 
     return `
       <div class="rounded-2xl p-2.5 flex items-center justify-between gap-2.5 ${cardStyle}">
@@ -534,18 +660,16 @@ function renderLobbyLeaderboardRows() {
             <div class="text-[9px] font-mono text-slate-500 truncate">@${escapeHtml(p.tag)}</div>
           </div>
         </div>
-        <div class="text-right flex-shrink-0">
-          <span class="text-xs font-black text-[#12131a]">${p.wins || 0} ${unitLabel}</span>
-        </div>
+        ${scoreColumnHtml}
       </div>
     `;
   }).join('');
 
-  if (lobbyLeaderboardData.length > 5) {
+  if (totalPlayers > 5) {
     expandWrapper.classList.remove('hidden');
     btnExpand.textContent = isLobbyLeaderboardExpanded 
       ? "Réduire au Top 5 ▲" 
-      : `Voir le classement complet (${lobbyLeaderboardData.length} joueurs) ▼`;
+      : `Voir le classement complet (${totalPlayers} joueurs) ▼`;
   } else {
     expandWrapper.classList.add('hidden');
   }
@@ -593,6 +717,7 @@ function listenToLiveChat() {
       const mentionedMe = isUserMentionedInText(m.text);
 
       if (m.isInvite) {
+        const isCasino = m.internalGame === 'casino' || m.internalRoom === 'CASINO';
         return `
           <div class="neo-box bg-[#fed72d] p-2.5 text-[#12131a] space-y-1.5 ${mentionedMe ? 'ring-2 ring-rose-500' : ''}">
             <div class="flex items-center justify-between text-[11px] font-black">
@@ -605,7 +730,7 @@ function listenToLiveChat() {
               <p class="text-[10px] font-bold text-slate-700 italic mb-2">« ${formatChatMessageWithMentions(m.text)} »</p>
               ${m.internalGame ? `
               <button type="button" onclick="openInternalInvite('${safeRoomCode(m.internalGame)}', '${safeRoomCode(m.internalRoom)}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">
-                Rejoindre la salle ${escapeHtml(safeRoomCode(m.internalRoom))} ➔
+                ${isCasino ? 'Rejoindre le Casino 🎰' : `Rejoindre la salle ${escapeHtml(safeRoomCode(m.internalRoom))} ➔`}
               </button>` : `
               <a href="${m.roomUrl}" target="_blank" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black block text-center">
                 Rejoindre la partie ↗
@@ -846,35 +971,42 @@ function listenLobbyInvitations() {
     }
 
     const allInvites = Object.entries(data).map(([key, val]) => ({ ...val, key }));
-    const recentInvites = allInvites.slice(-3); // Maximum 3
+    const recentInvites = allInvites.slice(-3);
 
-    stack.innerHTML = recentInvites.map(inv => `
-      <div class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
-        <div class="min-w-0">
-          <span class="text-xs font-black text-[#12131a] block truncate">
-            ${escapeHtml(inv.fromNick)} t'invite !
-          </span>
-          <span class="text-[10px] font-bold text-slate-700 block truncate">
-            ${escapeHtml(inv.gameTitle)} (Salle <strong>${inv.roomCode}</strong>)
-          </span>
-        </div>
+    stack.innerHTML = recentInvites.map(inv => {
+      const isCasino = inv.gameId === 'casino' || inv.roomCode === 'CASINO';
+      return `
+        <div class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
+          <div class="min-w-0">
+            <span class="text-xs font-black text-[#12131a] block truncate">
+              ${escapeHtml(inv.fromNick)} t'invite !
+            </span>
+            <span class="text-[10px] font-bold text-slate-700 block truncate">
+              ${escapeHtml(inv.gameTitle)} ${isCasino ? '' : `(Salle <strong>${inv.roomCode}</strong>)`}
+            </span>
+          </div>
 
-        <div class="flex items-center gap-1.5 flex-shrink-0">
-          <button onclick="acceptLobbyInvite('${inv.gameId}', '${inv.roomCode}', '${inv.key}')" class="neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
-            Rejoindre
-          </button>
-          <button onclick="dismissLobbyInvite('${inv.key}')" class="neo-btn bg-white hover:bg-slate-100 text-slate-700 px-2 py-1 rounded-xl text-xs font-bold">
-            ✕
-          </button>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button onclick="acceptLobbyInvite('${inv.gameId}', '${inv.roomCode}', '${inv.key}')" class="neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
+              Rejoindre
+            </button>
+            <button onclick="dismissLobbyInvite('${inv.key}')" class="neo-btn bg-white hover:bg-slate-100 text-slate-700 px-2 py-1 rounded-xl text-xs font-bold">
+              ✕
+            </button>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   });
 }
 
 function acceptLobbyInvite(gameId, roomCode, key) {
   dismissLobbyInvite(key);
   trackGameLaunch(gameId);
+  if (gameId === 'casino' || roomCode === 'CASINO') {
+    window.location.href = `/games/casino/index.html`;
+    return;
+  }
   window.location.href = `/games/${gameId}/index.html#room=${roomCode}`;
 }
 
@@ -891,7 +1023,10 @@ function safeRoomCode(code) {
 function openInternalInvite(game, code) {
   if (!currentUser || !code) return;
   const g = String(game || '').toLowerCase();
-  if (g === 'morpion') {
+  if (g === 'casino') {
+    trackGameLaunch('casino');
+    window.location.href = `/games/casino/index.html`;
+  } else if (g === 'morpion') {
     trackGameLaunch('morpion');
     window.location.href = `/games/morpion/index.html#room=${code}`;
   } else if (g === 'skyjo') {
@@ -1099,11 +1234,7 @@ async function handleGoogleLogin() {
   const provider = new firebase.auth.GoogleAuthProvider();
   try {
     const res = await auth.signInWithPopup(provider);
-    const snap = await db.ref(`users/${res.user.uid}`).once('value');
-    if (!snap.exists()) {
-      await auth.signOut();
-      showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
-    }
+    await loadAuthenticatedUser(res.user);
   } catch (err) {
     showAuthError("Erreur Google : " + err.message);
   }
@@ -1121,11 +1252,7 @@ async function handleEmailLogin(e) {
 
   try {
     const res = await auth.signInWithEmailAndPassword(email, password);
-    const snap = await db.ref(`users/${res.user.uid}`).once('value');
-    if (!snap.exists()) {
-      await auth.signOut();
-      showAuthError("Aucun compte trouvé. Veuillez d'abord vous inscrire.");
-    }
+    await loadAuthenticatedUser(res.user);
   } catch (err) {
     showAuthError("Adresse e-mail ou mot de passe incorrect.");
   } finally {
@@ -1141,26 +1268,30 @@ async function handleGoogleRegister() {
   const tag = document.getElementById('regTag').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 
   if (!nickname || !tag) {
-    showAuthError("Renseigne ton prénom et ton tag avant de continuer avec Google.");
+    showAuthError("Renseigne ton prénom et ton @tag avant de continuer avec Google.");
     return;
   }
 
   isRegisteringProcess = true;
   try {
-    const tagSnap = await db.ref('users').orderByChild('tag').equalTo(tag).once('value');
-    if (tagSnap.exists()) {
-      showAuthError(`Le tag @${tag} est déjà utilisé par un camarade.`);
-      isRegisteringProcess = false;
-      return;
-    }
-
     const provider = new firebase.auth.GoogleAuthProvider();
     const res = await auth.signInWithPopup(provider);
     
     const userSnap = await db.ref(`users/${res.user.uid}`).once('value');
     if (userSnap.exists()) {
       isRegisteringProcess = false;
-      showToast("Tu avais déjà un compte ! Connexion...", "👋");
+      showToast("Compte existant trouvé ! Connexion...", "👋");
+      await loadAuthenticatedUser(res.user);
+      return;
+    }
+
+    const allUsersSnap = await db.ref('users').once('value');
+    const allUsers = Object.values(allUsersSnap.val() || {});
+    const tagTaken = allUsers.some(u => u && u.tag && u.tag.toLowerCase() === tag);
+
+    if (tagTaken) {
+      showAuthError(`Le tag @${tag} est déjà utilisé par un camarade.`);
+      isRegisteringProcess = false;
       return;
     }
 
@@ -1180,10 +1311,11 @@ async function handleGoogleRegister() {
     };
 
     await db.ref(`users/${res.user.uid}`).set(newUser);
-  } catch (err) {
-    showAuthError("Erreur inscription Google : " + err.message);
-  } finally {
     isRegisteringProcess = false;
+    await loadAuthenticatedUser(res.user);
+  } catch (err) {
+    isRegisteringProcess = false;
+    showAuthError("Erreur inscription Google : " + err.message);
   }
 }
 
@@ -1207,16 +1339,18 @@ async function handleEmailRegister(e) {
   isRegisteringProcess = true;
 
   try {
-    const tagSnap = await db.ref('users').orderByChild('tag').equalTo(tag).once('value');
-    if (tagSnap.exists()) {
+    const res = await auth.createUserWithEmailAndPassword(email, password);
+
+    const allUsersSnap = await db.ref('users').once('value');
+    const allUsers = Object.values(allUsersSnap.val() || {});
+    const tagTaken = allUsers.some(u => u && u.tag && u.tag.toLowerCase() === tag);
+
+    if (tagTaken) {
+      await res.user.delete();
       showAuthError(`Le tag @${tag} est déjà utilisé.`);
-      btn.disabled = false;
-      btn.innerHTML = `<span>Créer mon compte par e-mail</span><span class="text-base">🚀</span>`;
       isRegisteringProcess = false;
       return;
     }
-
-    const res = await auth.createUserWithEmailAndPassword(email, password);
 
     try {
       await res.user.sendEmailVerification();
@@ -1239,12 +1373,14 @@ async function handleEmailRegister(e) {
     };
 
     await db.ref(`users/${res.user.uid}`).set(newUser);
+    isRegisteringProcess = false;
+    await loadAuthenticatedUser(res.user);
   } catch (err) {
+    isRegisteringProcess = false;
     showAuthError("Erreur : " + err.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<span>Créer mon compte par e-mail</span><span class="text-base">🚀</span>`;
-    isRegisteringProcess = false;
   }
 }
 
