@@ -26,11 +26,11 @@
 </head>
 <body class="casino-body pt-16 pb-12 select-none">
 
-  <!-- ================= HUD PERMANENT EN HAUT À DROITE (SOUS LE SHELL) ================= -->
+  <!-- ================= HUD PERMANENT EN HAUT À DROITE ================= -->
   <div id="casinoHud" class="casino-hud">
     <div class="flex items-center gap-1.5 pr-1">
       <span id="hudAvatar" class="text-base">🎰</span>
-      <span id="hudNickname" class="text-xs font-black text-[#12131a] hidden sm:inline truncate max-w-[110px]">Joueur</span>
+      <span id="hudNickname" class="text-xs font-black text-[#12131a] hidden sm:inline truncate max-w-[100px]">Joueur</span>
     </div>
 
     <div id="hudBalancePill" class="hud-pill balance" title="Ton solde Casino actuel">
@@ -38,109 +38,190 @@
       <span><strong id="hudBalanceValue">1 000</strong> $</span>
     </div>
 
-    <div class="hud-pill tokens" title="Tokens ATM utilisés (Max 20)">
+    <div class="hud-pill bg-rose-100 text-rose-800" title="Ta dette fictive cumulée">
+      <span>📉</span>
+      <span>Dette : <strong id="hudDebtValue">0</strong> $</span>
+    </div>
+
+    <div class="hud-pill tokens" title="Tokens ATM utilisés (Illimités si solde ≤ 200$)">
       <span>🪙</span>
-      <span><strong id="hudTokensValue">0</strong>/20</span>
+      <span><strong id="hudTokensValue">0</strong></span>
     </div>
   </div>
 
   <!-- ================= CONTENU PRINCIPAL DU LOBBY CASINO ================= -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-6 flex flex-col gap-6">
 
-    <!-- HERO BANNER CASINO -->
+    <!-- HERO BANNER CASINO + BONUS QUOTIDIEN (+200$) -->
     <section class="bg-[#065f46] border-[3.5px] border-[#12131a] rounded-3xl p-5 sm:p-7 shadow-[5px_7px_0px_#12131a] text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
       <div class="relative z-10">
         <div class="inline-flex items-center gap-2 bg-[#ef4444] border-2 border-[#12131a] px-3 py-0.5 rounded-full text-[11px] font-mono font-black uppercase shadow-[2px_2px_0px_#12131a] mb-2">
-          <span>🎲 Économie Persistante</span>
+          <span>🎲 Économie Fictive & Sans Limite de Tokens</span>
         </div>
         <h2 id="casinoHeroGreeting" class="text-3xl sm:text-4xl md:text-5xl font-black italic tracking-tight uppercase leading-none drop-shadow-[2px_3px_0px_#12131a]">
           BIENVENUE AU CASINO !
         </h2>
         <p class="text-xs sm:text-sm font-bold text-emerald-100 mt-2 max-w-xl leading-relaxed">
-          Tout le monde démarre avec <strong>1 000 $</strong>. Fais fructifier ta bankroll sur les tables de jeu pour décrocher la couronne 👑… et évite le bonnet d'âne 🫏 !
+          Tout le monde démarre avec <strong>1 000 $</strong> fictifs. Récupère tes <strong>200 $ quotidiens</strong>, emprunte à l'ATM si tu tombes sous 200 $ et rembourse ta dette quand tu veux !
         </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2.5 z-10">
+        <!-- BOUTON BONUS QUOTIDIEN +200$ -->
+        <button id="btnDailyBonus" onclick="handleClaimDailyBonus(event)" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a] animate-bounce">
+          <span id="dailyBonusIcon">🎁</span>
+          <span id="dailyBonusText">Bonus du jour (+200 $)</span>
+        </button>
+
         <button onclick="GameShell.openRules()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a]">
           <span>📖</span>
-          <span>Règles du Casino</span>
-        </button>
-        <button onclick="GameShell.openLeaderboard()" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a]">
-          <span>👑</span>
-          <span>Palmarès complet</span>
+          <span>Règles</span>
         </button>
       </div>
     </section>
 
-    <!-- GRILLE PRINCIPALE : ATM (GAUCHE) + CLASSEMENT RICHESSE (DROITE) -->
+    <!-- GRILLE PRINCIPALE : ATM & REMBOURSEMENT (GAUCHE) + DOUBLE CLASSEMENT RICHESSE & DETTES (DROITE) -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-      <!-- COLONNE 1 : DISTRIBUTEUR ATM (5 COLONNES SUR DESKTOP) -->
-      <div class="lg:col-span-5 atm-machine">
-        <div class="atm-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🏧</span>
-            <div>
-              <h3 class="text-base font-black uppercase tracking-wider leading-none">IMB CASH EXPRESS</h3>
-              <span class="text-[10px] font-mono opacity-90">Distributeur de sauvetage</span>
+      <!-- COLONNE 1 : DISTRIBUTEUR ATM + REMBOURSEMENT DE DETTE (5 COLONNES) -->
+      <div class="lg:col-span-5 flex flex-col gap-5">
+        
+        <!-- MACHINE ATM -->
+        <div class="atm-machine">
+          <div class="atm-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🏧</span>
+              <div>
+                <h3 class="text-base font-black uppercase tracking-wider leading-none">IMB CASH EXPRESS</h3>
+                <span class="text-[10px] font-mono opacity-90">Tokens illimités si solde ≤ 200 $</span>
+              </div>
             </div>
+            <span id="atmStatusBadge" class="bg-[#12131a] text-white font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-white/30">
+              VERROUILLÉ
+            </span>
           </div>
-          <span id="atmStatusBadge" class="bg-[#12131a] text-white font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-white/30">
-            VERROUILLÉ
-          </span>
-        </div>
 
-        <div class="p-5 space-y-4">
-          <div id="atmScreen" class="atm-screen">
-            <div class="flex items-center justify-between text-[11px] opacity-80 border-b border-emerald-500/30 pb-1.5 mb-2">
-              <span>SOLDE DISPONIBLE :</span>
-              <strong id="atmScreenBalance">1 000 $</strong>
+          <div class="p-5 space-y-4">
+            <div id="atmScreen" class="atm-screen">
+              <div class="flex items-center justify-between text-[11px] opacity-80 border-b border-emerald-500/30 pb-1.5 mb-1.5">
+                <span>SOLDE ACTUEL :</span>
+                <strong id="atmScreenBalance">1 000 $</strong>
+              </div>
+              <div class="flex items-center justify-between text-[11px] opacity-80 border-b border-emerald-500/30 pb-1.5 mb-1.5">
+                <span>TOKENS PRIS :</span>
+                <strong id="atmScreenTokens">0 (Illimité)</strong>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-rose-400 border-b border-emerald-500/30 pb-1.5 mb-2">
+                <span>DETTE FICTIVE CUMULÉE :</span>
+                <strong id="atmScreenDebt">0 $</strong>
+              </div>
+              <p id="atmScreenMessage" class="text-xs font-bold leading-relaxed mt-2">
+                &gt; Emprunt autorisé dès que ton solde est ≤ 200 $.
+              </p>
+              <div class="atm-slot"></div>
             </div>
-            <div class="flex items-center justify-between text-[11px] opacity-80 border-b border-emerald-500/30 pb-1.5 mb-2">
-              <span>TOKENS UTILISÉS :</span>
-              <strong id="atmScreenTokens">0 / 20</strong>
-            </div>
-            <p id="atmScreenMessage" class="text-xs font-bold leading-relaxed mt-2">
-              &gt; Retrait autorisé uniquement si ton solde est inférieur ou égal à 200 $.
+
+            <button id="btnUseAtm" onclick="handleAtmClick(event)" disabled class="atm-btn locked">
+              <span id="btnAtmIcon" class="text-xl">🔒</span>
+              <span id="btnAtmLabel">Solde &gt; 200 $ (Indisponible)</span>
+            </button>
+
+            <p class="text-[11px] font-bold text-slate-500 text-center leading-snug">
+              Prendre un Token donne <strong class="text-emerald-700">+1 000 $</strong> et ajoute à ta dette fictive la différence <strong class="text-rose-600">(1 000 $ − ton solde restant)</strong>.
             </p>
-            <div class="atm-slot"></div>
+          </div>
+        </div>
+
+        <!-- MODULE DE REMBOURSEMENT DE LA DETTE FICTIVE -->
+        <div class="neo-box bg-white p-5 border-[3.5px] border-[#12131a] rounded-3xl shadow-[6px_8px_0px_#12131a] space-y-3">
+          <div class="flex items-center justify-between border-b-2 border-[#12131a] pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🏦</span>
+              <div>
+                <h3 class="text-sm font-black uppercase text-[#12131a] leading-none">Rembourser ma dette</h3>
+                <span class="text-[10px] font-mono text-slate-500">Rembourse la somme que tu veux</span>
+              </div>
+            </div>
+            <span id="repayDebtBadge" class="bg-rose-100 text-rose-800 border border-rose-400 font-mono text-xs font-black px-2.5 py-0.5 rounded-full">
+              Dette : 0 $
+            </span>
           </div>
 
-          <button id="btnUseAtm" onclick="handleAtmClick(event)" disabled class="atm-btn locked">
-            <span id="btnAtmIcon" class="text-xl">🔒</span>
-            <span id="btnAtmLabel">Solde &gt; 200 $ (Indisponible)</span>
-          </button>
+          <div class="flex gap-2">
+            <input type="number" id="inputRepayAmount" min="1" step="10" placeholder="Montant en $ (ex: 250)" class="flex-1 bg-slate-50 border-2 border-[#12131a] rounded-xl px-3 py-2 text-xs font-mono font-black text-[#12131a] focus:outline-none focus:bg-white">
+            <button type="button" onclick="handleRepayCustom()" class="neo-btn bg-[#059669] hover:bg-[#047857] text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+              Rembourser
+            </button>
+          </div>
 
-          <p class="text-[11px] font-bold text-slate-500 text-center leading-snug">
-            Chaque retrait crédite <strong class="text-emerald-700">+1 000 $</strong> et ajoute <strong class="text-rose-600">+1 Token</strong> à ton dossier fiscal. Limite stricte : <strong>20 Tokens max</strong>.
-          </p>
+          <div class="flex items-center justify-between gap-2 pt-1">
+            <button type="button" onclick="fillRepayInput(200)" class="flex-1 neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] py-1.5 rounded-xl text-[11px] font-mono font-black">
+              200 $
+            </button>
+            <button type="button" onclick="fillRepayInput(500)" class="flex-1 neo-btn bg-slate-100 hover:bg-slate-200 text-[#12131a] py-1.5 rounded-xl text-[11px] font-mono font-black">
+              500 $
+            </button>
+            <button type="button" onclick="handleRepayMax()" class="flex-1 neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-xl text-[11px] font-black shadow-[2px_2px_0px_#12131a]">
+              Tout rembourser
+            </button>
+          </div>
         </div>
+
       </div>
 
-      <!-- COLONNE 2 : CLASSEMENT DE RICHESSE EN DIRECT (7 COLONNES SUR DESKTOP) -->
-      <div class="lg:col-span-7 neo-box bg-white p-5 sm:p-6 border-[3.5px] border-[#12131a] rounded-3xl shadow-[6px_8px_0px_#12131a]">
-        <div class="flex items-center justify-between pb-3 mb-4 border-b-[2.5px] border-[#12131a]">
-          <div class="flex items-center gap-2.5">
-            <span class="w-10 h-10 rounded-2xl bg-[#ef4444] text-white border-2 border-[#12131a] flex items-center justify-center text-xl shadow-[2px_2px_0px_#12131a]">
-              🏆
-            </span>
-            <div>
-              <h3 class="text-lg font-black text-[#12131a] uppercase leading-none">Classement des Fortunes</h3>
-              <p class="text-[11px] font-bold text-slate-500 mt-0.5">
-                Trié par Solde ($) › Moins de Tokens › Ancienneté
-              </p>
+      <!-- COLONNE 2 : CLASSEMENT DES PLUS RICHES + CLASSEMENT DES DETTES EN DESSOUS (7 COLONNES) -->
+      <div class="lg:col-span-7 flex flex-col gap-6">
+
+        <!-- 1. CLASSEMENT DES PLUS RICHES -->
+        <div class="neo-box bg-white p-5 sm:p-6 border-[3.5px] border-[#12131a] rounded-3xl shadow-[6px_8px_0px_#12131a]">
+          <div class="flex items-center justify-between pb-3 mb-4 border-b-[2.5px] border-[#12131a]">
+            <div class="flex items-center gap-2.5">
+              <span class="w-10 h-10 rounded-2xl bg-[#fef08a] text-[#12131a] border-2 border-[#12131a] flex items-center justify-center text-xl shadow-[2px_2px_0px_#12131a]">
+                👑
+              </span>
+              <div>
+                <h3 class="text-lg font-black text-[#12131a] uppercase leading-none">Classement des Plus Riches</h3>
+                <p class="text-[11px] font-bold text-slate-500 mt-0.5">
+                  Trié par Solde ($) décroissant › Moins de dette › Moins de Tokens
+                </p>
+              </div>
             </div>
+
+            <span id="wealthTotalPlayers" class="bg-[#059669] text-white border-2 border-[#12131a] font-mono text-xs font-black px-3 py-1 rounded-full shadow-[2px_2px_0px_#12131a]">
+              0 joueur
+            </span>
           </div>
 
-          <span id="wealthTotalPlayers" class="bg-[#059669] text-white border-2 border-[#12131a] font-mono text-xs font-black px-3 py-1 rounded-full shadow-[2px_2px_0px_#12131a]">
-            0 joueur
-          </span>
+          <div id="casinoLeaderboardContainer" class="space-y-2.5 max-h-[290px] overflow-y-auto custom-scrollbar pr-1">
+            <p class="text-xs font-bold text-slate-400 text-center py-6">Chargement des fortunes...</p>
+          </div>
         </div>
 
-        <div id="casinoLeaderboardContainer" class="space-y-2.5 max-h-[340px] overflow-y-auto custom-scrollbar pr-1">
-          <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement des fortunes de la promo...</p>
+        <!-- 2. CLASSEMENT DES DETTES (EN DESSOUS DU CLASSEMENT DES PLUS RICHES) -->
+        <div class="neo-box bg-white p-5 sm:p-6 border-[3.5px] border-[#12131a] rounded-3xl shadow-[6px_8px_0px_#12131a]">
+          <div class="flex items-center justify-between pb-3 mb-4 border-b-[2.5px] border-[#12131a]">
+            <div class="flex items-center gap-2.5">
+              <span class="w-10 h-10 rounded-2xl bg-[#ef4444] text-white border-2 border-[#12131a] flex items-center justify-center text-xl shadow-[2px_2px_0px_#12131a]">
+                📉
+              </span>
+              <div>
+                <h3 class="text-lg font-black text-[#12131a] uppercase leading-none">Classement des Dettes (Fictives)</h3>
+                <p class="text-[11px] font-bold text-slate-500 mt-0.5">
+                  Les plus gros emprunteurs de l'ATM (Dette cumulée & Tokens)
+                </p>
+              </div>
+            </div>
+
+            <span id="debtTotalBadge" class="bg-rose-600 text-white border-2 border-[#12131a] font-mono text-xs font-black px-3 py-1 rounded-full shadow-[2px_2px_0px_#12131a]">
+              0 $ de dette
+            </span>
+          </div>
+
+          <div id="casinoDebtLeaderboardContainer" class="space-y-2.5 max-h-[260px] overflow-y-auto custom-scrollbar pr-1">
+            <p class="text-xs font-bold text-slate-400 text-center py-6">Chargement du registre des dettes...</p>
+          </div>
         </div>
+
       </div>
 
     </section>
@@ -162,24 +243,24 @@
             <div class="casino-card-banner bg-[#ef4444]">
               <span class="text-6xl drop-shadow-[3px_4px_0px_#12131a]">🎡</span>
               <span class="absolute top-3 right-3 bg-white text-[#12131a] border-2 border-[#12131a] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full shadow-[2px_2px_0px_#12131a]">
-                Table n°1
+                Solo & Multi
               </span>
             </div>
             <div class="p-4">
               <h4 class="text-xl font-black text-[#12131a]">La Roulette</h4>
               <p class="text-xs font-bold text-slate-500 mt-1">
-                Rouge ou Noir, Pair ou Impair, ou Numéro plein (×36). Fais tourner la roue et encaisse les jetons !
+                Rouge ou Noir, Pair ou Impair, ou Numéro plein (×36). Joue en solo ou invite tes potes dans un salon !
               </p>
             </div>
           </div>
 
           <div class="p-4 pt-0 flex items-center justify-between gap-2">
-            <a href="/games/casino/roulette/index.html" onclick="return handleOpenRoulette(event)" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-[2px_3px_0px_#12131a]">
+            <a href="/games/casino/roulette/index.html" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-[2px_3px_0px_#12131a]">
               <span>Rejoindre la table</span>
               <span>➔</span>
             </a>
             <span class="text-[11px] font-mono font-black text-emerald-800 bg-emerald-100 border border-emerald-400 px-2.5 py-1 rounded-lg">
-              Mise max : Solde
+              ×2 à ×36
             </span>
           </div>
         </div>
@@ -209,7 +290,7 @@
           </div>
         </div>
 
-        <!-- CARTE 3 : CRASH / MINES (PROCHAINEMENT) -->
+        <!-- CARTE 3 : ROCKET CRASH (PROCHAINEMENT) -->
         <div class="casino-card opacity-90">
           <div>
             <div class="casino-card-banner bg-[#065f46]">
@@ -245,20 +326,19 @@
     <span id="casinoToastMsg">Notification</span>
   </div>
 
-  <!-- ================= LOGIQUE D'INTERFACE DU LOBBY CASINO ================= -->
+  <!-- ================= LOGIQUE DU LOBBY CASINO ================= -->
   <script>
     let myCasinoProfile = null;
 
-    // 1. Initialisation du Shell en mode "casino"
     GameShell.init({
       gameId: 'casino',
       gameTitle: '🎰 IMB Casino',
       theme: 'casino',
       rulesHtml: `
-        <p>• 💰 <strong>Capital de départ :</strong> Chaque membre de la promo démarre avec <strong>1 000 $</strong> et <strong>0 Token</strong>.</p>
-        <p>• 🚫 <strong>Zéro dette :</strong> Le solde ne peut jamais être négatif. Ta mise maximale est toujours bridée à ton solde actuel.</p>
-        <p>• 🏧 <strong>Distributeur ATM :</strong> Si ton solde tombe à <strong>200 $ ou moins</strong>, tu peux tirer un Token à l'ATM pour recevoir <strong>+1 000 $</strong> (limité à 20 Tokens maximum par joueur).</p>
-        <p>• 🏆 <strong>Classement :</strong> Trié par <strong>Solde ($) décroissant</strong>, puis par le <strong>plus petit nombre de Tokens utilisés</strong>, puis par <strong>ancienneté</strong>. Le 1er porte la couronne 👑 et le dernier reçoit le bonnet d'âne 🫏 !</p>
+        <p>• 💰 <strong>Capital fictif :</strong> Tout est 100 % fictif. Chaque joueur démarre avec <strong>1 000 $</strong> et <strong>0 $ de dette</strong>.</p>
+        <p>• 🎁 <strong>Bonus quotidien :</strong> Récupère <strong>+200 $ gratuits</strong> chaque jour en cliquant sur le bouton Bonus du jour.</p>
+        <p>• 🏧 <strong>Distributeur ATM (Sans limite de tokens) :</strong> Si ton solde est <strong>≤ 200 $</strong>, tu peux prendre un Token pour recevoir <strong>+1 000 $</strong>. En échange, la différence <strong>(1 000 $ − ton solde restant)</strong> est ajoutée à ta dette fictive.</p>
+        <p>• 🏦 <strong>Remboursement libre :</strong> Tu peux rembourser ta dette à tout moment du montant de ton choix.</p>
       `,
       onGameInit: async (user) => {
         document.getElementById('casinoHeroGreeting').textContent = `SALUT ${user.nickname.toUpperCase()} !`;
@@ -273,21 +353,24 @@
         });
 
         CasinoAPI.subscribeLeaderboard((list) => {
-          renderCasinoLeaderboard(list);
+          renderCasinoLeaderboards(list);
         });
       }
     });
 
-    // 2. Mise à jour du HUD et du distributeur ATM
     function renderHudAndAtm(profile) {
       if (!profile) return;
-      const bal = Number(profile.balance ?? 0);
-      const tok = Number(profile.tokens ?? profile.tokensUsed ?? 0);
+      const bal = Math.max(0, Number(profile.balance ?? 0));
+      const tok = Math.max(0, Number(profile.tokens ?? profile.tokensUsed ?? 0));
+      const debt = Math.max(0, Number(profile.debt ?? 0));
       const formattedBal = bal.toLocaleString('fr-FR');
+      const formattedDebt = debt.toLocaleString('fr-FR');
 
       // HUD
       document.getElementById('hudBalanceValue').textContent = formattedBal;
       document.getElementById('hudTokensValue').textContent = tok;
+      document.getElementById('hudDebtValue').textContent = formattedDebt;
+      document.getElementById('repayDebtBadge').textContent = `Dette : ${formattedDebt} $`;
 
       const balPill = document.getElementById('hudBalancePill');
       if (bal <= CasinoAPI.ATM_THRESHOLD) {
@@ -296,10 +379,27 @@
         balPill.classList.remove('low');
       }
 
-      // Écran ATM
+      // Bouton Bonus Quotidien (+200$)
+      const dailyBtn = document.getElementById('btnDailyBonus');
+      const dailyIcon = document.getElementById('dailyBonusIcon');
+      const dailyText = document.getElementById('dailyBonusText');
+      if (CasinoAPI.canClaimDailyBonus(profile)) {
+        dailyBtn.disabled = false;
+        dailyBtn.className = 'neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a] animate-bounce';
+        dailyIcon.textContent = '🎁';
+        dailyText.textContent = 'Bonus du jour (+200 $)';
+      } else {
+        dailyBtn.disabled = true;
+        dailyBtn.className = 'neo-btn bg-emerald-800 text-emerald-200 px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 opacity-85 cursor-not-allowed';
+        dailyIcon.textContent = '✅';
+        dailyText.textContent = 'Bonus 200 $ récupéré';
+      }
+
+      // Écran ATM (Tokens illimités si solde <= 200$)
       const screen = document.getElementById('atmScreen');
       const screenBal = document.getElementById('atmScreenBalance');
       const screenTok = document.getElementById('atmScreenTokens');
+      const screenDebt = document.getElementById('atmScreenDebt');
       const screenMsg = document.getElementById('atmScreenMessage');
       const statusBadge = document.getElementById('atmStatusBadge');
       const btn = document.getElementById('btnUseAtm');
@@ -307,34 +407,26 @@
       const btnLabel = document.getElementById('btnAtmLabel');
 
       screenBal.textContent = `${formattedBal} $`;
-      screenTok.textContent = `${tok} / ${CasinoAPI.MAX_TOKENS}`;
+      screenTok.textContent = `${tok} (Illimité)`;
+      screenDebt.textContent = `${formattedDebt} $`;
 
       const isEligibleBalance = bal <= CasinoAPI.ATM_THRESHOLD;
-      const hasTokensLeft = tok < CasinoAPI.MAX_TOKENS;
+      const nextDebtAdded = Math.max(0, CasinoAPI.ATM_REWARD - bal);
 
-      if (!hasTokensLeft) {
-        screen.classList.add('danger');
-        statusBadge.textContent = 'PLAFOND ATTEINT';
-        statusBadge.className = 'bg-rose-950 text-rose-200 font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-rose-400';
-        screenMsg.innerHTML = `&gt; 🚫 Banqueroute : tu as épuisé tes 20/20 Tokens.`;
-        btn.disabled = true;
-        btn.className = 'atm-btn locked';
-        btnIcon.textContent = '🚫';
-        btnLabel.textContent = 'Limite de 20 Tokens atteinte';
-      } else if (isEligibleBalance) {
+      if (isEligibleBalance) {
         screen.classList.remove('danger');
         statusBadge.textContent = 'DISPONIBLE';
         statusBadge.className = 'bg-emerald-400 text-[#12131a] font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-[#12131a] animate-pulse';
-        screenMsg.innerHTML = `&gt; ✅ Solde critique (${formattedBal} $). Tu peux retirer +1 000 $ contre 1 Token !`;
+        screenMsg.innerHTML = `&gt; ✅ Solde ≤ 200 $ : retire <strong>+1 000 $</strong> maintenant (+${nextDebtAdded.toLocaleString('fr-FR')} $ ajoutés à ta dette fictive).`;
         btn.disabled = false;
         btn.className = 'atm-btn ready';
         btnIcon.textContent = '💵';
-        btnLabel.textContent = 'Retirer +1 000 $ (+1 Token)';
+        btnLabel.textContent = `Prendre 1 Token (+1 000 $ / +${nextDebtAdded}$ dette)`;
       } else {
         screen.classList.remove('danger');
         statusBadge.textContent = 'VERROUILLÉ';
         statusBadge.className = 'bg-[#12131a] text-white font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-white/30';
-        screenMsg.innerHTML = `&gt; 🔒 Ton solde est supérieur à ${CasinoAPI.ATM_THRESHOLD} $. Joue avant de pouvoir emprunter.`;
+        screenMsg.innerHTML = `&gt; 🔒 Ton solde est supérieur à ${CasinoAPI.ATM_THRESHOLD} $. L'ATM s'active dès que tu as 200 $ ou moins.`;
         btn.disabled = true;
         btn.className = 'atm-btn locked';
         btnIcon.textContent = '🔒';
@@ -342,7 +434,19 @@
       }
     }
 
-    // 3. Action du bouton ATM avec animation de billets
+    async function handleClaimDailyBonus(event) {
+      const btn = document.getElementById('btnDailyBonus');
+      const rect = btn.getBoundingClientRect();
+      const res = await CasinoAPI.claimDailyBonus();
+      if (!res.ok) {
+        showCasinoToast(res.error, '⏳');
+        return;
+      }
+      spawnFlyingBills(rect.left + rect.width / 2, rect.top);
+      GameShell.fireConfetti();
+      showCasinoToast('🎁 +200 $ de bonus quotidien crédités sur ton solde !', '💰');
+    }
+
     async function handleAtmClick(event) {
       const btn = document.getElementById('btnUseAtm');
       const originRect = btn.getBoundingClientRect();
@@ -356,7 +460,6 @@
         return;
       }
 
-      // Animation de billets volants + bump du HUD
       spawnFlyingBills(originRect.left + originRect.width / 2, originRect.top);
       const hud = document.getElementById('casinoHud');
       hud.classList.remove('bump');
@@ -364,7 +467,39 @@
       hud.classList.add('bump');
 
       GameShell.fireConfetti();
-      showCasinoToast(`+1 000 $ crédités ! (Token ${res.tokens}/${CasinoAPI.MAX_TOKENS})`, '💸');
+      showCasinoToast(`+1 000 $ reçus ! (+${res.addedDebt.toLocaleString('fr-FR')} $ ajoutés à ta dette fictive)`, '💸');
+    }
+
+    function fillRepayInput(val) {
+      document.getElementById('inputRepayAmount').value = val;
+    }
+
+    async function handleRepayCustom() {
+      const input = document.getElementById('inputRepayAmount');
+      const amount = Number(input.value);
+      const res = await CasinoAPI.repayDebt(amount);
+      if (!res.ok) {
+        showCasinoToast(res.error, '⚠️');
+        return;
+      }
+      input.value = '';
+      showCasinoToast(`Tu as remboursé ${res.paidAmount.toLocaleString('fr-FR')} $ de dette !`, '🏦');
+    }
+
+    async function handleRepayMax() {
+      if (!myCasinoProfile) return;
+      const maxPayable = Math.min(Number(myCasinoProfile.balance || 0), Number(myCasinoProfile.debt || 0));
+      if (maxPayable <= 0) {
+        showCasinoToast("Tu n'as aucune dette ou ton solde est à 0 $.", 'ℹ️');
+        return;
+      }
+      const res = await CasinoAPI.repayDebt(maxPayable);
+      if (!res.ok) {
+        showCasinoToast(res.error, '⚠️');
+        return;
+      }
+      document.getElementById('inputRepayAmount').value = '';
+      showCasinoToast(`Remboursement effectué : -${res.paidAmount.toLocaleString('fr-FR')} $ de dette !`, '✅');
     }
 
     function spawnFlyingBills(startX, startY) {
@@ -386,8 +521,12 @@
       }
     }
 
-    // 4. Affichage du classement en direct (👑 pour le 1er, 🫏 pour le dernier)
-    function renderCasinoLeaderboard(list) {
+    function renderCasinoLeaderboards(list) {
+      renderWealthLeaderboard(list);
+      renderDebtLeaderboard(list);
+    }
+
+    function renderWealthLeaderboard(list) {
       const container = document.getElementById('casinoLeaderboardContainer');
       const countBadge = document.getElementById('wealthTotalPlayers');
       const total = list.length;
@@ -395,7 +534,7 @@
       countBadge.textContent = `${total} joueur${total > 1 ? 's' : ''}`;
 
       if (total === 0) {
-        container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-8">Aucun joueur enregistré au Casino.</p>`;
+        container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-6">Aucun joueur enregistré au Casino.</p>`;
         return;
       }
 
@@ -410,20 +549,16 @@
 
         let rankDisplay = `<span class="w-7 text-center font-mono font-black text-xs text-slate-500">#${p.rank}</span>`;
         if (p.isFirst) {
-          rankDisplay = `<span class="w-7 text-center text-xl" title="Plus grosse fortune du serveur">👑</span>`;
+          rankDisplay = `<span class="w-7 text-center text-xl" title="Plus grosse fortune">👑</span>`;
         } else if (p.isLast) {
-          rankDisplay = `<span class="w-7 text-center text-xl" title="Bonnet d'âne du Casino">🫏</span>`;
+          rankDisplay = `<span class="w-7 text-center text-xl" title="Bonnet d'âne">🫏</span>`;
         } else if (p.rank === 2) {
           rankDisplay = `<span class="w-7 text-center text-lg">🥈</span>`;
         } else if (p.rank === 3) {
           rankDisplay = `<span class="w-7 text-center text-lg">🥉</span>`;
         }
 
-        const badgePill = p.isFirst
-          ? `<span class="bg-[#12131a] text-[#fed72d] text-[9px] font-mono font-black px-2 py-0.5 rounded-full">LE PARRAIN</span>`
-          : (p.isLast
-              ? `<span class="bg-rose-600 text-white text-[9px] font-mono font-black px-2 py-0.5 rounded-full">FAUCHÉ</span>`
-              : '');
+        const debtVal = Number(p.debt || 0);
 
         return `
           <div class="${rowCls}">
@@ -436,10 +571,9 @@
                 <div class="text-xs sm:text-sm font-black text-[#12131a] truncate flex items-center gap-1.5">
                   <span>${GameShell.escapeHtml(p.nickname)}</span>
                   ${isMe ? '<span class="text-[10px] font-mono text-emerald-700">(toi)</span>' : ''}
-                  ${badgePill}
                 </div>
                 <div class="text-[10px] font-mono text-slate-500 truncate">
-                  @${GameShell.escapeHtml(p.tag)}
+                  @${GameShell.escapeHtml(p.tag)} · 🪙 ${p.tokens} token${p.tokens > 1 ? 's' : ''}
                 </div>
               </div>
             </div>
@@ -448,8 +582,8 @@
               <div class="font-mono text-sm sm:text-base font-black text-[#065f46]">
                 ${Number(p.balance || 0).toLocaleString('fr-FR')} $
               </div>
-              <div class="text-[10px] font-mono font-bold ${p.tokens > 0 ? 'text-rose-600' : 'text-slate-500'}">
-                🪙 ${p.tokens}/20 token${p.tokens > 1 ? 's' : ''}
+              <div class="text-[10px] font-mono font-bold ${debtVal > 0 ? 'text-rose-600' : 'text-slate-400'}">
+                Dette : ${debtVal.toLocaleString('fr-FR')} $
               </div>
             </div>
           </div>
@@ -457,10 +591,64 @@
       }).join('');
     }
 
-    function handleOpenRoulette(e) {
-      // Tant que la page /games/casino/roulette/index.html n'est pas encore créée,
-      // on affiche une notification si la page n'existe pas encore
-      return true;
+    function renderDebtLeaderboard(list) {
+      const container = document.getElementById('casinoDebtLeaderboardContainer');
+      const totalBadge = document.getElementById('debtTotalBadge');
+
+      const sortedByDebt = [...list].sort(CasinoAPI.sortCasinoDebtPlayers);
+      const totalServerDebt = sortedByDebt.reduce((sum, p) => sum + Number(p.debt || 0), 0);
+      totalBadge.textContent = `${totalServerDebt.toLocaleString('fr-FR')} $ cumulés`;
+
+      if (sortedByDebt.length === 0) {
+        container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-6">Aucune dette enregistrée.</p>`;
+        return;
+      }
+
+      const myTag = GameShell.currentUser ? GameShell.currentUser.tag : null;
+
+      container.innerHTML = sortedByDebt.map((p, idx) => {
+        const isMe = myTag && p.tag === myTag;
+        const debtVal = Number(p.debt || 0);
+        const isTopDebtor = idx === 0 && debtVal > 0;
+
+        let rowCls = 'wealth-row';
+        if (isTopDebtor) rowCls += ' last';
+        if (isMe) rowCls += ' me';
+
+        const rankBadge = isTopDebtor
+          ? `<span class="w-7 text-center text-xl" title="Plus grosse dette du Casino">🚨</span>`
+          : `<span class="w-7 text-center font-mono font-black text-xs text-slate-500">#${idx + 1}</span>`;
+
+        return `
+          <div class="${rowCls}">
+            <div class="flex items-center gap-2.5 min-w-0">
+              ${rankBadge}
+              <span class="w-9 h-9 rounded-xl bg-white border-2 border-[#12131a] flex items-center justify-center text-base shadow-[1px_2px_0px_#12131a] flex-shrink-0">
+                ${p.avatarEmoji || '🍺'}
+              </span>
+              <div class="min-w-0">
+                <div class="text-xs sm:text-sm font-black text-[#12131a] truncate flex items-center gap-1.5">
+                  <span>${GameShell.escapeHtml(p.nickname)}</span>
+                  ${isMe ? '<span class="text-[10px] font-mono text-emerald-700">(toi)</span>' : ''}
+                  ${isTopDebtor ? '<span class="bg-rose-600 text-white text-[9px] font-mono font-black px-2 py-0.5 rounded-full">ROI DU CRÉDIT</span>' : ''}
+                </div>
+                <div class="text-[10px] font-mono text-slate-500 truncate">
+                  Solde : ${Number(p.balance || 0).toLocaleString('fr-FR')} $
+                </div>
+              </div>
+            </div>
+
+            <div class="text-right flex-shrink-0">
+              <div class="font-mono text-sm sm:text-base font-black ${debtVal > 0 ? 'text-rose-600' : 'text-emerald-700'}">
+                ${debtVal > 0 ? `-${debtVal.toLocaleString('fr-FR')} $` : '0 $ (Clean)'}
+              </div>
+              <div class="text-[10px] font-mono font-bold text-slate-500">
+                🪙 ${p.tokens} token${p.tokens > 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     function showCasinoToast(msg, icon = '🎰') {
@@ -475,7 +663,7 @@
       showCasinoToast._t = setTimeout(() => {
         toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
         toast.classList.remove('opacity-100', 'translate-y-0');
-      }, 3200);
+      }, 3400);
     }
   </script>
 </body>
