@@ -1,5 +1,5 @@
 /* =========================================================
-   IMB GAME CENTER - SHARED GAME SHELL (v4)
+   IMB GAME CENTER - SHARED GAME SHELL (v5 - Casino Ready)
    ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
@@ -22,6 +22,7 @@ window.GameShell = {
   gameId: '',
   gameTitle: '',
   rulesHtml: '',
+  theme: 'default', // Nouveau paramètre (default ou casino)
   currentUser: null,
   currentRoomCode: null,
   roomRef: null,
@@ -42,6 +43,7 @@ window.GameShell = {
     this.gameId = config.gameId;
     this.gameTitle = config.gameTitle;
     this.rulesHtml = config.rulesHtml || '<p>Aucune règle renseignée.</p>';
+    this.theme = config.theme || 'default'; // Si casino, adapter le style
     this.onGameInit = config.onGameInit;
     this.onStateUpdate = config.onStateUpdate;
     this.onPlayerJoined = config.onPlayerJoined;
@@ -81,6 +83,10 @@ window.GameShell = {
         if (inputCode) inputCode.value = code;
         this.joinRoom(code);
       }
+
+      if (this.onGameInit) {
+        this.onGameInit();
+      }
     });
   },
 
@@ -102,13 +108,18 @@ window.GameShell = {
   },
 
   buildShellDom() {
+    const isCasino = this.theme === 'casino';
+    const topBarBg = isCasino ? 'bg-[#059669]' : 'bg-[#121526]';
+    const topBarIcon = isCasino ? '🎰' : '🏆';
+    const topBarBtnStyle = isCasino ? 'bg-white text-[#12131a] hover:bg-slate-100' : 'bg-[#fed72d] hover:bg-[#eec418] text-[#12131a]';
+
     const shellHtml = `
       <!-- TOPBAR RÉTRACTABLE -->
-      <header id="shellTopBar" class="fixed top-0 left-0 right-0 z-40 bg-[#121526] border-b-[3px] border-[#12131a] text-white transition-transform duration-300">
+      <header id="shellTopBar" class="fixed top-0 left-0 right-0 z-40 ${topBarBg} border-b-[3px] border-[#12131a] text-white transition-transform duration-300">
         <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
           
           <div class="flex items-center gap-2.5">
-            <a href="/" class="neo-btn bg-white text-[#12131a] px-3 py-1 rounded-xl text-xs flex items-center gap-1 font-black">
+            <a href="/" class="neo-btn bg-white text-[#12131a] px-3 py-1 rounded-xl text-xs flex items-center gap-1 font-black shadow-[2px_2px_0px_#12131a]">
               <span>←</span>
               <span class="hidden sm:inline">Retour</span>
             </a>
@@ -116,23 +127,23 @@ window.GameShell = {
           </div>
 
           <div class="flex items-center gap-1.5 sm:gap-2">
-            <button onclick="GameShell.announceGameInChat()" title="Partager dans le chat général" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-2.5 sm:px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1">
+            <button onclick="GameShell.announceGameInChat()" title="Partager dans le chat général" class="neo-btn ${topBarBtnStyle} px-2.5 sm:px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]">
               <span>📢</span>
               <span class="hidden md:inline">Annoncer ma partie</span>
             </button>
 
-            <button onclick="GameShell.openLeaderboard()" title="Classement général" class="neo-btn bg-white text-[#12131a] w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black">
-              🏆
+            <button onclick="GameShell.openLeaderboard()" title="Classement général" class="neo-btn bg-white text-[#12131a] w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_#12131a]">
+              ${topBarIcon}
             </button>
 
             <!-- BOUTON + DROPDOWN DES CONNECTÉS PLACÉ DIRECTEMENT EN DESSOUS -->
             <div class="relative">
-              <button onclick="GameShell.toggleUsersDropdown(event)" id="shellOnlineBadgeBtn" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5">
+              <button onclick="GameShell.toggleUsersDropdown(event)" id="shellOnlineBadgeBtn" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_#12131a]">
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse border border-[#12131a]"></span>
                 <span id="shellOnlineCountText">1 en ligne</span>
               </button>
 
-              <div id="shellUsersDropdown" class="hidden absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[4px_5px_0px_#12131a] p-3 text-[#12131a] max-h-96 overflow-y-auto custom-scrollbar z-50">
+              <div id="shellUsersDropdown" class="hidden absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[4px_5px_0px_#12131a] p-3 text-[#12131a] max-h-96 overflow-y-auto custom-scrollbar z-[160]">
                 <div class="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-200">
                   <span class="text-xs font-black uppercase text-[#12131a]"><span id="shellDropdownOnline">0</span> en ligne</span>
                   <span class="text-[11px] font-mono font-bold text-slate-500"><span id="shellDropdownTotal">0</span> membres</span>
@@ -141,15 +152,15 @@ window.GameShell = {
               </div>
             </div>
 
-            <button onclick="GameShell.toggleFullScreen()" title="Plein écran" class="hidden sm:flex neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
+            <button onclick="GameShell.toggleFullScreen()" title="Plein écran" class="hidden sm:flex neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               ⛶ Plein écran
             </button>
 
-            <button onclick="GameShell.openInNewTab()" title="Ouvrir dans un nouvel onglet" class="hidden sm:flex neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
+            <button onclick="GameShell.openInNewTab()" title="Ouvrir dans un nouvel onglet" class="hidden sm:flex neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               ↗ Nouvel onglet
             </button>
 
-            <button onclick="GameShell.toggleBarVisibility()" id="shellBtnToggleBar" title="Masquer la barre" class="neo-btn bg-[#fed72d] text-[#12131a] w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs">
+            <button onclick="GameShell.toggleBarVisibility()" id="shellBtnToggleBar" title="Masquer la barre" class="neo-btn ${topBarBtnStyle} w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-[2px_2px_0px_#12131a]">
               ▲
             </button>
           </div>
@@ -157,16 +168,16 @@ window.GameShell = {
       </header>
 
       <!-- BOUTON POUR REVOIR LA BARRE -->
-      <button id="shellBtnRestoreBar" onclick="GameShell.toggleBarVisibility()" class="hidden fixed top-2 right-4 z-40 neo-btn bg-[#fed72d] text-[#12131a] px-3 py-1 rounded-xl text-xs font-black shadow-lg">
+      <button id="shellBtnRestoreBar" onclick="GameShell.toggleBarVisibility()" class="hidden fixed top-2 right-4 z-[130] neo-btn ${topBarBtnStyle} px-3 py-1 rounded-xl text-xs font-black shadow-[3px_4px_0px_#12131a]">
         ▼ Menu
       </button>
 
       <!-- PILE D'INVITATIONS EN BAS À DROITE (MAX 3) -->
-      <div id="shellInviteStack" class="fixed bottom-20 right-4 z-50 flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none"></div>
+      <div id="shellInviteStack" class="fixed bottom-20 right-4 z-[140] flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none"></div>
 
       <!-- CHAT DU SHELL -->
-      <div class="fixed bottom-4 right-4 z-40 flex flex-col items-end">
-        <div id="shellChatBox" class="hidden mb-3 w-80 sm:w-96 h-[460px] bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[5px_6px_0px_#12131a] flex flex-col overflow-hidden relative">
+      <div class="fixed bottom-4 right-4 z-[140] flex flex-col items-end">
+        <div id="shellChatBox" class="hidden mb-3 w-80 sm:w-96 h-[460px] bg-white border-[3px] border-[#12131a] rounded-2xl shadow-[5px_6px_0px_#12131a] flex flex-col overflow-hidden relative pointer-events-auto">
           
           <div class="bg-[#fed72d] p-3 border-b-[3px] border-[#12131a] flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -184,23 +195,23 @@ window.GameShell = {
 
           <form onsubmit="GameShell.sendChatMessage(event)" class="p-2.5 bg-white border-t-[3px] border-[#12131a] flex gap-2 relative">
             <input type="text" id="shellChatInput" oninput="GameShell.handleChatInput(event)" autocomplete="off" placeholder="Écris ou @tag un camarade..." class="flex-1 bg-[#f1f3f9] border-2 border-[#12131a] rounded-xl px-3 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-            <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-1.5 rounded-xl text-xs font-black">
+            <button type="submit" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-3.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               Envoyer
             </button>
           </form>
         </div>
 
-        <button onclick="GameShell.toggleChatBox()" class="w-12 h-12 rounded-2xl bg-[#fed72d] border-[3px] border-[#12131a] flex items-center justify-center text-xl shadow-[3px_4px_0px_#12131a] active:translate-x-0.5 active:translate-y-0.5 transition-all">
+        <button onclick="GameShell.toggleChatBox()" class="w-12 h-12 rounded-2xl bg-[#fed72d] border-[3px] border-[#12131a] flex items-center justify-center text-xl shadow-[3px_4px_0px_#12131a] active:translate-x-0.5 active:translate-y-0.5 transition-all pointer-events-auto">
           💬
         </button>
       </div>
 
       <!-- MODALE RÈGLES -->
-      <div id="shellModalRules" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[85vh] overflow-y-auto custom-scrollbar">
+      <div id="shellModalRules" class="hidden fixed inset-0 z-[150] bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[85vh] overflow-y-auto custom-scrollbar shadow-[6px_7px_0px_#12131a]">
           <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
             <h3 class="text-base font-black text-[#12131a] uppercase">📖 Règles du jeu</h3>
-            <button onclick="GameShell.closeRules()" class="text-xl font-bold">✕</button>
+            <button onclick="GameShell.closeRules()" class="w-8 h-8 rounded-lg border-2 border-[#12131a] bg-slate-100 hover:bg-rose-100 text-[#12131a] flex items-center justify-center text-sm font-black shadow-[1px_2px_0px_#12131a]">✕</button>
           </div>
           <div class="text-xs font-bold text-slate-700 leading-relaxed space-y-2">
             ${this.rulesHtml}
@@ -208,18 +219,18 @@ window.GameShell = {
         </div>
       </div>
 
-      <!-- MODALE CLASSEMENT AVEC PODIUM -->
-      <div id="shellModalLeaderboard" class="hidden fixed inset-0 z-50 bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[88vh] overflow-y-auto custom-scrollbar">
+      <!-- MODALE CLASSEMENT -->
+      <div id="shellModalLeaderboard" class="hidden fixed inset-0 z-[150] bg-[#121422]/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[88vh] overflow-y-auto custom-scrollbar shadow-[6px_7px_0px_#12131a]">
           <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
             <div class="flex items-center gap-2">
-              <span class="text-2xl">🏆</span>
+              <span class="text-2xl">${topBarIcon}</span>
               <div>
                 <h3 class="text-base font-black text-[#12131a] uppercase leading-none">${this.gameTitle} : Classement</h3>
-                <span class="text-[10px] font-mono text-slate-500">Victoires enregistrées</span>
+                <span class="text-[10px] font-mono text-slate-500">${isCasino ? 'Richesse & Tokens' : 'Victoires enregistrées'}</span>
               </div>
             </div>
-            <button onclick="GameShell.closeLeaderboard()" class="text-xl font-bold">✕</button>
+            <button onclick="GameShell.closeLeaderboard()" class="w-8 h-8 rounded-lg border-2 border-[#12131a] bg-slate-100 hover:bg-rose-100 text-[#12131a] flex items-center justify-center text-sm font-black shadow-[1px_2px_0px_#12131a]">✕</button>
           </div>
 
           <div id="shellLeaderboardList" class="space-y-2">
@@ -227,7 +238,7 @@ window.GameShell = {
           </div>
 
           <div id="shellLeaderboardExpandWrapper" class="mt-3 hidden">
-            <button onclick="GameShell.toggleFullLeaderboard()" id="shellBtnExpandLeaderboard" class="w-full neo-btn bg-white hover:bg-slate-50 text-[#12131a] py-2 rounded-xl text-xs font-black">
+            <button onclick="GameShell.toggleFullLeaderboard()" id="shellBtnExpandLeaderboard" class="w-full neo-btn bg-white hover:bg-slate-50 border-2 border-[#12131a] text-[#12131a] py-2 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
               Voir le classement complet ▼
             </button>
           </div>
@@ -236,6 +247,12 @@ window.GameShell = {
     `;
 
     document.body.insertAdjacentHTML('afterbegin', shellHtml);
+
+    // Permettre de fermer les modales en cliquant sur l'arrière-plan
+    const mRules = document.getElementById('shellModalRules');
+    const mLead = document.getElementById('shellModalLeaderboard');
+    if (mRules) mRules.addEventListener('click', e => { if (e.target === mRules) this.closeRules(); });
+    if (mLead) mLead.addEventListener('click', e => { if (e.target === mLead) this.closeLeaderboard(); });
 
     document.addEventListener('click', (e) => {
       const dropdown = document.getElementById('shellUsersDropdown');
@@ -350,7 +367,7 @@ window.GameShell = {
     }
   },
 
-  /* ---------------- SCORES ---------------- */
+  /* ---------------- SCORES / RÉSULTATS GÉNÉRIQUES ---------------- */
   async recordResult(winnerRole) {
     const snap = await this.roomRef.once('value');
     const room = snap.val();
@@ -400,10 +417,12 @@ window.GameShell = {
 
   /* ---------------- INVITATIONS (SANS ALERT, MAX 3 EN BAS À DROITE) ---------------- */
   async sendDirectInvite(targetTag) {
-    if (!this.currentRoomCode) {
+    if (!this.currentRoomCode && this.theme !== 'casino') {
       alert("Crée d'abord une salle avant d'inviter un camarade !");
       return;
     }
+    
+    const roomCodeParam = this.currentRoomCode || 'CASINO';
 
     const newInviteRef = db.ref(`invitations/${targetTag}`).push();
     await newInviteRef.set({
@@ -412,10 +431,12 @@ window.GameShell = {
       fromNick: this.currentUser.nickname,
       gameId: this.gameId,
       gameTitle: this.gameTitle,
-      roomCode: this.currentRoomCode,
+      roomCode: roomCodeParam,
       timestamp: Date.now()
     });
-    // Notification de navigateur alert(...) retirée !
+    
+    const dropdown = document.getElementById('shellUsersDropdown');
+    if(dropdown) dropdown.classList.add('hidden');
   },
 
   listenStackedInvitations() {
@@ -432,32 +453,41 @@ window.GameShell = {
       const allInvites = Object.entries(data).map(([key, val]) => ({ ...val, key }));
       const recentInvites = allInvites.slice(-3); // Maximum 3
 
-      stackContainer.innerHTML = recentInvites.map(inv => `
+      stackContainer.innerHTML = recentInvites.map(inv => {
+        const isCasinoRoom = inv.gameId === 'casino';
+        const displayRoom = isCasinoRoom ? '' : `(Salle <strong>${inv.roomCode}</strong>)`;
+        
+        return `
         <div id="inviteCard_${inv.key}" class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
           <div class="min-w-0">
             <span class="text-xs font-black text-[#12131a] block truncate">
               ${this.escapeHtml(inv.fromNick)} t'invite !
             </span>
             <span class="text-[10px] font-bold text-slate-700 block truncate">
-              ${this.escapeHtml(inv.gameTitle)} (Salle <strong>${inv.roomCode}</strong>)
+              ${this.escapeHtml(inv.gameTitle)} ${displayRoom}
             </span>
           </div>
 
           <div class="flex items-center gap-1.5 flex-shrink-0">
-            <button onclick="GameShell.acceptInvite('${inv.gameId}', '${inv.roomCode}', '${inv.key}')" class="neo-btn bg-[#00e599] hover:bg-[#00c985] text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black">
+            <button onclick="GameShell.acceptInvite('${inv.gameId}', '${inv.roomCode}', '${inv.key}')" class="neo-btn bg-[#00e599] hover:bg-[#00c985] border-2 border-[#12131a] text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               Rejoindre
             </button>
-            <button onclick="GameShell.dismissInvite('${inv.key}')" class="neo-btn bg-white hover:bg-slate-100 text-slate-700 px-2 py-1 rounded-xl text-xs font-bold">
+            <button onclick="GameShell.dismissInvite('${inv.key}')" class="neo-btn bg-white hover:bg-rose-100 border-2 border-[#12131a] text-[#12131a] px-2 py-1 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               ✕
             </button>
           </div>
         </div>
-      `).join('');
+      `}).join('');
     });
   },
 
   acceptInvite(gameId, roomCode, inviteKey) {
     this.dismissInvite(inviteKey);
+    if (gameId === 'casino') {
+      window.location.href = `/games/casino/index.html`;
+      return;
+    }
+    
     if (gameId === this.gameId) {
       window.location.hash = `room=${roomCode}`;
       this.joinRoom(roomCode);
@@ -478,11 +508,20 @@ window.GameShell = {
     modal.classList.remove('hidden');
     this.isLeaderboardExpanded = false;
 
-    db.ref(`scores/${this.gameId}`).once('value', snap => {
-      const data = snap.val() || {};
-      this.fullLeaderboardData = Object.values(data).sort((a, b) => (b.wins || 0) - (a.wins || 0));
-      this.renderLeaderboardRows();
-    });
+    if (this.theme === 'casino' && window.CasinoAPI) {
+      // Pour le casino, on interroge sa propre base
+      db.ref('casino/users').once('value', snap => {
+        const data = snap.val() || {};
+        this.fullLeaderboardData = Object.values(data).sort(CasinoAPI.sortCasinoPlayers);
+        this.renderLeaderboardRows();
+      });
+    } else {
+      db.ref(`scores/${this.gameId}`).once('value', snap => {
+        const data = snap.val() || {};
+        this.fullLeaderboardData = Object.values(data).sort((a, b) => (b.wins || 0) - (a.wins || 0));
+        this.renderLeaderboardRows();
+      });
+    }
   },
 
   renderLeaderboardRows() {
@@ -491,7 +530,7 @@ window.GameShell = {
     const btnExpand = document.getElementById('shellBtnExpandLeaderboard');
 
     if (this.fullLeaderboardData.length === 0) {
-      container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Aucune partie enregistrée.</p>`;
+      container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-4">Aucune donnée enregistrée.</p>`;
       expandWrapper.classList.add('hidden');
       return;
     }
@@ -499,37 +538,56 @@ window.GameShell = {
     const listToDisplay = this.isLeaderboardExpanded 
       ? this.fullLeaderboardData 
       : this.fullLeaderboardData.slice(0, 5);
+      
+    const isCasino = this.theme === 'casino';
 
     container.innerHTML = listToDisplay.map((p, idx) => {
-      let cardStyle = "bg-slate-50 border-2 border-slate-200";
+      let cardStyle = "bg-slate-50 border-2 border-[#12131a]";
+      
       let rankBadge = `<span class="font-black text-xs w-5 text-center text-slate-400">${idx + 1}.</span>`;
 
       if (idx === 0) {
         cardStyle = "bg-[#fef08a] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
-        rankBadge = `<span class="text-base">🥇</span>`;
+        rankBadge = `<span class="text-base">👑</span>`;
       } else if (idx === 1) {
         cardStyle = "bg-[#e2e8f0] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
         rankBadge = `<span class="text-base">🥈</span>`;
       } else if (idx === 2) {
         cardStyle = "bg-[#fed7aa] border-[2.5px] border-[#12131a] shadow-[2px_3px_0px_#12131a]";
         rankBadge = `<span class="text-base">🥉</span>`;
+      } else if (idx === this.fullLeaderboardData.length - 1 && this.fullLeaderboardData.length > 3) {
+        // Le dernier
+        cardStyle = "bg-rose-100 border-[2px] border-rose-400";
+        rankBadge = `<span class="text-base" title="Dernier">🫏</span>`;
+      }
+
+      let scoreHtml = '';
+      if (isCasino) {
+        scoreHtml = `
+          <div class="text-right flex-shrink-0 flex flex-col items-end">
+            <span class="text-sm font-black text-emerald-700">${p.balance} $</span>
+            <span class="text-[10px] font-mono text-slate-500 font-bold">${p.tokensUsed} token${p.tokensUsed > 1 ? 's' : ''}</span>
+          </div>`;
+      } else {
+        scoreHtml = `
+          <div class="text-right flex-shrink-0">
+            <span class="text-xs font-black text-[#12131a]">${p.wins || 0} victoire${(p.wins || 0) > 1 ? 's' : ''}</span>
+          </div>`;
       }
 
       return `
-        <div class="rounded-2xl p-2.5 flex items-center justify-between gap-2.5 ${cardStyle}">
+        <div class="rounded-xl p-2.5 flex items-center justify-between gap-2.5 ${cardStyle}">
           <div class="flex items-center gap-2 min-w-0">
             ${rankBadge}
             <span class="w-8 h-8 rounded-xl bg-white border border-[#12131a] flex items-center justify-center text-sm shadow-[1px_1px_0px_#12131a] flex-shrink-0">
               ${p.avatarEmoji || '🍺'}
             </span>
-            <div class="min-w-0">
-              <div class="text-xs font-black text-[#12131a] truncate">${this.escapeHtml(p.nickname)}</div>
-              <div class="text-[9px] font-mono text-slate-500 truncate">@${this.escapeHtml(p.tag)}</div>
+            <div class="min-w-0 flex flex-col justify-center">
+              <div class="text-xs font-black text-[#12131a] truncate leading-tight">${this.escapeHtml(p.nickname)}</div>
+              <div class="text-[9px] font-mono text-slate-500 truncate leading-tight mt-0.5">@${this.escapeHtml(p.tag)}</div>
             </div>
           </div>
-          <div class="text-right flex-shrink-0">
-            <span class="text-xs font-black text-[#12131a]">${p.wins || 0} victoire${(p.wins || 0) > 1 ? 's' : ''}</span>
-          </div>
+          ${scoreHtml}
         </div>
       `;
     }).join('');
@@ -619,7 +677,7 @@ window.GameShell = {
           </div>
 
           ${!isMe ? `
-            <button onclick="GameShell.sendDirectInvite('${u.tag}')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-2.5 py-1 rounded-xl text-[10px] font-black flex-shrink-0">
+            <button onclick="GameShell.sendDirectInvite('${u.tag}')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] border-2 border-[#12131a] text-[#12131a] px-2.5 py-1 rounded-xl text-[10px] font-black flex-shrink-0 shadow-[2px_2px_0px_#12131a]">
               Inviter
             </button>
           ` : ''}
@@ -656,6 +714,14 @@ window.GameShell = {
         const mentionedMe = this.isUserMentionedInText(m.text);
 
         if (m.isInvite) {
+          const isCasino = m.internalGame === 'casino';
+          const joinBtn = isCasino 
+            ? `<button onclick="window.location.href='/games/casino/index.html'" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">Aller au Casino ➔</button>`
+            : (m.internalGame 
+                ? `<button onclick="GameShell.acceptInvite('${m.internalGame}', '${m.internalRoom}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">Rejoindre la salle ${m.internalRoom} ➔</button>`
+                : `<a href="${m.roomUrl}" target="_blank" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black block text-center">Rejoindre la partie ↗</a>`
+              );
+
           return `
             <div class="neo-box bg-[#fed72d] p-2.5 text-[#12131a] space-y-1.5 ${mentionedMe ? 'ring-2 ring-rose-500' : ''}">
               <div class="flex items-center justify-between text-[11px] font-black">
@@ -665,15 +731,7 @@ window.GameShell = {
               <div class="bg-white border-2 border-[#12131a] p-2 rounded-xl text-xs shadow-[2px_2px_0px_#12131a]">
                 <div class="font-black text-[11px] mb-1">🎮 ${this.escapeHtml(m.gameTitle)}</div>
                 <p class="text-[10px] font-bold text-slate-700 italic mb-2">« ${this.formatChatMessageWithMentions(m.text)} »</p>
-                ${m.internalGame ? `
-                  <button onclick="GameShell.acceptInvite('${m.internalGame}', '${m.internalRoom}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">
-                    Rejoindre la salle ${m.internalRoom} ➔
-                  </button>
-                ` : `
-                  <a href="${m.roomUrl}" target="_blank" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black block text-center">
-                    Rejoindre la partie ↗
-                  </a>
-                `}
+                ${joinBtn}
               </div>
             </div>
           `;
@@ -718,10 +776,16 @@ window.GameShell = {
   },
 
   announceGameInChat() {
-    if (!this.currentRoomCode || !this.currentUser) {
+    if (!this.currentRoomCode && this.theme !== 'casino') {
       alert("Crée d'abord une salle !");
       return;
     }
+    
+    const isCasino = this.theme === 'casino';
+    const textMsg = isCasino 
+      ? `@promo Je suis au Casino ! Rejoignez-moi sur les tables de jeu !` 
+      : `@promo Je lance une partie de ${this.gameTitle} ! Rejoins avec le code : ${this.currentRoomCode}`;
+      
     db.ref('chat').push({
       authorNick: this.currentUser.nickname,
       authorTag: this.currentUser.tag,
@@ -730,12 +794,12 @@ window.GameShell = {
       isInvite: true,
       gameTitle: this.gameTitle,
       internalGame: this.gameId,
-      internalRoom: this.currentRoomCode,
-      text: `@promo Je lance une partie de ${this.gameTitle} ! Rejoins avec le code : ${this.currentRoomCode}`,
+      internalRoom: this.currentRoomCode || 'CASINO',
+      text: textMsg,
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       timestamp: Date.now()
     });
-    alert("Partie annoncée dans le chat général !");
+    alert("Annonce envoyée dans le chat général !");
   },
 
   handleChatInput(e) {
@@ -824,7 +888,7 @@ window.GameShell = {
       if (isMe || isPromo) {
         return `${space}<span onclick="GameShell.mentionUserInInput('${tag}')" class="cursor-pointer inline-block bg-[#ff2a5f] text-white border border-[#12131a] px-1.5 py-0.2 rounded font-mono text-[10px] font-black shadow-[1px_1px_0px_#12131a]">@${tag}</span>`;
       }
-      return `${space}<span onclick="GameShell.mentionUserInInput('${tag}')" class="cursor-pointer inline-block bg-[#fed72d] text-[#12131a] border border-[#12131a] px-1.5 py-0.2 rounded font-mono text-[10px] font-black">@${tag}</span>`;
+      return `${space}<span onclick="GameShell.mentionUserInInput('${tag}')" class="cursor-pointer inline-block bg-[#fed72d] text-[#12131a] border border-[#12131a] px-1.5 py-0.2 rounded font-mono text-[10px] font-black shadow-[1px_1px_0px_#12131a]">@${tag}</span>`;
     });
   },
 
