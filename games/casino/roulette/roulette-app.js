@@ -1,11 +1,9 @@
 /* =========================================================
-   IMB CASINO - ROULETTE APP (Sauvegarde Firebase Directe)
-   Cycle : Mise -> Rotation -> Résultat -> Écriture immédiate DB (+X / -X)
+   IMB CASINO - ROULETTE APP (v3 - Invitations Multi, Dette Fictive & Bonus 200$)
    ========================================================= */
 (function () {
   'use strict';
 
-  // Ordre officiel des 37 numéros sur un cylindre de Roulette Européenne
   const WHEEL_SEQUENCE = [
     0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
     5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
@@ -14,10 +12,10 @@
   const BIG_WIN_THRESHOLD = 500;
 
   let myUser = null;
-  let myProfile = { balance: 1000, tokens: 0, tokensUsed: 0 };
+  let myProfile = { balance: 1000, tokens: 0, tokensUsed: 0, debt: 0, lastDailyDate: null };
   let isSessionBootstrapped = false;
 
-  let activeChip = 50; // 10, 50, 100, 500 ou 'MAX'
+  let activeChip = 50;
   let currentBets = {};
   let previousBets = {};
   let isSpinning = false;
@@ -34,7 +32,7 @@
   let autoTimerInterval = null;
   let autoTimerSeconds = 20;
 
-  /* ---------------- 1. INITIALISATION DU JEU ET DU PROFIL CASINO ---------------- */
+  /* ---------------- 1. INITIALISATION DU JEU ET DU SHELL ---------------- */
   window.addEventListener('DOMContentLoaded', () => {
     buildWheelSvg();
     buildInsideBetGrid();
@@ -47,15 +45,15 @@
       theme: 'casino',
       rulesHtml: `
         <p>• 🎡 <strong>Roulette Européenne :</strong> 37 cases numérotées de <strong>0</strong> (vert) à <strong>36</strong> (18 rouges, 18 noires).</p>
-        <p>• 💰 <strong>Barème des gains :</strong></p>
-        <p class="pl-3">– <strong>Numéro plein (0 à 36) :</strong> ×36 ta mise</p>
-        <p class="pl-3">– <strong>Douzaines (1-12, 13-24, 25-36) & Colonnes (2:1) :</strong> ×3 ta mise</p>
-        <p class="pl-3">– <strong>Chances simples (Rouge/Noir, Pair/Impair, 1-18/19-36) :</strong> ×2 ta mise</p>
-        <p>• 💵 <strong>Mise & Solde :</strong> Ton solde est mis à jour en direct dans la base de données dès que la roue s'arrête sur le numéro gagnant.</p>
-        <p>• 🏧 <strong>ATM :</strong> Si ton solde est ≤ 200 $, utilise le bouton ATM directement en haut de la table pour recevoir +1 000 $ (+1 Token, max 20).</p>
+        <p>• 💰 <strong>Barème des gains :</strong> Plein (×36), Douzaines & Colonnes (×3), Chances simples (×2).</p>
+        <p>• 🎁 <strong>Bonus quotidien :</strong> +200 $ offerts chaque jour où tu te connectes.</p>
+        <p>• 🏧 <strong>ATM & Dette fictive :</strong> Sans limite de tokens ! Si ton solde est ≤ 200 $, prends un Token (+1 000 $). La différence <strong>(1 000 $ − ton solde restant)</strong> s'ajoute à ta dette fictive, remboursable à tout moment.</p>
       `,
       onGameInit: (user) => {
         bootstrapPlayerSession(user);
+      },
+      onJoinRoom: (code) => {
+        joinMultiplayerRoom(code, false);
       }
     });
 
@@ -102,73 +100,25 @@
     if (nickEl) nickEl.textContent = user.nickname || user.tag;
 
     try {
-      const userCasinoRef = db.ref(`casino/users/${user.tag}`);
-      const snap = await userCasinoRef.once('value');
-
-      if (!snap.exists()) {
-        const initialData = {
-          tag: user.tag,
-          nickname: user.nickname || user.tag,
-          avatarEmoji: user.avatarEmoji || '🍺',
-          flagEmoji: user.flagEmoji || '🇫🇷',
-          balance: 1000,
-          tokens: 0,
-          tokensUsed: 0,
-          timestamp: Date.now(),
-          createdAt: Date.now()
-        };
-        await userCasinoRef.set(initialData);
-        myProfile = initialData;
-      } else {
-        const existing = snap.val();
-        const validBalance = (typeof existing.balance === 'number' && !isNaN(existing.balance))
-          ? Math.max(0, existing.balance)
-          : 1000;
-        const validTokens = Number(existing.tokens ?? existing.tokensUsed ?? 0);
-
-        myProfile = {
-          ...existing,
-          tag: user.tag,
-          nickname: user.nickname || existing.nickname || user.tag,
-          avatarEmoji: user.avatarEmoji || existing.avatarEmoji || '🍺',
-          flagEmoji: user.flagEmoji || existing.flagEmoji || '🇫🇷',
-          balance: validBalance,
-          tokens: validTokens,
-          tokensUsed: validTokens
-        };
-
-        await userCasinoRef.update({
-          tag: myProfile.tag,
-          nickname: myProfile.nickname,
-          avatarEmoji: myProfile.avatarEmoji,
-          flagEmoji: myProfile.flagEmoji,
-          balance: validBalance,
-          tokens: validTokens,
-          tokensUsed: validTokens
-        });
-      }
-
-      // Écoute en temps réel sans couper les autres écouteurs (pas de .off() global)
-      userCasinoRef.on('value', (s) => {
-        const val = s.val();
+      await CasinoAPI.initPlayerProfile(user);
+      CasinoAPI.subscribeProfile((val) => {
         if (!val) return;
         myProfile = val;
         renderBetsAndBalanceUI();
       });
     } catch (err) {
-      console.error('Erreur accès Firebase casino/users (vérifie les règles Firebase) :', err);
-      showToast('Erreur permissions Firebase : ajoute "casino" dans tes règles Firebase !', '⚠️');
+      console.error('Erreur initialisation profil Casino :', err);
     }
 
     renderBetsAndBalanceUI();
 
     const match = window.location.hash.match(/room=([A-Z0-9]{4})/i);
     if (match) {
-      joinMultiplayerRoom(match[1].toUpperCase());
+      joinMultiplayerRoom(match[1].toUpperCase(), false);
     }
   }
 
-  /* ---------------- 2. SAUVEGARDE IMMÉDIATE DU SOLDE SUR FIREBASE (+50 / -50) ---------------- */
+  /* ---------------- 2. SAUVEGARDE IMMÉDIATE DU SOLDE SUR FIREBASE ---------------- */
   async function commitBalanceDeltaToFirebase(deltaAmount) {
     const delta = Math.round(Number(deltaAmount));
     if (isNaN(delta) || delta === 0) {
@@ -176,21 +126,17 @@
       return getRealBalance();
     }
 
-    // S'assurer d'avoir l'utilisateur avant d'écrire
     if (!myUser) {
       myUser = (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
     }
 
     const currentBal = getRealBalance();
     const nextBal = Math.max(0, currentBal + delta);
-
-    // 1. Mise à jour locale instantanée
     myProfile.balance = nextBal;
     renderBetsAndBalanceUI();
 
     if (!myUser || !myUser.tag) return nextBal;
 
-    // 2. Écriture directe et immédiate dans Firebase Realtime Database
     try {
       const userCasinoRef = db.ref(`casino/users/${myUser.tag}`);
       const snap = await userCasinoRef.once('value');
@@ -201,6 +147,7 @@
         : currentBal;
       const finalBalance = Math.max(0, baseBal + delta);
       const tokensCount = Number(serverData?.tokens ?? serverData?.tokensUsed ?? myProfile.tokens ?? 0);
+      const debtAmount = Number(serverData?.debt ?? myProfile.debt ?? 0);
 
       await userCasinoRef.update({
         tag: myUser.tag,
@@ -210,6 +157,7 @@
         balance: finalBalance,
         tokens: tokensCount,
         tokensUsed: tokensCount,
+        debt: debtAmount,
         timestamp: Date.now()
       });
 
@@ -218,7 +166,6 @@
       return finalBalance;
     } catch (err) {
       console.error('Échec écriture Firebase :', err);
-      showToast('Sauvegarde refusée par Firebase (vérifie tes règles "casino") !', '⚠️');
       return nextBal;
     }
   }
@@ -228,7 +175,7 @@
     const svg = document.getElementById('rouletteWheelSvg');
     if (!svg) return;
 
-    const total = WHEEL_SEQUENCE.length; // 37 cases
+    const total = WHEEL_SEQUENCE.length;
     const sliceDeg = 360 / total;
     const outerRadius = 154;
     const textRadius = 123;
@@ -359,7 +306,7 @@
     grid.innerHTML = html;
   }
 
-  /* ---------------- 5. DÉDUCTION DU SOLDE EN DIRECT & MISES ---------------- */
+  /* ---------------- 5. DÉDUCTION DU SOLDE EN DIRECT, ATM ILLIMITÉ & DETTE ---------------- */
   function getRealBalance() {
     if (myProfile && typeof myProfile.balance === 'number' && !isNaN(myProfile.balance)) {
       return Math.max(0, myProfile.balance);
@@ -497,14 +444,19 @@
     const totalBet = getTotalBet();
     const availableBalance = Math.max(0, realBalance - totalBet);
     const tok = Number(myProfile?.tokens ?? myProfile?.tokensUsed ?? 0);
+    const debt = Number(myProfile?.debt ?? 0);
 
     const hudBalEl = document.getElementById('hudBalanceValue');
     const hudSubEl = document.getElementById('hudBettingSub');
     const hudTokEl = document.getElementById('hudTokensValue');
+    const hudDebtEl = document.getElementById('hudDebtValue');
+    const modalDebtEl = document.getElementById('modalDebtCurrent');
     const balPill = document.getElementById('hudBalancePill');
 
     if (hudBalEl) hudBalEl.textContent = availableBalance.toLocaleString('fr-FR');
     if (hudTokEl) hudTokEl.textContent = tok;
+    if (hudDebtEl) hudDebtEl.textContent = debt.toLocaleString('fr-FR');
+    if (modalDebtEl) modalDebtEl.textContent = `${debt.toLocaleString('fr-FR')} $`;
 
     if (hudSubEl) {
       if (totalBet > 0) {
@@ -520,18 +472,29 @@
     if (totalBetEl) totalBetEl.textContent = `${totalBet.toLocaleString('fr-FR')} $`;
     if (remBalEl) remBalEl.textContent = `${availableBalance.toLocaleString('fr-FR')} $`;
 
+    // Bouton Bonus Quotidien (+200$/j)
+    const dailyBtn = document.getElementById('btnDailyBonusRoulette');
+    if (dailyBtn && window.CasinoAPI) {
+      if (CasinoAPI.canClaimDailyBonus(myProfile)) {
+        dailyBtn.classList.remove('hidden');
+      } else {
+        dailyBtn.classList.add('hidden');
+      }
+    }
+
+    // État du bouton ATM (Sans limite de tokens, actif dès que solde <= 200$)
     const atmBtn = document.getElementById('btnInGameAtm');
     const atmText = document.getElementById('btnInGameAtmText');
     if (balPill && atmBtn && atmText) {
       balPill.classList.remove('low', 'betting');
-      if (realBalance <= 200 && tok < 20) {
+      if (realBalance <= 200) {
         balPill.classList.add('low');
-        atmBtn.className = 'neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a] animate-pulse';
+        atmBtn.className = 'neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a] animate-pulse';
         atmText.textContent = 'ATM Dispo (+1 000 $)';
       } else {
         if (totalBet > 0) balPill.classList.add('betting');
-        atmBtn.className = 'neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]';
-        atmText.textContent = tok >= 20 ? 'ATM (20/20 max)' : 'ATM (si ≤ 200 $)';
+        atmBtn.className = 'neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]';
+        atmText.textContent = 'ATM (si ≤ 200 $)';
       }
     }
 
@@ -549,52 +512,66 @@
 
   async function useAtmInGame() {
     if (isSpinning) return;
-    const realBalance = getRealBalance();
-    const tok = Number(myProfile?.tokens ?? myProfile?.tokensUsed ?? 0);
-
-    if (realBalance > 200) {
-      showToast(`ATM verrouillé : ton solde réel (${realBalance.toLocaleString('fr-FR')} $) doit être ≤ 200 $.`, '🔒');
+    const res = await CasinoAPI.useATM();
+    if (!res.ok) {
+      showToast(res.error || 'ATM verrouillé (solde > 200 $).', '🔒');
       return;
     }
-    if (tok >= 20) {
-      showToast('Limite de 20/20 Tokens atteinte !', '🚫');
+    myProfile = res.profile;
+    renderBetsAndBalanceUI();
+    GameShell.fireConfetti();
+    showToast(`+1 000 $ reçus ! (+${res.addedDebt.toLocaleString('fr-FR')} $ ajoutés à ta dette fictive)`, '💵');
+  }
+
+  async function claimDailyInGame() {
+    const res = await CasinoAPI.claimDailyBonus();
+    if (!res.ok) {
+      showToast(res.error, '⏳');
       return;
     }
+    myProfile = res.profile;
+    renderBetsAndBalanceUI();
+    GameShell.fireConfetti();
+    showToast('🎁 Bonus quotidien de +200 $ crédité !', '💰');
+  }
 
-    if (!myUser) {
-      myUser = (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
+  function openDebtModal() {
+    document.getElementById('rouletteDebtModal').classList.remove('hidden');
+  }
+
+  function closeDebtModal() {
+    document.getElementById('rouletteDebtModal').classList.add('hidden');
+  }
+
+  async function repayCustomFromModal() {
+    const input = document.getElementById('inputModalRepay');
+    const amount = Number(input.value);
+    const res = await CasinoAPI.repayDebt(amount);
+    if (!res.ok) {
+      showToast(res.error, '⚠️');
+      return;
     }
-    if (!myUser || !myUser.tag) return;
+    input.value = '';
+    myProfile = res.profile;
+    renderBetsAndBalanceUI();
+    showToast(`Remboursement de ${res.paidAmount.toLocaleString('fr-FR')} $ effectué !`, '🏦');
+  }
 
-    try {
-      const ref = db.ref(`casino/users/${myUser.tag}`);
-      const snap = await ref.once('value');
-      const cur = snap.val() || myProfile;
-      const newBal = Math.max(0, Number(cur.balance ?? realBalance)) + 1000;
-      const newTok = Number(cur.tokens ?? cur.tokensUsed ?? tok) + 1;
-
-      await ref.update({
-        tag: myUser.tag,
-        nickname: myUser.nickname || myUser.tag,
-        avatarEmoji: myUser.avatarEmoji || '🍺',
-        flagEmoji: myUser.flagEmoji || '🇫🇷',
-        balance: newBal,
-        tokens: newTok,
-        tokensUsed: newTok,
-        timestamp: Date.now(),
-        lastAtmAt: Date.now()
-      });
-
-      myProfile.balance = newBal;
-      myProfile.tokens = newTok;
-      myProfile.tokensUsed = newTok;
-      renderBetsAndBalanceUI();
-      GameShell.fireConfetti();
-      showToast(`+1 000 $ crédités ! (Token ${newTok}/20)`, '💵');
-    } catch (e) {
-      console.error('Erreur ATM :', e);
-      showToast('Erreur permissions Firebase lors du retrait ATM.', '⚠️');
+  async function repayMaxFromModal() {
+    const maxPayable = Math.min(getAvailableBalance(), Number(myProfile.debt || 0));
+    if (maxPayable <= 0) {
+      showToast("Aucune dette à rembourser ou solde disponible insuffisant.", 'ℹ️');
+      return;
     }
+    const res = await CasinoAPI.repayDebt(maxPayable);
+    if (!res.ok) {
+      showToast(res.error, '⚠️');
+      return;
+    }
+    myProfile = res.profile;
+    renderBetsAndBalanceUI();
+    closeDebtModal();
+    showToast(`Dette remboursée de ${res.paidAmount.toLocaleString('fr-FR')} $ !`, '✅');
   }
 
   /* ---------------- 6. LANCEMENT DE LA ROUE, ROTATION & RÉSULTAT ---------------- */
@@ -690,9 +667,8 @@
 
       if (participated) {
         const payout = RouletteEngine.calculateWinnings(winningNumber, myBetsSnapshot);
-        const netDelta = payout - totalBet; // +X si gagné, -totalBet si perdu
+        const netDelta = payout - totalBet;
 
-        // Vider le tapis et enregistrer immédiatement le nouveau solde sur Firebase
         currentBets = {};
         await commitBalanceDeltaToFirebase(netDelta);
         syncRoomBets();
@@ -811,7 +787,7 @@
     }).join('');
   }
 
-  /* ---------------- 7. MODE SALON MULTIJOUEUR & AUTO-CROUPIER 20S ---------------- */
+  /* ---------------- 7. MODE SALON MULTIJOUEUR & INVITATIONS DIRECTES ---------------- */
   function openRoomModal() {
     document.getElementById('rouletteRoomModal').classList.remove('hidden');
   }
@@ -842,12 +818,15 @@
   }
 
   async function joinMultiplayerRoom(code, isCreating = false) {
-    const user = myUser || (window.GameShell && GameShell.currentUser);
+    const user = myUser || (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
     if (!user) return;
     if (roomRef) roomRef.off();
 
+    code = code.trim().toUpperCase();
     currentRoomCode = code;
-    if (window.GameShell) GameShell.currentRoomCode = code;
+    if (window.GameShell) {
+      GameShell.currentRoomCode = code;
+    }
     window.location.hash = `room=${code}`;
 
     roomRef = db.ref(`rooms/casino-roulette/${code}`);
@@ -892,7 +871,19 @@
       }
     });
 
-    showToast(`Connecté au salon Roulette #${code} !`, '👥');
+    showToast(`Connecté au salon Roulette #${code} ! Tu peux inviter tes camarades.`, '👥');
+  }
+
+  function shareRoomInChat() {
+    if (!currentRoomCode) {
+      showToast("Crée d'abord un salon multijoueur !", '⚠️');
+      return;
+    }
+    if (window.GameShell) {
+      GameShell.currentRoomCode = currentRoomCode;
+      GameShell.announceGameInChat();
+      showToast(`Invitation pour le salon #${currentRoomCode} envoyée dans le chat général !`, '📢');
+    }
   }
 
   function switchToSolo() {
@@ -1117,11 +1108,17 @@
     doubleBets,
     spinWheel,
     useAtmInGame,
+    claimDailyInGame,
+    openDebtModal,
+    closeDebtModal,
+    repayCustomFromModal,
+    repayMaxFromModal,
     toggleSound,
     openRoomModal,
     closeRoomModal,
     createMultiplayerRoom,
     joinMultiplayerRoomFromInput,
+    shareRoomInChat,
     switchToSolo,
     toggleAutoTimer,
     sendCasinoChatMessage,
