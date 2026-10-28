@@ -1,5 +1,5 @@
 /* =========================================================
-   IMB CASINO - ROULETTE STYLES (Compact Single-Screen PC)
+   IMB CASINO - ROULETTE STYLES (Single-Screen PC & Rotor Fix)
    ========================================================= */
 body.roulette-body {
   background-color: #047857;
@@ -23,6 +23,11 @@ body.roulette-body {
   border-radius: 14px;
   padding: 4px 8px;
   box-shadow: 3px 4px 0px #12131a;
+  transition: transform 0.15s ease;
+}
+
+.roulette-hud-box.hud-flash {
+  transform: scale(1.05);
 }
 
 .hud-pill {
@@ -40,6 +45,11 @@ body.roulette-body {
 .hud-pill.balance {
   background: #dcfce7;
   color: #064e3b;
+}
+
+.hud-pill.balance.betting {
+  background: #fef08a;
+  color: #12131a;
 }
 
 .hud-pill.balance.low {
@@ -61,8 +71,8 @@ body.roulette-body {
 /* ---------- VRAIE ROUE DE ROULETTE ROTATIVE ---------- */
 .wheel-stage {
   position: relative;
-  width: 245px;
-  height: 245px;
+  width: 250px;
+  height: 250px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -71,8 +81,8 @@ body.roulette-body {
 
 @media (min-width: 1280px) {
   .wheel-stage {
-    width: 265px;
-    height: 265px;
+    width: 270px;
+    height: 270px;
   }
 }
 
@@ -88,14 +98,26 @@ body.roulette-body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
-.wheel-rotor {
+/* Conteneur DIV qui tourne réellement (compatibilité 100% navigateurs) */
+.wheel-rotor-wrapper {
   width: 100%;
   height: 100%;
   border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   will-change: transform;
+  transformOrigin: 50% 50%;
   transform: rotate(0deg);
+}
+
+.wheel-rotor-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* Flèche d'arrêt en haut (12h) */
@@ -107,9 +129,9 @@ body.roulette-body {
   z-index: 30;
   width: 0;
   height: 0;
-  border-left: 13px solid transparent;
-  border-right: 13px solid transparent;
-  border-top: 24px solid #fed72d;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 26px solid #fed72d;
   filter: drop-shadow(0px 2px 0px #12131a) drop-shadow(0px -2px 0px #12131a);
 }
 
@@ -117,8 +139,8 @@ body.roulette-body {
 .wheel-center-hub {
   position: absolute;
   z-index: 25;
-  width: 74px;
-  height: 74px;
+  width: 78px;
+  height: 78px;
   border-radius: 9999px;
   background: #ffffff;
   border: 3.5px solid #12131a;
@@ -129,6 +151,7 @@ body.roulette-body {
   justify-content: center;
   text-align: center;
   pointer-events: none;
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .wheel-center-hub.red {
@@ -144,6 +167,15 @@ body.roulette-body {
 .wheel-center-hub.green {
   background: #10b981;
   color: #12131a;
+}
+
+.wheel-center-hub.pop {
+  animation: hubPop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes hubPop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.22); }
 }
 
 /* ---------- HISTORIQUE DES NUMÉROS SORTIS ---------- */
@@ -255,14 +287,14 @@ body.roulette-body {
 /* Mise en évidence de la case gagnante sur le tapis */
 .bet-spot.winner-glow {
   outline: 3.5px solid #fed72d;
-  box-shadow: 0 0 0 4px #12131a, 0 0 16px #fed72d;
-  animation: winnerPulse 0.6s ease-in-out infinite alternate;
+  box-shadow: 0 0 0 4px #12131a, 0 0 18px #fed72d;
+  animation: winnerPulse 0.55s ease-in-out infinite alternate;
   z-index: 15;
 }
 
 @keyframes winnerPulse {
   from { transform: scale(1); }
-  to { transform: scale(1.07); }
+  to { transform: scale(1.08); }
 }
 
 /* ---------- JETON POSÉ SUR UNE CASE ---------- */
