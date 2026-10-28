@@ -35,6 +35,13 @@ const INTERNAL_GAMES = {
     bg: '#059669',
     path: '/games/casino/index.html'
   },
+   'pile-poil': {
+    id: 'pile-poil',
+    title: 'Pile Poil',
+    icon: '🥞',
+    bg: '#ff4f6d',
+    path: '/games/pile-poil/index.html'
+  },
   morpion: {
     id: 'morpion',
     title: 'Morpion',
