@@ -1,0 +1,155 @@
+/* =========================================================
+   IMB CASINO - ROULETTE STYLES (Étape 2)
+   ========================================================= */
+body.roulette-body {
+  background-color: #047857;
+  color: #12131a;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Le cylindre / barillet de sélection du numéro gagnant */
+.roulette-wheel-container {
+  background: #0f172a;
+  border: 3.5px solid #12131a;
+  border-radius: 20px;
+  box-shadow: 4px 6px 0px #12131a;
+  overflow: hidden;
+  position: relative;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wheel-strip {
+  display: flex;
+  position: absolute;
+  will-change: transform;
+}
+
+.wheel-cell {
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  border: 2px solid #12131a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  font-size: 20px;
+  color: #ffffff;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+.wheel-cell.red { background-color: #ef4444; }
+.wheel-cell.black { background-color: #1e293b; }
+.wheel-cell.green { background-color: #10b981; }
+
+.wheel-pointer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #fed72d;
+  z-index: 20;
+  box-shadow: 0 0 10px #fed72d;
+}
+
+/* Le tapis de paris de la roulette */
+.roulette-table {
+  background: #065f46;
+  border: 3.5px solid #12131a;
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: 6px 8px 0px #12131a;
+}
+
+.bet-spot {
+  border: 2px solid #12131a;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background-color 0.1s;
+  position: relative;
+  user-select: none;
+  min-height: 44px;
+}
+
+.bet-spot:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+}
+
+.bet-spot:active {
+  transform: translateY(1px);
+}
+
+.bet-spot.red-spot { background-color: #fca5a5; color: #7f1d1d; }
+.bet-spot.red-spot:hover { background-color: #f87171; }
+
+.bet-spot.black-spot { background-color: #cbd5e1; color: #0f172a; }
+.bet-spot.black-spot:hover { background-color: #94a3b8; }
+
+.bet-spot.green-spot { background-color: #6ee7b7; color: #064e3b; }
+
+/* Indicateur de jeton posé sur une case */
+.chip-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #fed72d;
+  color: #12131a;
+  border: 2px solid #12131a;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  box-shadow: 2px 2px 0px #12131a;
+  animation: popChip 0.2s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes popChip {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+/* Sélecteur de jetons actifs */
+.chip-btn {
+  border: 2.5px solid #12131a;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 3px 4px 0px #12131a;
+  transition: transform 0.1s, box-shadow 0.1s;
+  background: #ffffff;
+}
+
+.chip-btn.active {
+  transform: translateY(-4px) scale(1.1);
+  box-shadow: 3px 8px 0px #12131a;
+  background: #fed72d;
+}
+
+.chip-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #12131a;
+}
