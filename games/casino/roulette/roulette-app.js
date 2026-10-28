@@ -1,20 +1,21 @@
 /* =========================================================
-   IMB CASINO - ROULETTE APP (Étapes 3 & 4)
-   Roue SVG rotative avec numéros inscrits, Tapis interactif,
-   ATM intégré, Mode Solo / Salon Multi & Chat Big Wins
+   IMB CASINO - ROULETTE APP (Corrigé & Optimisé Single-Screen)
    ========================================================= */
 (function () {
   'use strict';
 
-  // Ordre officiel des 37 numéros sur un cylindre de Roulette Européenne (sens horaire)
+  // Ordre officiel des 37 numéros sur un cylindre de Roulette Européenne
   const WHEEL_SEQUENCE = [
     0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
     5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
   ];
 
-  const BIG_WIN_THRESHOLD = 500; // Déclenche confettis + alerte Chat général dès 500 $ gagnés
+  const BIG_WIN_THRESHOLD = 500;
 
   let myProfile = null;
+  let myUser = null;
+  let isSessionBootstrapped = false;
+
   let activeChip = 50; // 10, 50, 100, 500 ou 'MAX'
   let currentBets = {};
   let previousBets = {};
@@ -29,10 +30,11 @@
   let roomRef = null;
   let lastProcessedSpinId = null;
 
-  /* ---------------- 1. INITIALISATION DU JEU ET DU SHELL ---------------- */
+  /* ---------------- 1. INITIALISATION DU JEU ET DU PROFIL CASINO ---------------- */
   window.addEventListener('DOMContentLoaded', () => {
     buildWheelSvg();
     buildInsideBetGrid();
+    listenCasinoChat();
 
     GameShell.init({
       gameId: 'casino/roulette',
@@ -47,27 +49,108 @@
         <p>• 🖱️ <strong>Astuce :</strong> Clic gauche pour poser un jeton, clic droit sur une case pour retirer un jeton.</p>
         <p>• 🏧 <strong>ATM :</strong> Si ton solde est ≤ 200 $, utilise le bouton ATM directement en haut de la table pour recevoir +1 000 $ (+1 Token, max 20).</p>
       `,
-      onGameInit: async (user) => {
-        document.getElementById('hudAvatar').textContent = user.avatarEmoji || '🍺';
-        document.getElementById('hudNickname').textContent = user.nickname;
-
-        await CasinoAPI.initPlayerProfile(user);
-
-        CasinoAPI.subscribeProfile((profile) => {
-          myProfile = profile;
-          updateHudAndAtmUI(profile);
-        });
-
-        listenCasinoChat();
-
-        // Vérifier si un code de salon est présent dans l'URL (#room=XXXX)
-        const match = window.location.hash.match(/room=([A-Z0-9]{4})/i);
-        if (match) {
-          joinMultiplayerRoom(match[1].toUpperCase());
-        }
+      onGameInit: (user) => {
+        bootstrapPlayerSession(user);
       }
     });
+
+    // Sécurité supplémentaire : si GameShell n'a pas passé `user` dans onGameInit,
+    // on récupère automatiquement l'utilisateur dès que Firebase Auth / GameShell est prêt.
+    waitForResolvedUser().then((user) => {
+      if (user) bootstrapPlayerSession(user);
+    });
   });
+
+  function waitForResolvedUser() {
+    return new Promise((resolve) => {
+      if (window.GameShell && GameShell.currentUser) {
+        return resolve(GameShell.currentUser);
+      }
+      const iv = setInterval(async () => {
+        if (window.GameShell && GameShell.currentUser) {
+          clearInterval(iv);
+          return resolve(GameShell.currentUser);
+        }
+        if (typeof firebase !== 'undefined' && firebase.auth().currentUser) {
+          try {
+            const uid = firebase.auth().currentUser.uid;
+            const snap = await db.ref(`users/${uid}`).once('value');
+            if (snap.exists()) {
+              clearInterval(iv);
+              return resolve(snap.val());
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }, 100);
+    });
+  }
+
+  async function bootstrapPlayerSession(userParam) {
+    const user = userParam || (window.GameShell && GameShell.currentUser);
+    if (!user || !user.tag || isSessionBootstrapped) return;
+    isSessionBootstrapped = true;
+    myUser = user;
+
+    const avatarEl = document.getElementById('hudAvatar');
+    const nickEl = document.getElementById('hudNickname');
+    if (avatarEl) avatarEl.textContent = user.avatarEmoji || '🍺';
+    if (nickEl) nickEl.textContent = user.nickname || user.tag;
+
+    // Initialisation garantie du profil dans casino/users/<tag>
+    const userCasinoRef = db.ref(`casino/users/${user.tag}`);
+    const snap = await userCasinoRef.once('value');
+
+    if (!snap.exists()) {
+      const initialData = {
+        tag: user.tag,
+        nickname: user.nickname || user.tag,
+        avatarEmoji: user.avatarEmoji || '🍺',
+        flagEmoji: user.flagEmoji || '🇫🇷',
+        balance: 1000,
+        tokens: 0,
+        tokensUsed: 0,
+        timestamp: Date.now(),
+        createdAt: Date.now()
+      };
+      await userCasinoRef.set(initialData);
+      myProfile = initialData;
+    } else {
+      const existing = snap.val();
+      if (typeof existing.balance !== 'number' || isNaN(existing.balance)) {
+        existing.balance = 1000;
+        await userCasinoRef.update({ balance: 1000 });
+      }
+      myProfile = existing;
+    }
+
+    // Synchronisation avec CasinoAPI
+    if (window.CasinoAPI && typeof CasinoAPI.initPlayerProfile === 'function') {
+      try {
+        await CasinoAPI.initPlayerProfile(user);
+      } catch (e) {
+        console.warn('Synchronisation directe Firebase utilisée :', e);
+      }
+    }
+
+    // Écoute temps réel directe sur Firebase pour que myProfile soit toujours synchronisé
+    userCasinoRef.off();
+    userCasinoRef.on('value', (s) => {
+      const val = s.val();
+      if (!val) return;
+      myProfile = val;
+      updateHudAndAtmUI(val);
+    });
+
+    updateHudAndAtmUI(myProfile);
+
+    // Rejoindre un salon si l'URL contient #room=XXXX
+    const match = window.location.hash.match(/room=([A-Z0-9]{4})/i);
+    if (match) {
+      joinMultiplayerRoom(match[1].toUpperCase());
+    }
+  }
 
   /* ---------------- 2. CONSTRUCTION DE LA ROUE SVG ROTATIVE ---------------- */
   function buildWheelSvg() {
@@ -83,7 +166,6 @@
     let pathsHtml = '';
 
     WHEEL_SEQUENCE.forEach((num, idx) => {
-      // On centre la case idx=0 (le 0 vert) exactement à -90° (12h, sous le pointeur)
       const startDeg = idx * sliceDeg - 90 - sliceDeg / 2;
       const endDeg = startDeg + sliceDeg;
       const midDeg = startDeg + sliceDeg / 2;
@@ -115,7 +197,6 @@
         'Z'
       ].join(' ');
 
-      // Coordonnées et rotation du numéro inscrit dans la case
       const midRad = (midDeg * Math.PI) / 180;
       const tx = textRadius * Math.cos(midRad);
       const ty = textRadius * Math.sin(midRad);
@@ -139,20 +220,16 @@
       `;
     });
 
-    // Anneau doré intermédiaire
     pathsHtml += `<circle cx="0" cy="0" r="96" fill="none" stroke="#fed72d" stroke-width="2" stroke-dasharray="4 3" opacity="0.85" />`;
     svg.innerHTML = pathsHtml;
   }
 
-  /* ---------------- 3. CONSTRUCTION DU TAPIS DE MISE (AVEC TEXTE SUR CHAQUE CASE) ---------------- */
+  /* ---------------- 3. CONSTRUCTION DU TAPIS DE MISE ---------------- */
   function buildInsideBetGrid() {
     const grid = document.getElementById('insideBetGrid');
     if (!grid) return;
 
-    let html = '';
-
-    // Case 0 (occupe les 3 lignes de la colonne 1)
-    html += `
+    let html = `
       <div
         onclick="RouletteApp.placeBet('straight_0')"
         oncontextmenu="RouletteApp.removeBet(event, 'straight_0')"
@@ -166,7 +243,6 @@
       </div>
     `;
 
-    // Les 3 rangées de 12 numéros + le bouton Colonne (2:1) à droite de chaque rangée
     const rows = [
       { nums: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36], colKey: 'col_3', label: '2:1' },
       { nums: [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35], colKey: 'col_2', label: '2:1' },
@@ -194,7 +270,6 @@
         `;
       });
 
-      // Case Colonne (2:1) au bout de la ligne
       html += `
         <div
           onclick="RouletteApp.placeBet('${rowObj.colKey}')"
@@ -214,9 +289,22 @@
   }
 
   /* ---------------- 4. GESTION DU HUD & ATM EN JEU ---------------- */
+  function getCurrentBalance() {
+    if (myProfile && typeof myProfile.balance === 'number') {
+      return Math.max(0, myProfile.balance);
+    }
+    const apiProf = window.CasinoAPI && typeof CasinoAPI.getCurrentProfile === 'function'
+      ? CasinoAPI.getCurrentProfile()
+      : null;
+    if (apiProf && typeof apiProf.balance === 'number') {
+      return Math.max(0, apiProf.balance);
+    }
+    return 1000;
+  }
+
   function updateHudAndAtmUI(profile) {
     if (!profile) return;
-    const bal = Number(profile.balance ?? 0);
+    const bal = Math.max(0, Number(profile.balance ?? 0));
     const tok = Number(profile.tokens ?? profile.tokensUsed ?? 0);
 
     document.getElementById('hudBalanceValue').textContent = bal.toLocaleString('fr-FR');
@@ -226,17 +314,20 @@
     const atmBtn = document.getElementById('btnInGameAtm');
     const atmText = document.getElementById('btnInGameAtmText');
 
-    if (bal <= CasinoAPI.ATM_THRESHOLD && tok < CasinoAPI.MAX_TOKENS) {
+    const threshold = (window.CasinoAPI && CasinoAPI.ATM_THRESHOLD) || 200;
+    const maxTok = (window.CasinoAPI && CasinoAPI.MAX_TOKENS) || 20;
+
+    if (bal <= threshold && tok < maxTok) {
       balPill.classList.add('low');
-      atmBtn.className = 'neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a] animate-pulse';
-      atmText.textContent = `ATM Dispo (+1 000 $)`;
-    } else if (tok >= CasinoAPI.MAX_TOKENS) {
+      atmBtn.className = 'neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a] animate-pulse';
+      atmText.textContent = 'ATM Dispo (+1 000 $)';
+    } else if (tok >= maxTok) {
       balPill.classList.remove('low');
-      atmBtn.className = 'neo-btn bg-slate-200 text-slate-500 px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5';
+      atmBtn.className = 'neo-btn bg-slate-200 text-slate-500 px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1';
       atmText.textContent = 'ATM (20/20 épuisés)';
     } else {
       balPill.classList.remove('low');
-      atmBtn.className = 'neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a]';
+      atmBtn.className = 'neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]';
       atmText.textContent = 'ATM (si ≤ 200 $)';
     }
 
@@ -244,13 +335,15 @@
   }
 
   async function useAtmInGame() {
-    const res = await CasinoAPI.useATM();
-    if (!res.ok) {
-      showToast(res.error || 'ATM verrouillé.', '⚠️');
-      return;
+    if (window.CasinoAPI && typeof CasinoAPI.useATM === 'function') {
+      const res = await CasinoAPI.useATM();
+      if (!res.ok) {
+        showToast(res.error || 'ATM verrouillé.', '⚠️');
+        return;
+      }
+      GameShell.fireConfetti();
+      showToast(`+1 000 $ crédités ! (Token ${res.tokens}/20)`, '💵');
     }
-    GameShell.fireConfetti();
-    showToast(`+1 000 $ crédités ! (Token ${res.tokens}/${CasinoAPI.MAX_TOKENS})`, '💵');
   }
 
   /* ---------------- 5. GESTION DES JETONS ET DES MISES ---------------- */
@@ -267,18 +360,24 @@
 
   function placeBet(betKey) {
     if (isSpinning) return;
-    const balance = Number(myProfile?.balance ?? 0);
+
+    const balance = getCurrentBalance();
     const totalBet = getTotalBet();
     const remaining = balance - totalBet;
 
+    if (balance <= 0) {
+      showToast('Ton solde est à 0 $ ! Clique sur le bouton ATM (+1 000 $) en haut de la table.', '🏧');
+      return;
+    }
+
     if (remaining <= 0) {
-      showToast('Tu as déjà engagé tout ton solde sur le tapis !', '⚠️');
+      showToast(`Tu as déjà posé tout ton solde (${balance.toLocaleString('fr-FR')} $) sur le tapis !`, '⚠️');
       return;
     }
 
     const amountToAdd = activeChip === 'MAX' ? remaining : Number(activeChip);
     if (amountToAdd > remaining) {
-      showToast(`Solde insuffisant : il te reste ${remaining.toLocaleString('fr-FR')} $ disponibles.`, '⚠️');
+      showToast(`Solde restant insuffisant (${remaining.toLocaleString('fr-FR')} $ disponibles).`, '⚠️');
       return;
     }
 
@@ -317,7 +416,7 @@
       showToast('Aucune mise précédente à rejouer.', 'ℹ️');
       return;
     }
-    const balance = Number(myProfile?.balance ?? 0);
+    const balance = getCurrentBalance();
     if (prevTotal > balance) {
       showToast('Solde insuffisant pour rejouer la mise précédente !', '⚠️');
       return;
@@ -332,7 +431,7 @@
     const totalBet = getTotalBet();
     if (totalBet <= 0) return;
 
-    const balance = Number(myProfile?.balance ?? 0);
+    const balance = getCurrentBalance();
     if (totalBet * 2 > balance) {
       showToast('Solde insuffisant pour doubler tes mises !', '⚠️');
       return;
@@ -364,8 +463,9 @@
 
   function updateBetControlsState() {
     const total = getTotalBet();
-    const balance = Number(myProfile?.balance ?? 0);
+    const balance = getCurrentBalance();
     const btnSpin = document.getElementById('btnSpin');
+    if (!btnSpin) return;
 
     const canSpin = !isSpinning && total > 0 && total <= balance;
     btnSpin.disabled = !canSpin;
@@ -398,9 +498,7 @@
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + duration);
-    } catch (e) {
-      // Ignorer si l'autoplay audio est bloqué
-    }
+    } catch (e) {}
   }
 
   function toggleSound() {
@@ -415,13 +513,12 @@
 
     const winningNumber = Math.floor(Math.random() * 37);
 
-    // Si on est dans un salon multijoueur, publier le tirage pour toute la table
     if (currentRoomCode && roomRef) {
       const spinId = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       await roomRef.child('currentSpin').set({
         spinId,
         winningNumber,
-        launchedBy: GameShell.currentUser?.nickname || 'Joueur',
+        launchedBy: (myUser && myUser.nickname) || 'Joueur',
         timestamp: Date.now()
       });
       return;
@@ -438,7 +535,6 @@
     clearWinnerHighlight();
     updateBetControlsState();
 
-    // Si le joueur a misé sur ce tour, débiter sa mise immédiatement
     let participated = totalBet > 0;
     if (participated) {
       const debit = await CasinoAPI.updateCasinoBalance(-totalBet);
@@ -494,7 +590,6 @@
     const sliceDeg = 360 / 37;
     const targetIdx = WHEEL_SEQUENCE.indexOf(winningNumber);
 
-    // Pour amener targetIdx exactement sous la flèche du haut (12h) :
     const desiredMod = (360 - (targetIdx * sliceDeg)) % 360;
     const currentMod = ((currentWheelAngle % 360) + 360) % 360;
     let deltaDeg = desiredMod - currentMod;
@@ -505,14 +600,13 @@
     const finalAngle = startAngle + extraSpins + deltaDeg;
     currentWheelAngle = finalAngle;
 
-    const duration = 4200;
+    const duration = 4000;
     const startTime = performance.now();
     let lastTickStep = Math.floor(startAngle / sliceDeg);
 
     function step(now) {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
-      // Courbe de décélération réaliste (cubic-out)
       const eased = 1 - Math.pow(1 - t, 3.4);
       const angle = startAngle + (finalAngle - startAngle) * eased;
 
@@ -557,7 +651,7 @@
 
   function pushToHistory(num) {
     spinHistory.unshift(num);
-    spinHistory = spinHistory.slice(0, 14);
+    spinHistory = spinHistory.slice(0, 12);
 
     const bar = document.getElementById('rouletteHistoryBar');
     const countLabel = document.getElementById('spinCountLabel');
@@ -600,15 +694,15 @@
   }
 
   async function joinMultiplayerRoom(code, isCreating = false) {
-    if (!GameShell.currentUser) return;
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (!user) return;
     if (roomRef) roomRef.off();
 
     currentRoomCode = code;
-    GameShell.currentRoomCode = code;
+    if (window.GameShell) GameShell.currentRoomCode = code;
     window.location.hash = `room=${code}`;
 
     roomRef = db.ref(`rooms/casino-roulette/${code}`);
-    const user = GameShell.currentUser;
 
     if (isCreating) {
       await roomRef.set({
@@ -628,9 +722,8 @@
     });
     myPlayerRef.onDisconnect().remove();
 
-    // Mise à jour UI mode Salon
-    document.getElementById('btnModeSolo').className = 'neo-btn bg-white text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black';
-    document.getElementById('btnModeRoom').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black';
+    document.getElementById('btnModeSolo').className = 'neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
+    document.getElementById('btnModeRoom').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
     const badge = document.getElementById('roomCodeBadge');
     badge.textContent = code;
     badge.classList.remove('hidden');
@@ -654,25 +747,27 @@
   }
 
   function switchToSolo() {
-    if (roomRef && GameShell.currentUser) {
-      roomRef.child(`players/${GameShell.currentUser.tag}`).remove();
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (roomRef && user) {
+      roomRef.child(`players/${user.tag}`).remove();
       roomRef.off();
     }
     roomRef = null;
     currentRoomCode = null;
-    GameShell.currentRoomCode = null;
+    if (window.GameShell) GameShell.currentRoomCode = null;
     history.replaceState(null, '', window.location.pathname);
 
-    document.getElementById('btnModeSolo').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black';
-    document.getElementById('btnModeRoom').className = 'neo-btn bg-white text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black';
+    document.getElementById('btnModeSolo').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
+    document.getElementById('btnModeRoom').className = 'neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
     document.getElementById('roomCodeBadge').classList.add('hidden');
     document.getElementById('roomPlayersPanel').classList.add('hidden');
     showToast('Mode Solo activé.', '👤');
   }
 
   function syncRoomBets() {
-    if (roomRef && GameShell.currentUser) {
-      roomRef.child(`players/${GameShell.currentUser.tag}/totalBet`).set(getTotalBet());
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (roomRef && user) {
+      roomRef.child(`players/${user.tag}/totalBet`).set(getTotalBet());
     }
   }
 
@@ -681,22 +776,22 @@
     if (!container) return;
     const list = Object.values(playersMap);
     container.innerHTML = list.map(p => `
-      <div class="flex items-center justify-between bg-slate-50 border border-[#12131a] rounded-xl px-2.5 py-1.5">
-        <span class="font-black truncate">${p.avatarEmoji || '🍺'} ${GameShell.escapeHtml(p.nickname)}</span>
-        <span class="font-mono text-[11px] font-bold text-[#065f46]">Mise : ${(p.totalBet || 0).toLocaleString('fr-FR')} $</span>
+      <div class="flex items-center justify-between bg-slate-50 border border-[#12131a] rounded-lg px-2 py-1">
+        <span class="font-black truncate text-[11px]">${p.avatarEmoji || '🍺'} ${GameShell.escapeHtml(p.nickname)}</span>
+        <span class="font-mono text-[10px] font-bold text-[#065f46]">${(p.totalBet || 0).toLocaleString('fr-FR')} $</span>
       </div>
     `).join('');
   }
 
-  /* ---------------- 8. CHAT DU CASINO & ALERTES BIG WIN (ÉTAPE 4) ---------------- */
+  /* ---------------- 8. CHAT DU CASINO & ALERTES BIG WIN ---------------- */
   function listenCasinoChat() {
     const container = document.getElementById('casinoTableChatList');
     if (!container) return;
 
-    db.ref('casino/chat').limitToLast(35).on('value', (snap) => {
+    db.ref('casino/chat').limitToLast(30).on('value', (snap) => {
       const data = snap.val();
       if (!data) {
-        container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-6">Aucun message à la table. Lance les hostilités !</p>`;
+        container.innerHTML = `<p class="text-[11px] font-bold text-slate-400 text-center py-4">Aucun message à la table.</p>`;
         return;
       }
 
@@ -704,23 +799,23 @@
       container.innerHTML = messages.map(m => {
         if (m.isBigWin) {
           return `
-            <div class="bg-[#fef08a] border-2 border-[#12131a] rounded-xl p-2.5 shadow-[2px_3px_0px_#12131a]">
-              <div class="flex items-center justify-between text-[10px] font-mono font-black text-rose-700">
-                <span>🚨 MEGA WIN ROULETTE</span>
+            <div class="bg-[#fef08a] border-2 border-[#12131a] rounded-lg p-2 shadow-[1.5px_2px_0px_#12131a]">
+              <div class="flex items-center justify-between text-[9px] font-mono font-black text-rose-700">
+                <span>🚨 MEGA WIN</span>
                 <span>${m.time || ''}</span>
               </div>
-              <p class="text-xs font-black text-[#12131a] mt-0.5">${GameShell.escapeHtml(m.text)}</p>
+              <p class="text-[11px] font-black text-[#12131a] mt-0.5 leading-snug">${GameShell.escapeHtml(m.text)}</p>
             </div>
           `;
         }
 
         return `
-          <div class="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs">
+          <div class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
             <div class="flex items-center justify-between">
               <span class="font-black text-[#12131a]">${m.avatar || '🍺'} ${GameShell.escapeHtml(m.nickname)}</span>
               <span class="text-[9px] font-mono text-slate-400">${m.time || ''}</span>
             </div>
-            <p class="font-bold text-slate-700 mt-0.5 break-words">${GameShell.escapeHtml(m.text)}</p>
+            <p class="font-bold text-slate-700 break-words leading-snug">${GameShell.escapeHtml(m.text)}</p>
           </div>
         `;
       }).join('');
@@ -729,15 +824,16 @@
 
   function sendCasinoChatMessage(event) {
     event.preventDefault();
-    if (!GameShell.currentUser) return;
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (!user) return;
     const input = document.getElementById('casinoTableChatInput');
     const text = (input.value || '').trim();
     if (!text) return;
 
     db.ref('casino/chat').push({
-      nickname: GameShell.currentUser.nickname,
-      tag: GameShell.currentUser.tag,
-      avatar: GameShell.currentUser.avatarEmoji || '🍺',
+      nickname: user.nickname,
+      tag: user.tag,
+      avatar: user.avatarEmoji || '🍺',
       text,
       isBigWin: false,
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
@@ -748,12 +844,11 @@
   }
 
   function broadcastBigWin(winningNumber, payout) {
-    if (!GameShell.currentUser) return;
-    const user = GameShell.currentUser;
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (!user) return;
     const timeStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     const msgText = `🔥 ${user.nickname} (@${user.tag}) vient de rafler ${payout.toLocaleString('fr-FR')} $ à la Roulette grâce au numéro ${winningNumber} !`;
 
-    // 1. Publier dans le chat de la table Casino
     db.ref('casino/chat').push({
       nickname: user.nickname,
       tag: user.tag,
@@ -764,7 +859,6 @@
       timestamp: Date.now()
     });
 
-    // 2. Publier une alerte dans le chat général de l'IMB Game Center
     db.ref('chat').push({
       authorNick: user.nickname,
       authorTag: user.tag,
@@ -826,7 +920,6 @@
     }, 3200);
   }
 
-  // Exposition globale pour les boutons HTML
   window.RouletteApp = {
     selectChip,
     placeBet,
