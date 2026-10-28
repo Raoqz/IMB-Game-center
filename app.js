@@ -35,7 +35,7 @@ const INTERNAL_GAMES = {
     bg: '#059669',
     path: '/games/casino/index.html'
   },
-   'pile-poil': {
+  'pile-poil': {
     id: 'pile-poil',
     title: 'Pile Poil',
     icon: '🥞',
@@ -290,6 +290,7 @@ async function loadAuthenticatedUser(firebaseUser) {
     
     // Top 3 Cartes & Salles Actives
     loadCasinoTop3Card();
+    loadPilePoilTop3Card();
     loadMorpionTop3Card();
     checkLobbyMorpionActiveRoom();
     loadSkyjoTop3Card();
@@ -359,7 +360,7 @@ function renderRecentGames() {
     const timeLabel = formatRelativeTime(item.timestamp);
     
     const activeRoom = localStorage.getItem(`imb_active_room_${game.id}`);
-    const hasValidRoom = activeRoom && activeRoom.length >= 4 && game.id !== 'casino';
+    const hasValidRoom = activeRoom && activeRoom.length >= 4 && game.id !== 'casino' && game.id !== 'pile-poil';
     const targetUrl = hasValidRoom 
       ? `${game.path}#room=${activeRoom}` 
       : game.path;
@@ -416,6 +417,10 @@ function sortCasinoPlayersLobby(a, b) {
   const balB = Number(b.balance ?? 0);
   if (balB !== balA) return balB - balA;
 
+  const debtA = Number(a.debt ?? 0);
+  const debtB = Number(b.debt ?? 0);
+  if (debtA !== debtB) return debtA - debtB;
+
   const tokA = Number(a.tokens ?? a.tokensUsed ?? 0);
   const tokB = Number(b.tokens ?? b.tokensUsed ?? 0);
   if (tokA !== tokB) return tokA - tokB;
@@ -461,6 +466,35 @@ function loadCasinoTop3Card() {
     }).join('') + `
       <div class="text-right pt-1 border-t border-emerald-200/80">
         <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLobbyLeaderboard('casino', 'IMB Casino');" class="text-[10px] font-black text-emerald-900 hover:underline">Classement des fortunes ></button>
+      </div>
+    `;
+  });
+}
+
+function loadPilePoilTop3Card() {
+  const container = document.getElementById('pilePoilTop3Box');
+  if (!container) return;
+  db.ref('scores/pile-poil').on('value', snap => {
+    const data = snap.val() || {};
+    const sorted = Object.values(data).sort((a, b) => (b.wins || 0) - (a.wins || 0)).slice(0, 3);
+    if (sorted.length === 0) {
+      container.innerHTML = `<div class="text-[10px] font-bold text-slate-400 italic text-center py-1">Aucun record. Sois le premier !</div>`;
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    container.innerHTML = sorted.map((p, idx) => `
+      <div class="flex items-center justify-between gap-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="text-sm">${medals[idx]}</span>
+          <span class="text-xs font-black text-[#12131a] truncate">${escapeHtml(p.nickname)}</span>
+        </div>
+        <span class="bg-[#121526] text-[#fed72d] px-2 py-0.5 rounded-full font-mono text-[9px] font-black flex-shrink-0 border border-[#fed72d]">
+          ${p.wins || 0} étage${(p.wins || 0) > 1 ? 's' : ''}
+        </span>
+      </div>
+    `).join('') + `
+      <div class="text-right pt-1 border-t border-amber-200/60">
+        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLobbyLeaderboard('pile-poil', 'Pile Poil');" class="text-[10px] font-black text-amber-900 hover:underline">Classement ></button>
       </div>
     `;
   });
@@ -564,7 +598,7 @@ function openLobbyLeaderboard(gameId, gameTitle) {
   if (titleEl) titleEl.textContent = `${gameTitle} : Classement`;
   if (subEl) {
     subEl.textContent = gameId === 'casino'
-      ? 'Trié par Solde ($) › Moins de Tokens › Ancienneté'
+      ? 'Trié par Solde ($) › Moins de Dette › Moins de Tokens'
       : 'Palmarès global';
   }
   modal.classList.remove('hidden');
@@ -638,15 +672,18 @@ function renderLobbyLeaderboardRows() {
     }
 
     const tok = Number(p.tokens ?? p.tokensUsed ?? 0);
-    const unitLabel = currentLeaderboardGameId === 'flappy-giroud' 
-      ? 'pts' 
-      : 'victoire' + ((p.wins || 0) > 1 ? 's' : '');
+    const debt = Number(p.debt ?? 0);
+    const unitLabel = currentLeaderboardGameId === 'flappy-giroud'
+      ? 'pts'
+      : (currentLeaderboardGameId === 'pile-poil'
+          ? 'étage' + ((p.wins || 0) > 1 ? 's' : '')
+          : 'victoire' + ((p.wins || 0) > 1 ? 's' : ''));
 
     const scoreColumnHtml = isCasino
       ? `
         <div class="text-right flex-shrink-0">
           <div class="text-xs font-black text-[#065f46] font-mono">${Number(p.balance ?? 0).toLocaleString('fr-FR')} $</div>
-          <div class="text-[10px] font-mono font-bold ${tok > 0 ? 'text-rose-600' : 'text-slate-500'}">🪙 ${tok}/20 token${tok > 1 ? 's' : ''}</div>
+          <div class="text-[10px] font-mono font-bold ${debt > 0 ? 'text-rose-600' : 'text-slate-500'}">Dette : ${debt.toLocaleString('fr-FR')} $ · 🪙 ${tok}</div>
         </div>
       `
       : `
@@ -724,7 +761,11 @@ function listenToLiveChat() {
       const mentionedMe = isUserMentionedInText(m.text);
 
       if (m.isInvite) {
-        const isCasino = m.internalGame === 'casino' || m.internalRoom === 'CASINO';
+        const hasSpecificRoom = m.internalRoom && m.internalRoom !== 'CASINO';
+        const btnLabel = hasSpecificRoom
+          ? `Rejoindre la salle ${escapeHtml(safeRoomCode(m.internalRoom))} ➔`
+          : `Rejoindre ${escapeHtml(m.gameTitle)} 🎰`;
+
         return `
           <div class="neo-box bg-[#fed72d] p-2.5 text-[#12131a] space-y-1.5 ${mentionedMe ? 'ring-2 ring-rose-500' : ''}">
             <div class="flex items-center justify-between text-[11px] font-black">
@@ -736,8 +777,8 @@ function listenToLiveChat() {
               <div class="font-black text-[11px] mb-1">🎮 ${escapeHtml(m.gameTitle)}</div>
               <p class="text-[10px] font-bold text-slate-700 italic mb-2">« ${formatChatMessageWithMentions(m.text)} »</p>
               ${m.internalGame ? `
-              <button type="button" onclick="openInternalInvite('${safeRoomCode(m.internalGame)}', '${safeRoomCode(m.internalRoom)}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">
-                ${isCasino ? 'Rejoindre le Casino 🎰' : `Rejoindre la salle ${escapeHtml(safeRoomCode(m.internalRoom))} ➔`}
+              <button type="button" onclick="openInternalInvite('${safeRoomCode(m.internalGame)}', '${safeRoomCode(m.internalRoom || 'CASINO')}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">
+                ${btnLabel}
               </button>` : `
               <a href="${m.roomUrl}" target="_blank" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black block text-center">
                 Rejoindre la partie ↗
@@ -981,7 +1022,7 @@ function listenLobbyInvitations() {
     const recentInvites = allInvites.slice(-3);
 
     stack.innerHTML = recentInvites.map(inv => {
-      const isCasino = inv.gameId === 'casino' || inv.roomCode === 'CASINO';
+      const hasRoom = inv.roomCode && inv.roomCode !== 'CASINO';
       return `
         <div class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
           <div class="min-w-0">
@@ -989,7 +1030,7 @@ function listenLobbyInvitations() {
               ${escapeHtml(inv.fromNick)} t'invite !
             </span>
             <span class="text-[10px] font-bold text-slate-700 block truncate">
-              ${escapeHtml(inv.gameTitle)} ${isCasino ? '' : `(Salle <strong>${inv.roomCode}</strong>)`}
+              ${escapeHtml(inv.gameTitle)} ${hasRoom ? `(Salon <strong>${inv.roomCode}</strong>)` : ''}
             </span>
           </div>
 
@@ -1009,11 +1050,27 @@ function listenLobbyInvitations() {
 
 function acceptLobbyInvite(gameId, roomCode, key) {
   dismissLobbyInvite(key);
-  trackGameLaunch(gameId);
-  if (gameId === 'casino' || roomCode === 'CASINO') {
+  const g = String(gameId || '').toLowerCase();
+
+  if (g === 'casino/roulette' || g === 'casino-roulette' || g === 'roulette') {
+    trackGameLaunch('casino');
+    const hash = (roomCode && roomCode !== 'CASINO') ? `#room=${roomCode}` : '';
+    window.location.href = `/games/casino/roulette/index.html${hash}`;
+    return;
+  }
+  if (g === 'casino/blackjack' || g === 'casino-blackjack' || g === 'blackjack') {
+    trackGameLaunch('casino');
+    const hash = (roomCode && roomCode !== 'CASINO') ? `#room=${roomCode}` : '';
+    window.location.href = `/games/casino/blackjack/index.html${hash}`;
+    return;
+  }
+  if (g === 'casino' || roomCode === 'CASINO') {
+    trackGameLaunch('casino');
     window.location.href = `/games/casino/index.html`;
     return;
   }
+
+  trackGameLaunch(gameId);
   window.location.href = `/games/${gameId}/index.html#room=${roomCode}`;
 }
 
@@ -1024,13 +1081,22 @@ function dismissLobbyInvite(key) {
 }
 
 function safeRoomCode(code) {
-  return String(code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  return String(code || '').toUpperCase().replace(/[^A-Z0-9/-]/g, '');
 }
 
 function openInternalInvite(game, code) {
   if (!currentUser || !code) return;
   const g = String(game || '').toLowerCase();
-  if (g === 'casino') {
+
+  if (g === 'casino/roulette' || g === 'casino-roulette' || g === 'roulette' || g === 'casinoroulette') {
+    trackGameLaunch('casino');
+    const hash = (code && code !== 'CASINO') ? `#room=${code}` : '';
+    window.location.href = `/games/casino/roulette/index.html${hash}`;
+  } else if (g === 'casino/blackjack' || g === 'casino-blackjack' || g === 'blackjack' || g === 'casinoblackjack') {
+    trackGameLaunch('casino');
+    const hash = (code && code !== 'CASINO') ? `#room=${code}` : '';
+    window.location.href = `/games/casino/blackjack/index.html${hash}`;
+  } else if (g === 'casino') {
     trackGameLaunch('casino');
     window.location.href = `/games/casino/index.html`;
   } else if (g === 'morpion') {
