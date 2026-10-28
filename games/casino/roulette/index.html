@@ -27,152 +27,177 @@
   <script src="/games/casino/roulette/roulette-engine.js"></script>
   <script src="/games/casino/roulette/roulette-app.js" defer></script>
 </head>
-<body class="roulette-body pt-16 pb-14 select-none">
+<body class="roulette-body pt-16 pb-6 select-none">
 
-  <!-- ================= HUD PERMANENT EN HAUT À DROITE ================= -->
-  <div id="casinoHud" class="casino-hud">
-    <div class="flex items-center gap-1.5 pr-1">
-      <span id="hudAvatar" class="text-base">🎰</span>
-      <span id="hudNickname" class="text-xs font-black text-[#12131a] hidden sm:inline truncate max-w-[110px]">Joueur</span>
-    </div>
+  <!-- ================= CONTENU PRINCIPAL (UN SEUL ÉCRAN SUR PC) ================= -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-5 pt-2 flex flex-col gap-3.5">
 
-    <div id="hudBalancePill" class="hud-pill balance" title="Ton solde Casino actuel">
-      <span>💰</span>
-      <span><strong id="hudBalanceValue">1 000</strong> $</span>
-    </div>
-
-    <div class="hud-pill tokens" title="Tokens ATM utilisés (Max 20)">
-      <span>🪙</span>
-      <span><strong id="hudTokensValue">0</strong>/20</span>
-    </div>
-  </div>
-
-  <!-- ================= CONTENU PRINCIPAL ================= -->
-  <main class="max-w-7xl mx-auto px-3 sm:px-6 pt-12 sm:pt-6 flex flex-col gap-6">
-
-    <!-- BARRE SUPÉRIEURE DE LA TABLE : RETOUR CASINO + MODE SOLO/SALON + BOUTON ATM -->
-    <section class="bg-[#065f46] border-[3.5px] border-[#12131a] rounded-3xl p-4 sm:p-5 shadow-[5px_7px_0px_#12131a] text-white flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <a href="/games/casino/index.html" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-2 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a] flex items-center gap-1">
+    <!-- BARRE SUPÉRIEURE COMPACTE : NAVIGATION + MODES + ATM + HUD SOLDE -->
+    <section class="bg-[#065f46] border-[3px] border-[#12131a] rounded-2xl px-3.5 py-2.5 shadow-[4px_5px_0px_#12131a] text-white flex flex-wrap items-center justify-between gap-2.5">
+      
+      <!-- Gauche : Retour + Titre -->
+      <div class="flex items-center gap-2.5">
+        <a href="/games/casino/index.html" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-2.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a] flex items-center gap-1">
           <span>←</span>
-          <span>Lobby Casino</span>
+          <span class="hidden sm:inline">Casino</span>
         </a>
         <div>
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🎡</span>
-            <h2 class="text-xl sm:text-2xl font-black italic tracking-tight uppercase">Roulette Européenne</h2>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xl">🎡</span>
+            <h2 class="text-base sm:text-lg font-black italic tracking-tight uppercase leading-none">Roulette Européenne</h2>
           </div>
-          <p class="text-[11px] sm:text-xs font-bold text-emerald-100">
-            Clic gauche sur une case pour miser · Clic droit pour retirer un jeton
+          <p class="text-[10px] font-bold text-emerald-100 hidden sm:block mt-0.5">
+            Clic gauche : Miser · Clic droit : Retirer un jeton
           </p>
         </div>
       </div>
 
-      <!-- SÉLECTEUR DE MODE : SOLO OU SALON MULTIJOUEUR + BOUTON ATM -->
-      <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end">
-        <!-- Statut du mode actuel -->
-        <div class="flex items-center gap-1.5 bg-[#064e3b] border-2 border-[#12131a] p-1.5 rounded-2xl shadow-[2px_3px_0px_#12131a]">
-          <button id="btnModeSolo" onclick="RouletteApp.switchToSolo()" class="neo-btn bg-[#fed72d] text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
-            👤 Mode Solo
+      <!-- Centre : Mode Solo / Salon Multi + ATM + Règles -->
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-1 bg-[#064e3b] border-2 border-[#12131a] p-1 rounded-xl shadow-[2px_2px_0px_#12131a]">
+          <button id="btnModeSolo" onclick="RouletteApp.switchToSolo()" class="neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black">
+            👤 Solo
           </button>
-          <button id="btnModeRoom" onclick="RouletteApp.openRoomModal()" class="neo-btn bg-white text-[#12131a] px-3 py-1.5 rounded-xl text-xs font-black">
-            👥 Salon Multi <span id="roomCodeBadge" class="hidden font-mono bg-[#ef4444] text-white px-1.5 py-0.2 rounded ml-1"></span>
+          <button id="btnModeRoom" onclick="RouletteApp.openRoomModal()" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black">
+            👥 Salon <span id="roomCodeBadge" class="hidden font-mono bg-[#ef4444] text-white px-1.5 py-0.2 rounded ml-1"></span>
           </button>
         </div>
 
-        <!-- Bouton ATM permanent (s'allume en rouge si solde <= 200$) -->
-        <button id="btnInGameAtm" onclick="RouletteApp.useAtmInGame()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a]">
+        <button id="btnInGameAtm" onclick="RouletteApp.useAtmInGame()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]">
           <span>🏧</span>
           <span id="btnInGameAtmText">ATM (+1 000 $)</span>
         </button>
 
-        <button onclick="GameShell.openRules()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-3 py-2 rounded-2xl text-xs font-black shadow-[3px_4px_0px_#12131a]">
+        <button onclick="GameShell.openRules()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-2.5 py-1.5 rounded-xl text-[11px] font-black shadow-[2px_2px_0px_#12131a]">
           📖 Règles
         </button>
       </div>
+
+      <!-- Droite : HUD Solde & Tokens directement intégré -->
+      <div id="casinoHud" class="roulette-hud-box">
+        <div class="flex items-center gap-1 pr-1">
+          <span id="hudAvatar" class="text-sm">🎰</span>
+          <span id="hudNickname" class="text-[11px] font-black text-[#12131a] hidden md:inline truncate max-w-[90px]">Joueur</span>
+        </div>
+
+        <div id="hudBalancePill" class="hud-pill balance" title="Ton solde Casino actuel">
+          <span>💰</span>
+          <span><strong id="hudBalanceValue">1 000</strong> $</span>
+        </div>
+
+        <div class="hud-pill tokens" title="Tokens ATM utilisés (Max 20)">
+          <span>🪙</span>
+          <span><strong id="hudTokensValue">0</strong>/20</span>
+        </div>
+      </div>
+
     </section>
 
-    <!-- GRILLE PRINCIPALE : ROUE ROTATIVE (GAUCHE) + TAPIS DE MISE (DROITE) -->
-    <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+    <!-- GRILLE PRINCIPALE PC : ROUE À GAUCHE (4 COL) | TAPIS + MISES À DROITE (8 COL) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-      <!-- COLONNE GAUCHE : ROUE DE ROULETTE ROTATIVE + HISTORIQUE (5 COLONNES) -->
-      <div class="xl:col-span-5 bg-[#065f46] border-[3.5px] border-[#12131a] rounded-3xl p-5 shadow-[6px_8px_0px_#12131a] text-white flex flex-col items-center gap-4">
+      <!-- ================= COLONNE GAUCHE : ROUE + HISTORIQUE + MINI-CHAT (4 COLONNES) ================= -->
+      <div class="lg:col-span-4 flex flex-col gap-3">
         
-        <div class="w-full flex items-center justify-between border-b-2 border-[#12131a]/40 pb-2.5">
-          <span id="wheelStatusBanner" class="text-xs font-mono font-black uppercase bg-[#12131a] text-[#fed72d] px-3 py-1 rounded-full">
-            Faites vos jeux !
-          </span>
-          <button id="btnToggleSound" onclick="RouletteApp.toggleSound()" class="neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]" title="Activer/Couper le son de la roue">
-            🔊 Son ON
-          </button>
-        </div>
-
-        <!-- LA ROUE CIRCULAIRE QUI TOURNE -->
-        <div class="wheel-stage my-1">
-          <div class="wheel-top-pointer" title="Numéro gagnant"></div>
-          <div class="wheel-outer-rim">
-            <svg id="rouletteWheelSvg" viewBox="-160 -160 320 320" class="wheel-rotor">
-              <!-- Les 37 cases et numéros sont injectés par roulette-app.js -->
-            </svg>
-            <div id="wheelCenterHub" class="wheel-center-hub">
-              <span class="text-[9px] font-mono font-bold uppercase text-slate-500">Numéro</span>
-              <span id="wheelCenterNumber" class="text-2xl font-mono font-black leading-none mt-0.5">—</span>
-              <span id="wheelCenterColor" class="text-[9px] font-black uppercase mt-0.5">Prêt</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- DERNIERS NUMÉROS SORTIS -->
-        <div class="w-full bg-[#064e3b] border-2 border-[#12131a] rounded-2xl p-3">
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-[10px] font-mono font-black uppercase text-emerald-200">Historique des tirages</span>
-            <span id="spinCountLabel" class="text-[10px] font-mono text-emerald-300">0 tour</span>
-          </div>
-          <div id="rouletteHistoryBar" class="flex items-center gap-1.5 overflow-x-auto py-1 custom-scrollbar">
-            <span class="text-xs text-emerald-200/70 italic font-bold">Aucun tirage pour le moment</span>
-          </div>
-        </div>
-
-        <!-- JOUEURS DANS LE SALON (VISIBLE EN MODE SALON MULTIJOUEUR) -->
-        <div id="roomPlayersPanel" class="hidden w-full bg-white text-[#12131a] border-2 border-[#12131a] rounded-2xl p-3 shadow-[3px_4px_0px_#12131a]">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-black uppercase">👥 Joueurs à la table</span>
-            <button onclick="GameShell.announceGameInChat()" class="neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-0.5 rounded-lg text-[10px] font-black">
-              📢 Inviter le chat
+        <!-- CARTE DE LA ROUE -->
+        <div class="bg-[#065f46] border-[3.5px] border-[#12131a] rounded-3xl p-3.5 shadow-[5px_6px_0px_#12131a] text-white flex flex-col items-center gap-2.5">
+          
+          <div class="w-full flex items-center justify-between border-b-2 border-[#12131a]/40 pb-2">
+            <span id="wheelStatusBanner" class="text-[11px] font-mono font-black uppercase bg-[#12131a] text-[#fed72d] px-2.5 py-0.5 rounded-full">
+              Faites vos jeux !
+            </span>
+            <button id="btnToggleSound" onclick="RouletteApp.toggleSound()" class="neo-btn bg-white text-[#12131a] px-2 py-0.5 rounded-lg text-[11px] font-black shadow-[2px_2px_0px_#12131a]">
+              🔊 Son ON
             </button>
           </div>
-          <div id="roomPlayersList" class="space-y-1.5 text-xs"></div>
+
+          <!-- LA ROUE CIRCULAIRE -->
+          <div class="wheel-stage">
+            <div class="wheel-top-pointer" title="Numéro gagnant"></div>
+            <div class="wheel-outer-rim">
+              <svg id="rouletteWheelSvg" viewBox="-160 -160 320 320" class="wheel-rotor">
+                <!-- Injecté par roulette-app.js -->
+              </svg>
+              <div id="wheelCenterHub" class="wheel-center-hub">
+                <span class="text-[8px] font-mono font-bold uppercase text-slate-500">Numéro</span>
+                <span id="wheelCenterNumber" class="text-xl font-mono font-black leading-none mt-0.5">—</span>
+                <span id="wheelCenterColor" class="text-[8px] font-black uppercase mt-0.5">Prêt</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- DERNIERS NUMÉROS SORTIS -->
+          <div class="w-full bg-[#064e3b] border-2 border-[#12131a] rounded-xl p-2">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[9px] font-mono font-black uppercase text-emerald-200">Derniers tirages</span>
+              <span id="spinCountLabel" class="text-[9px] font-mono text-emerald-300">0 tour</span>
+            </div>
+            <div id="rouletteHistoryBar" class="flex items-center gap-1 overflow-x-auto py-0.5 custom-scrollbar">
+              <span class="text-[11px] text-emerald-200/70 italic font-bold">Aucun tirage</span>
+            </div>
+          </div>
+
+          <!-- JOUEURS DANS LE SALON (SI SALON ACTIF) -->
+          <div id="roomPlayersPanel" class="hidden w-full bg-white text-[#12131a] border-2 border-[#12131a] rounded-xl p-2.5 shadow-[2px_3px_0px_#12131a]">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] font-black uppercase">👥 Joueurs du salon</span>
+              <button onclick="GameShell.announceGameInChat()" class="neo-btn bg-[#fed72d] text-[#12131a] px-2 py-0.5 rounded-lg text-[10px] font-black">
+                📢 Inviter
+              </button>
+            </div>
+            <div id="roomPlayersList" class="space-y-1 text-xs max-h-24 overflow-y-auto custom-scrollbar"></div>
+          </div>
+
+        </div>
+
+        <!-- CHAT DE TABLE COMPACT (SOUS LA ROUE À GAUCHE) -->
+        <div class="bg-white border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a]">
+          <div class="flex items-center justify-between pb-1.5 mb-2 border-b-2 border-slate-200">
+            <span class="text-xs font-black uppercase text-[#12131a]">🔥 Chat Table & Big Wins</span>
+            <span class="text-[9px] font-mono text-slate-500">Gains ≥ 500$ → QG</span>
+          </div>
+
+          <div id="casinoTableChatList" class="h-24 overflow-y-auto space-y-1.5 bg-slate-50 border-2 border-[#12131a] rounded-xl p-2 mb-2 flex flex-col-reverse space-y-reverse custom-scrollbar">
+            <p class="text-[11px] font-bold text-slate-400 text-center py-4">Chargement du chat...</p>
+          </div>
+
+          <form onsubmit="RouletteApp.sendCasinoChatMessage(event)" class="flex gap-1.5">
+            <input type="text" id="casinoTableChatInput" maxlength="200" placeholder="Message à la table..." class="flex-1 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-2.5 py-1.5 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
+            <button type="submit" class="neo-btn bg-[#059669] hover:bg-[#047857] text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
+              ➤
+            </button>
+          </form>
         </div>
 
       </div>
 
-      <!-- COLONNE DROITE : TAPIS DE MISE COMPLET + CONTRÔLES + CHAT CASINO (7 COLONNES) -->
-      <div class="xl:col-span-7 flex flex-col gap-5">
+      <!-- ================= COLONNE DROITE : TAPIS DE CASES + CONTRÔLES DE MISE (8 COLONNES) ================= -->
+      <div class="lg:col-span-8 flex flex-col gap-3">
 
-        <!-- TAPIS DE MISE -->
-        <div class="roulette-table space-y-3 overflow-x-auto custom-scrollbar">
-          <div class="min-w-[640px] space-y-3">
+        <!-- 1. LE TAPIS DE MISE -->
+        <div class="roulette-table overflow-x-auto custom-scrollbar">
+          <div class="min-w-[580px] space-y-2">
 
             <!-- GRILLE INTÉRIEURE : 0 + 36 NUMÉROS + 3 COLONNES (2:1) -->
             <div id="insideBetGrid" class="roulette-inside-grid">
-              <!-- Injecté par roulette-app.js avec tous les numéros et couleurs -->
+              <!-- Injecté par roulette-app.js -->
             </div>
 
             <!-- DOUZAINES (×3) -->
             <div class="grid grid-cols-3 gap-2 pt-1">
               <div onclick="RouletteApp.placeBet('dozen_1')" oncontextmenu="RouletteApp.removeBet(event, 'dozen_1')" id="spot_dozen_1" class="bet-spot outside-spot">
                 <span>1ère DOUZAINE (1 - 12)</span>
-                <span class="text-[10px] font-mono text-slate-500">Paiement ×3</span>
+                <span class="text-[9px] font-mono text-slate-500">×3</span>
                 <span id="badge_dozen_1"></span>
               </div>
               <div onclick="RouletteApp.placeBet('dozen_2')" oncontextmenu="RouletteApp.removeBet(event, 'dozen_2')" id="spot_dozen_2" class="bet-spot outside-spot">
                 <span>2ème DOUZAINE (13 - 24)</span>
-                <span class="text-[10px] font-mono text-slate-500">Paiement ×3</span>
+                <span class="text-[9px] font-mono text-slate-500">×3</span>
                 <span id="badge_dozen_2"></span>
               </div>
               <div onclick="RouletteApp.placeBet('dozen_3')" oncontextmenu="RouletteApp.removeBet(event, 'dozen_3')" id="spot_dozen_3" class="bet-spot outside-spot">
                 <span>3ème DOUZAINE (25 - 36)</span>
-                <span class="text-[10px] font-mono text-slate-500">Paiement ×3</span>
+                <span class="text-[9px] font-mono text-slate-500">×3</span>
                 <span id="badge_dozen_3"></span>
               </div>
             </div>
@@ -180,33 +205,33 @@
             <!-- CHANCES SIMPLES (×2) -->
             <div class="grid grid-cols-6 gap-2">
               <div onclick="RouletteApp.placeBet('low')" oncontextmenu="RouletteApp.removeBet(event, 'low')" id="spot_low" class="bet-spot outside-spot">
-                <span>MANQUE</span>
-                <span class="text-[10px] font-mono text-slate-500">1 - 18 (×2)</span>
+                <span>1 - 18</span>
+                <span class="text-[9px] font-mono text-slate-500">MANQUE (×2)</span>
                 <span id="badge_low"></span>
               </div>
               <div onclick="RouletteApp.placeBet('even')" oncontextmenu="RouletteApp.removeBet(event, 'even')" id="spot_even" class="bet-spot outside-spot">
                 <span>PAIR</span>
-                <span class="text-[10px] font-mono text-slate-500">×2</span>
+                <span class="text-[9px] font-mono text-slate-500">×2</span>
                 <span id="badge_even"></span>
               </div>
               <div onclick="RouletteApp.placeBet('red')" oncontextmenu="RouletteApp.removeBet(event, 'red')" id="spot_red" class="bet-spot outside-red">
                 <span>🔴 ROUGE</span>
-                <span class="text-[10px] font-mono text-rose-100">×2</span>
+                <span class="text-[9px] font-mono text-rose-100">×2</span>
                 <span id="badge_red"></span>
               </div>
               <div onclick="RouletteApp.placeBet('black')" oncontextmenu="RouletteApp.removeBet(event, 'black')" id="spot_black" class="bet-spot outside-black">
                 <span>⚫ NOIR</span>
-                <span class="text-[10px] font-mono text-slate-300">×2</span>
+                <span class="text-[9px] font-mono text-slate-300">×2</span>
                 <span id="badge_black"></span>
               </div>
               <div onclick="RouletteApp.placeBet('odd')" oncontextmenu="RouletteApp.removeBet(event, 'odd')" id="spot_odd" class="bet-spot outside-spot">
                 <span>IMPAIR</span>
-                <span class="text-[10px] font-mono text-slate-500">×2</span>
+                <span class="text-[9px] font-mono text-slate-500">×2</span>
                 <span id="badge_odd"></span>
               </div>
               <div onclick="RouletteApp.placeBet('high')" oncontextmenu="RouletteApp.removeBet(event, 'high')" id="spot_high" class="bet-spot outside-spot">
-                <span>PASSE</span>
-                <span class="text-[10px] font-mono text-slate-500">19 - 36 (×2)</span>
+                <span>19 - 36</span>
+                <span class="text-[9px] font-mono text-slate-500">PASSE (×2)</span>
                 <span id="badge_high"></span>
               </div>
             </div>
@@ -214,66 +239,43 @@
           </div>
         </div>
 
-        <!-- BARRE DE CONTRÔLE : JETONS + BOUTONS D'ACTION -->
-        <div class="bg-white border-[3.5px] border-[#12131a] rounded-3xl p-4 sm:p-5 shadow-[6px_8px_0px_#12131a] flex flex-col gap-4">
+        <!-- 2. BARRE DES JETONS ET BOUTONS DE LANCEMENT (JUSTE SOUS LES CASES) -->
+        <div class="bg-white border-[3.5px] border-[#12131a] rounded-2xl p-3.5 shadow-[5px_6px_0px_#12131a] flex flex-col gap-3">
           
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <!-- Jetons -->
+            <!-- Sélecteur de jetons -->
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-xs font-black uppercase text-slate-500 mr-1">Jeton :</span>
-              <button onclick="RouletteApp.selectChip(10)" id="chip_10" class="chip-btn chip-10">10$</button>
-              <button onclick="RouletteApp.selectChip(50)" id="chip_50" class="chip-btn chip-50 active">50$</button>
-              <button onclick="RouletteApp.selectChip(100)" id="chip_100" class="chip-btn chip-100">100$</button>
-              <button onclick="RouletteApp.selectChip(500)" id="chip_500" class="chip-btn chip-500">500$</button>
-              <button onclick="RouletteApp.selectChip('MAX')" id="chip_MAX" class="chip-btn chip-max" title="Miser tout le solde restant">MAX</button>
+              <button type="button" onclick="RouletteApp.selectChip(10)" id="chip_10" class="chip-btn chip-10">10$</button>
+              <button type="button" onclick="RouletteApp.selectChip(50)" id="chip_50" class="chip-btn chip-50 active">50$</button>
+              <button type="button" onclick="RouletteApp.selectChip(100)" id="chip_100" class="chip-btn chip-100">100$</button>
+              <button type="button" onclick="RouletteApp.selectChip(500)" id="chip_500" class="chip-btn chip-500">500$</button>
+              <button type="button" onclick="RouletteApp.selectChip('MAX')" id="chip_MAX" class="chip-btn chip-max" title="Miser tout le solde restant">MAX</button>
             </div>
 
-            <!-- Récapitulatif Mise -->
-            <div class="bg-emerald-50 border-2 border-[#12131a] rounded-2xl px-4 py-2 text-right shadow-[2px_3px_0px_#12131a]">
-              <span class="text-[10px] font-mono font-bold uppercase text-slate-500 block">Mise sur le tapis</span>
-              <span id="totalBetDisplay" class="text-lg font-mono font-black text-[#065f46]">0 $</span>
+            <!-- Total misé sur le tapis -->
+            <div class="flex items-center gap-3 bg-emerald-50 border-2 border-[#12131a] rounded-xl px-3.5 py-1.5 shadow-[2px_2px_0px_#12131a]">
+              <span class="text-[10px] font-mono font-bold uppercase text-slate-500">Mise totale :</span>
+              <span id="totalBetDisplay" class="text-base font-mono font-black text-[#065f46]">0 $</span>
             </div>
           </div>
 
           <!-- Boutons d'action -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t-2 border-slate-100">
-            <button onclick="RouletteApp.clearBets()" id="btnClearBets" class="neo-btn bg-slate-100 hover:bg-rose-100 text-[#12131a] py-3 rounded-2xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t-2 border-slate-100">
+            <button type="button" onclick="RouletteApp.clearBets()" id="btnClearBets" class="neo-btn bg-slate-100 hover:bg-rose-100 text-[#12131a] py-2.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               🗑️ Effacer
             </button>
-            <button onclick="RouletteApp.rebetLast()" id="btnRebet" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-3 rounded-2xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+            <button type="button" onclick="RouletteApp.rebetLast()" id="btnRebet" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] py-2.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               🔁 Re-miser
             </button>
-            <button onclick="RouletteApp.doubleBets()" id="btnDouble" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-3 rounded-2xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
+            <button type="button" onclick="RouletteApp.doubleBets()" id="btnDouble" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-2.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_#12131a]">
               ✖️2 Doubler
             </button>
-            <button onclick="RouletteApp.spinWheel()" id="btnSpin" disabled class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white py-3 rounded-2xl text-xs sm:text-sm font-black shadow-[3px_4px_0px_#12131a] opacity-50 cursor-not-allowed">
+            <button type="button" onclick="RouletteApp.spinWheel()" id="btnSpin" disabled class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white py-2.5 rounded-xl text-xs sm:text-sm font-black shadow-[3px_3px_0px_#12131a] opacity-50 cursor-not-allowed">
               🎡 TOURNER LA ROUE
             </button>
           </div>
-        </div>
 
-        <!-- ÉTAPE 4 : CHAT EN DIRECT DU CASINO & FLUX DES GROS GAINS -->
-        <div class="bg-white border-[3.5px] border-[#12131a] rounded-3xl p-4 sm:p-5 shadow-[6px_8px_0px_#12131a]">
-          <div class="flex items-center justify-between pb-2.5 mb-3 border-b-2 border-[#12131a]">
-            <div class="flex items-center gap-2">
-              <span class="text-xl">🔥</span>
-              <div>
-                <h3 class="text-sm font-black uppercase text-[#12131a] leading-none">Chat de la Table & Alertes Big Win</h3>
-                <span class="text-[10px] font-mono text-slate-500">Les gains ≥ 500 $ sont aussi diffusés sur le QG général !</span>
-              </div>
-            </div>
-          </div>
-
-          <div id="casinoTableChatList" class="h-44 overflow-y-auto space-y-2 bg-slate-50 border-2 border-[#12131a] rounded-2xl p-3 mb-3 flex flex-col-reverse space-y-reverse custom-scrollbar">
-            <p class="text-xs font-bold text-slate-400 text-center py-6">Chargement du chat Casino...</p>
-          </div>
-
-          <form onsubmit="RouletteApp.sendCasinoChatMessage(event)" class="flex gap-2">
-            <input type="text" id="casinoTableChatInput" maxlength="220" placeholder="Charier la table, annoncer ton numéro fétiche..." class="flex-1 bg-[#f8fafc] border-2 border-[#12131a] rounded-xl px-3.5 py-2 text-xs font-bold text-[#12131a] focus:outline-none focus:bg-white">
-            <button type="submit" class="neo-btn bg-[#059669] hover:bg-[#047857] text-white px-4 py-2 rounded-xl text-xs font-black shadow-[2px_3px_0px_#12131a]">
-              Envoyer
-            </button>
-          </form>
         </div>
 
       </div>
