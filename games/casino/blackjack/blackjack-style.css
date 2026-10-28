@@ -1,0 +1,398 @@
+/* =========================================================
+   IMB CASINO - BLACKJACK 21 STYLES (Étape 2 - Néo-Brutaliste)
+   ========================================================= */
+body.blackjack-body {
+  background-color: #047857;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.1) 2px, transparent 2.5px),
+    radial-gradient(circle at 50% 20%, #059669 0%, #065f46 65%, #064e3b 100%);
+  background-size: 26px 26px, 100% 100%;
+  color: #12131a;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---------- HUD INTÉGRÉ DANS L'EN-TÊTE ---------- */
+.bj-hud-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 2.5px solid #12131a;
+  border-radius: 14px;
+  padding: 4px 8px;
+  box-shadow: 3px 4px 0px #12131a;
+  transition: transform 0.15s ease;
+}
+
+.bj-hud-box.hud-flash {
+  transform: scale(1.06);
+}
+
+.hud-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9px;
+  border: 2px solid #12131a;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.hud-pill.balance {
+  background: #dcfce7;
+  color: #064e3b;
+}
+
+.hud-pill.balance.betting {
+  background: #fef08a;
+  color: #12131a;
+}
+
+.hud-pill.balance.low {
+  background: #fee2e2;
+  color: #dc2626;
+  animation: pulseAlert 1.2s ease-in-out infinite;
+}
+
+.hud-pill.tokens {
+  background: #fef9c3;
+  color: #12131a;
+}
+
+@keyframes pulseAlert {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ---------- TAPIS PRINCIPAL DU BLACKJACK ---------- */
+.bj-felt-arena {
+  background: #065f46;
+  border: 3.5px solid #12131a;
+  border-radius: 28px;
+  padding: 18px;
+  box-shadow: 6px 8px 0px #12131a;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 450px;
+}
+
+/* Arc décoratif style table de casino */
+.bj-felt-arena::before {
+  content: "BLACKJACK PAYS 3 TO 2 · DEALER MUST STAND ON 17";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.16);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  padding: 8px 22px;
+  border-radius: 999px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Effet tremblement quand le joueur ou le croupier BUST (> 21) */
+.bj-felt-arena.bust-shake {
+  animation: bustShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes bustShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px) rotate(-0.8deg); }
+  40% { transform: translateX(9px) rotate(0.8deg); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+/* ---------- CARTES À JOUER NÉO-BRUTALISTES (100% CSS) ---------- */
+.bj-hand-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 118px;
+  padding: 6px;
+}
+
+.bj-card {
+  width: 78px;
+  height: 112px;
+  background: #ffffff;
+  border: 3px solid #12131a;
+  border-radius: 14px;
+  box-shadow: 4px 5px 0px #12131a;
+  padding: 6px 7px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  user-select: none;
+  margin-left: -14px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  animation: cardDeal 0.28s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+
+.bj-card:first-child {
+  margin-left: 0;
+}
+
+.bj-card:hover {
+  transform: translateY(-6px) rotate(-1deg);
+  z-index: 20;
+}
+
+.bj-card.red {
+  color: #ef4444;
+}
+
+.bj-card.black {
+  color: #12131a;
+}
+
+.bj-card-corner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+}
+
+.bj-card-corner.bottom {
+  align-items: flex-end;
+  transform: rotate(180deg);
+}
+
+.bj-card-rank {
+  font-size: 16px;
+  letter-spacing: -0.5px;
+}
+
+.bj-card-suit-sm {
+  font-size: 12px;
+}
+
+.bj-card-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(1px 1px 0px rgba(18, 19, 26, 0.12));
+}
+
+/* Dos de carte (Carte cachée du croupier) */
+.bj-card.face-down {
+  background-color: #ef4444;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(18, 19, 26, 0.18) 0px,
+      rgba(18, 19, 26, 0.18) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bj-card.face-down::after {
+  content: "🎰";
+  font-size: 26px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #fed72d;
+  border: 2.5px solid #12131a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 2px 0px #12131a;
+}
+
+@keyframes cardDeal {
+  0% {
+    opacity: 0;
+    transform: translateY(-45px) scale(0.7) rotate(8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+/* ---------- BADGE DE SCORE D'UNE MAIN ---------- */
+.bj-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #12131a;
+  color: #ffffff;
+  border: 2.5px solid #12131a;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  font-size: 12px;
+  box-shadow: 2px 3px 0px rgba(0, 0, 0, 0.35);
+}
+
+.bj-score-badge.blackjack {
+  background: #fed72d;
+  color: #12131a;
+  animation: pulseAlert 1s infinite;
+}
+
+.bj-score-badge.bust {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.bj-score-badge.win {
+  background: #10b981;
+  color: #12131a;
+}
+
+/* ---------- SIÈGES DES AUTRES JOUEURS (MODE SALON MULTIJOUEUR) ---------- */
+.bj-multi-seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.bj-seat-card {
+  background: rgba(6, 78, 59, 0.85);
+  border: 2px solid #12131a;
+  border-radius: 16px;
+  padding: 8px 10px;
+  color: #ffffff;
+  box-shadow: 2px 3px 0px #12131a;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bj-seat-card.me {
+  border-color: #fed72d;
+  background: rgba(6, 95, 70, 0.95);
+}
+
+.bj-seat-mini-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1.5px solid #12131a;
+  border-radius: 6px;
+  padding: 1px 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  font-size: 11px;
+  box-shadow: 1px 1.5px 0px #12131a;
+}
+
+.bj-seat-mini-card.red { color: #ef4444; }
+.bj-seat-mini-card.black { color: #12131a; }
+
+/* ---------- BARRE CHRONOMÈTRE AFK (60 SECONDES) ---------- */
+.afk-timer-wrapper {
+  width: 100%;
+  height: 10px;
+  background: #064e3b;
+  border: 2px solid #12131a;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.afk-timer-fill {
+  height: 100%;
+  background: #fed72d;
+  width: 100%;
+  transition: width 0.95s linear, background-color 0.3s ease;
+}
+
+.afk-timer-fill.urgent {
+  background: #ef4444;
+}
+
+/* ---------- BOUTONS DE JETONS & ACTIONS ---------- */
+.chip-btn {
+  border: 2.5px solid #12131a;
+  border-radius: 9999px;
+  width: 46px;
+  height: 46px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 900;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 2.5px 3.5px 0px #12131a;
+  transition: transform 0.1s, box-shadow 0.1s;
+  background: #ffffff;
+  color: #12131a;
+}
+
+.chip-btn.chip-10 { background: #e0f2fe; }
+.chip-btn.chip-50 { background: #dcfce7; }
+.chip-btn.chip-100 { background: #fef08a; }
+.chip-btn.chip-500 { background: #fecdd3; }
+.chip-btn.chip-max { background: #ef4444; color: #ffffff; }
+
+.chip-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 3px 5px 0px #12131a;
+}
+
+.chip-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #12131a;
+}
+
+.bj-action-btn {
+  border: 3px solid #12131a;
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-weight: 900;
+  font-size: 13px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 3px 4px 0px #12131a;
+  transition: transform 0.1s, box-shadow 0.1s, opacity 0.15s;
+  cursor: pointer;
+}
+
+.bj-action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0px #12131a;
+}
+
+.bj-action-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 2px 0px #12131a;
+}
+
+.bj-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: 2px 2px 0px #12131a;
+}
