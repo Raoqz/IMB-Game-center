@@ -235,17 +235,17 @@
   </div>
 
   <!-- ================= MODALE CLASSEMENT GÉNÉRAL (LOBBY) ================= -->
-  <div id="modalLobbyLeaderboard" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
+  <div id="modalLobbyLeaderboard" onclick="if(event.target === this) closeLobbyLeaderboard()" class="hidden fixed inset-0 z-50 bg-[#121422]/85 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="neo-box bg-white max-w-md w-full p-6 relative max-h-[88vh] overflow-y-auto custom-scrollbar">
       <div class="flex items-center justify-between pb-3 border-b-2 border-[#12131a] mb-4">
         <div class="flex items-center gap-2">
           <span class="text-2xl">🏆</span>
           <div>
             <h3 id="modalLeaderboardGameTitle" class="text-base font-black text-[#12131a] uppercase leading-none">Classement</h3>
-            <span class="text-[10px] font-mono text-slate-500">Palmarès global</span>
+            <span id="modalLeaderboardSubtitle" class="text-[10px] font-mono text-slate-500">Palmarès global</span>
           </div>
         </div>
-        <button onclick="closeLobbyLeaderboard()" class="text-xl font-bold hover:opacity-75">✕</button>
+        <button onclick="closeLobbyLeaderboard()" class="w-8 h-8 rounded-lg border-2 border-[#12131a] bg-slate-100 hover:bg-rose-100 text-[#12131a] flex items-center justify-center text-sm font-black shadow-[1px_2px_0px_#12131a]">✕</button>
       </div>
 
       <div id="modalLeaderboardList" class="space-y-2">
@@ -345,7 +345,7 @@
         <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black">
           🔍
         </div>
-        <input type="text" id="gameSearchInput" oninput="renderGamesCatalog()" placeholder="Chercher un jeu (Skyjo, Morpion, Undercover, Pop Sauce...)..." class="w-full bg-white border-[3px] border-[#12131a] rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-[#12131a] placeholder-slate-400 shadow-[4px_5px_0px_#12131a] focus:outline-none focus:bg-[#fffdf0] focus:translate-x-0.5 focus:translate-y-0.5 transition-all">
+        <input type="text" id="gameSearchInput" oninput="renderGamesCatalog()" placeholder="Chercher un jeu (Casino, Skyjo, Morpion, Undercover...)..." class="w-full bg-white border-[3px] border-[#12131a] rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-[#12131a] placeholder-slate-400 shadow-[4px_5px_0px_#12131a] focus:outline-none focus:bg-[#fffdf0] focus:translate-x-0.5 focus:translate-y-0.5 transition-all">
       </div>
       <button onclick="pickRandomGame()" title="Choisir un jeu au hasard" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] px-4 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 flex-shrink-0">
         <span class="text-lg">🎰</span>
@@ -384,6 +384,33 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+
+        <!-- CARTE IMB CASINO (NOUVEAU) -->
+        <div class="game-card flex flex-col justify-between">
+          <div>
+            <div class="w-full h-32 bg-[#059669] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
+              <span class="text-6xl drop-shadow-[2px_3px_0px_#12131a]">🎰💸</span>
+              <span class="absolute top-2.5 right-2.5 bg-[#ef4444] text-white border-2 border-[#12131a] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full shadow-[1.5px_2px_0px_#12131a]">
+                💰 1 000 $ offerts
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-lg font-black text-[#12131a]">IMB Casino</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1 mb-3">Fais sauter la banque sur le tapis vert ! Économie commune, distributeur ATM et classement des fortunes.</p>
+
+              <div class="border-2 border-dashed border-emerald-400 bg-emerald-50/70 rounded-2xl p-2.5 space-y-1.5 mb-3" id="casinoTop3Box">
+                <div class="text-[10px] font-bold text-slate-400 italic text-center py-2">Chargement des fortunes...</div>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <a href="/games/casino/index.html" onclick="trackGameLaunch('casino')" id="btnLaunchCasino" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+              <span>Entrer au Casino</span>
+              <span>↗</span>
+            </a>
+            <span class="text-[11px] font-mono font-black text-emerald-700">Multijoueur</span>
+          </div>
+        </div>
         
         <!-- CARTE MORPION -->
         <div class="game-card flex flex-col justify-between">
@@ -412,7 +439,7 @@
           </div>
         </div>
 
-        <!-- CARTE SKYJO (NOUVEAU) -->
+        <!-- CARTE SKYJO -->
         <div class="game-card flex flex-col justify-between">
           <div>
             <div class="w-full h-32 bg-[#3fd0ff] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
@@ -538,7 +565,7 @@
       </form>
     </div>
 
-    <!-- BOUTON BULLE CHAT (AVEC ICÔNE 💬 DE DISCUSSION) -->
+    <!-- BOUTON BULLE CHAT -->
     <button onclick="toggleLobbyChatBox()" class="w-12 h-12 rounded-2xl bg-[#fed72d] border-[3px] border-[#12131a] flex items-center justify-center text-xl shadow-[3px_4px_0px_#12131a] active:translate-x-0.5 active:translate-y-0.5 transition-all">
       <svg class="w-6 h-6 text-[#12131a]" fill="currentColor" viewBox="0 0 24 24">
         <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-11 9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm4 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm4 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
