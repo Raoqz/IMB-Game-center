@@ -1,5 +1,5 @@
 /* =========================================================
-   IMB CASINO - GLOBAL ECONOMY & LEADERBOARD API (v1)
+   IMB CASINO - GLOBAL ECONOMY, FICTIONAL DEBT & DAILY BONUS API (v2)
    Stockage Firebase : casino/users/<tag>
    ========================================================= */
 (function () {
@@ -7,10 +7,11 @@
 
   const INITIAL_BALANCE = 1000;
   const INITIAL_TOKENS = 0;
-  const ATM_THRESHOLD = 200; // Éligible si solde <= 200$
-  const ATM_REWARD = 1000;   // +1000$ par retrait ATM
-  const MAX_TOKENS = 20;     // Plafond absolu : 20 tokens max
-  const ATM_COOLDOWN_MS = 2500; // Anti-spam de 2.5 secondes
+  const INITIAL_DEBT = 0;
+  const ATM_THRESHOLD = 200;    // Éligible uniquement si solde <= 200$
+  const ATM_REWARD = 1000;      // +1000$ par retrait ATM
+  const DAILY_BONUS_AMOUNT = 200; // +200$ par jour
+  const ATM_COOLDOWN_MS = 2000; // Anti-spam de 2 secondes
 
   let currentTag = null;
   let currentProfile = null;
@@ -23,15 +24,40 @@
   const leaderboardSubscribers = new Set();
 
   /**
-   * Fonction de tri officielle du Casino :
-   * 1. Richesse (Solde décroissant)
-   * 2. Économe (Tokens utilisés croissants)
-   * 3. Ancienneté (Timestamp croissant : le premier arrivé à ce montant gagne)
+   * Retourne la date du jour au format YYYY-MM-DD (heure locale)
+   */
+  function getTodayDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Vérifie si le joueur peut récupérer son bonus quotidien de 200$
+   */
+  function canClaimDailyBonus(profile) {
+    const p = profile || currentProfile;
+    if (!p) return false;
+    return p.lastDailyDate !== getTodayDateString();
+  }
+
+  /**
+   * Tri du Classement des Plus Riches :
+   * 1. Solde décroissant
+   * 2. Dette croissante (le moins endetté devant)
+   * 3. Tokens utilisés croissants
+   * 4. Ancienneté
    */
   function sortCasinoPlayers(a, b) {
     const balA = Number(a.balance ?? 0);
     const balB = Number(b.balance ?? 0);
     if (balB !== balA) return balB - balA;
+
+    const debtA = Number(a.debt ?? 0);
+    const debtB = Number(b.debt ?? 0);
+    if (debtA !== debtB) return debtA - debtB;
 
     const tokA = Number(a.tokens ?? a.tokensUsed ?? 0);
     const tokB = Number(b.tokens ?? b.tokensUsed ?? 0);
@@ -43,8 +69,25 @@
   }
 
   /**
-   * Attend que GameShell ait chargé l'utilisateur connecté
+   * Tri du Classement des Dettes (du plus endetté au moins endetté) :
+   * 1. Dette décroissante
+   * 2. Tokens utilisés décroissants
+   * 3. Solde croissant
    */
+  function sortCasinoDebtPlayers(a, b) {
+    const debtA = Number(a.debt ?? 0);
+    const debtB = Number(b.debt ?? 0);
+    if (debtB !== debtA) return debtB - debtA;
+
+    const tokA = Number(a.tokens ?? a.tokensUsed ?? 0);
+    const tokB = Number(b.tokens ?? b.tokensUsed ?? 0);
+    if (tokB !== tokA) return tokB - tokA;
+
+    const balA = Number(a.balance ?? 0);
+    const balB = Number(b.balance ?? 0);
+    return balA - balB;
+  }
+
   function waitForShellUser() {
     return new Promise((resolve) => {
       if (window.GameShell && GameShell.currentUser) {
@@ -60,8 +103,7 @@
   }
 
   /**
-   * Initialise ou récupère le compte Casino du joueur sur Firebase
-   * Chemin : casino/users/<tag>
+   * Initialise ou met à jour le profil du joueur dans casino/users/<tag>
    */
   async function initPlayerProfile(userOverride) {
     const u = userOverride || await waitForShellUser();
@@ -80,30 +122,24 @@
           balance: INITIAL_BALANCE,
           tokens: INITIAL_TOKENS,
           tokensUsed: INITIAL_TOKENS,
+          debt: INITIAL_DEBT,
+          lastDailyDate: null,
           timestamp: Date.now(),
           createdAt: Date.now()
         };
       }
-      // Mise à jour des infos cosmétiques tout en préservant l'économie
       current.tag = u.tag;
       current.nickname = u.nickname || current.nickname || u.tag;
       current.avatarEmoji = u.avatarEmoji || current.avatarEmoji || '🍺';
       current.flagEmoji = u.flagEmoji || current.flagEmoji || '🇫🇷';
-      if (typeof current.balance !== 'number' || current.balance < 0) {
-        current.balance = Math.max(0, Number(current.balance) || 0);
-      }
-      if (typeof current.tokens !== 'number') {
-        current.tokens = Number(current.tokensUsed || 0);
-      }
+      current.balance = Math.max(0, Number(current.balance) || 0);
+      current.tokens = Math.max(0, Number(current.tokens ?? current.tokensUsed ?? 0));
       current.tokensUsed = current.tokens;
-      if (!current.timestamp) {
-        current.timestamp = Date.now();
-      }
+      current.debt = Math.max(0, Number(current.debt ?? 0));
+      if (!current.timestamp) current.timestamp = Date.now();
       return current;
     });
 
-    // Écoute temps réel du profil joueur
-    profileRef.off();
     profileRef.on('value', (snap) => {
       const val = snap.val();
       if (!val) return;
@@ -119,9 +155,7 @@
   }
 
   /**
-   * Met à jour le solde du joueur (gain positif ou mise/perte négative).
-   * SÉCURITÉ : Refuse toute opération qui ferait passer le solde sous 0$.
-   * @param {number} amount - Montant à ajouter (ex: +250) ou retirer (ex: -100)
+   * Met à jour le solde du joueur (gain positif ou perte négative, jamais sous 0$)
    */
   async function updateCasinoBalance(amount) {
     const delta = Math.round(Number(amount));
@@ -129,9 +163,7 @@
       return { ok: false, error: "Montant invalide.", profile: currentProfile };
     }
 
-    if (!profileRef) {
-      await initPlayerProfile();
-    }
+    if (!profileRef) await initPlayerProfile();
 
     let rejectedReason = null;
 
@@ -141,16 +173,13 @@
       const curBal = Math.max(0, Number(current.balance ?? INITIAL_BALANCE));
       const nextBal = curBal + delta;
 
-      // Règle absolue : Solde négatif impossible
       if (nextBal < 0) {
         rejectedReason = `Solde insuffisant (${curBal} $ disponibles).`;
-        return; // Annule la transaction Firebase
+        return;
       }
 
-      if (nextBal !== curBal) {
-        current.balance = nextBal;
-        current.timestamp = Date.now(); // Horodatage du nouveau solde atteint
-      }
+      current.balance = nextBal;
+      current.timestamp = Date.now();
       return current;
     });
 
@@ -167,33 +196,16 @@
       ok: true,
       balance: currentProfile.balance,
       tokens: currentProfile.tokens,
+      debt: currentProfile.debt || 0,
       profile: currentProfile
     };
   }
 
   /**
-   * Vérifie si un montant de mise est autorisé pour le joueur actuel
-   */
-  function canAffordBet(betAmount) {
-    const bet = Math.round(Number(betAmount));
-    if (isNaN(bet) || bet <= 0) return false;
-    const bal = Number(currentProfile?.balance ?? 0);
-    return bet <= bal;
-  }
-
-  /**
-   * Retourne la mise maximale autorisée (bridée au solde actuel)
-   */
-  function getMaxBet() {
-    return Math.max(0, Number(currentProfile?.balance ?? 0));
-  }
-
-  /**
-   * Distributeur ATM :
+   * Distributeur ATM (Sans limite de tokens) :
    * - Autorisé UNIQUEMENT si solde <= 200$
-   * - Limité à 20 Tokens maximum par joueur
-   * - Ajoute +1000$ et +1 Token
-   * - Intègre un anti-spam (cooldown + verrou de transaction)
+   * - Ajoute +1000$ au solde et +1 Token
+   * - Ajoute à la dette fictive la différence : (1000 - solde_restant)
    */
   async function useATM() {
     const now = Date.now();
@@ -202,41 +214,39 @@
       return {
         ok: false,
         code: 'COOLDOWN',
-        error: `Anti-spam : patiente ${Math.max(1, waitSec)}s avant d'utiliser l'ATM.`
+        error: `Anti-spam : patiente ${Math.max(1, waitSec)}s.`
       };
     }
 
-    if (!profileRef) {
-      await initPlayerProfile();
-    }
+    if (!profileRef) await initPlayerProfile();
 
     atmBusy = true;
     lastAtmCall = now;
     let failCode = null;
     let failMsg = null;
+    let addedDebtAmount = 0;
 
     try {
       const result = await profileRef.transaction((current) => {
         if (!current) return current;
 
-        const bal = Number(current.balance ?? 0);
-        const tok = Number(current.tokens ?? current.tokensUsed ?? 0);
+        const bal = Math.max(0, Number(current.balance ?? 0));
+        const tok = Math.max(0, Number(current.tokens ?? current.tokensUsed ?? 0));
+        const curDebt = Math.max(0, Number(current.debt ?? 0));
 
         if (bal > ATM_THRESHOLD) {
           failCode = 'TOO_RICH';
           failMsg = `ATM verrouillé : ton solde (${bal} $) doit être inférieur ou égal à ${ATM_THRESHOLD} $.`;
-          return; // Abort
+          return;
         }
 
-        if (tok >= MAX_TOKENS) {
-          failCode = 'MAX_TOKENS';
-          failMsg = `Limite atteinte : tu as déjà utilisé tes ${MAX_TOKENS}/${MAX_TOKENS} Tokens !`;
-          return; // Abort
-        }
+        // Dette fictive ajoutée = différence entre 1000$ et la somme qu'il restait au joueur
+        addedDebtAmount = Math.max(0, ATM_REWARD - bal);
 
         current.balance = bal + ATM_REWARD;
         current.tokens = tok + 1;
         current.tokensUsed = current.tokens;
+        current.debt = curDebt + addedDebtAmount;
         current.timestamp = Date.now();
         current.lastAtmAt = Date.now();
         return current;
@@ -255,26 +265,133 @@
       return {
         ok: true,
         reward: ATM_REWARD,
+        addedDebt: addedDebtAmount,
         balance: currentProfile.balance,
         tokens: currentProfile.tokens,
-        remainingTokens: Math.max(0, MAX_TOKENS - currentProfile.tokens),
+        debt: currentProfile.debt,
         profile: currentProfile
       };
     } catch (err) {
       console.error("Erreur ATM :", err);
-      return {
-        ok: false,
-        code: 'ERROR',
-        error: "Erreur réseau lors du retrait ATM."
-      };
+      return { ok: false, code: 'ERROR', error: "Erreur réseau lors du retrait ATM." };
     } finally {
-      setTimeout(() => { atmBusy = false; }, 600);
+      setTimeout(() => { atmBusy = false; }, 500);
     }
   }
 
   /**
-   * Récupère le classement complet trié et enrichi des badges (👑 1er, 🫏 dernier)
+   * Permet au joueur de rembourser sa dette fictive du montant de son choix
+   * @param {number} requestedAmount - Montant que le joueur souhaite rembourser
    */
+  async function repayDebt(requestedAmount) {
+    if (!profileRef) await initPlayerProfile();
+
+    const rawAmount = Math.floor(Number(requestedAmount));
+    if (isNaN(rawAmount) || rawAmount <= 0) {
+      return { ok: false, error: "Entre un montant valide supérieur à 0 $." };
+    }
+
+    let failMsg = null;
+    let paidAmount = 0;
+
+    const result = await profileRef.transaction((current) => {
+      if (!current) return current;
+
+      const bal = Math.max(0, Number(current.balance ?? 0));
+      const curDebt = Math.max(0, Number(current.debt ?? 0));
+
+      if (curDebt <= 0) {
+        failMsg = "Tu n'as aucune dette à rembourser !";
+        return;
+      }
+      if (bal <= 0) {
+        failMsg = "Ton solde est à 0 $, impossible de rembourser pour le moment.";
+        return;
+      }
+      if (rawAmount > bal) {
+        failMsg = `Solde insuffisant : tu ne peux pas rembourser plus que ton solde (${bal.toLocaleString('fr-FR')} $).`;
+        return;
+      }
+
+      paidAmount = Math.min(rawAmount, curDebt);
+      current.balance = bal - paidAmount;
+      current.debt = curDebt - paidAmount;
+      current.timestamp = Date.now();
+      return current;
+    });
+
+    if (!result.committed || failMsg) {
+      return { ok: false, error: failMsg || "Remboursement impossible." };
+    }
+
+    currentProfile = result.snapshot.val();
+    return {
+      ok: true,
+      paidAmount,
+      balance: currentProfile.balance,
+      debt: currentProfile.debt,
+      profile: currentProfile
+    };
+  }
+
+  /**
+   * Réclame le bonus quotidien de +200$ (1 fois par jour)
+   */
+  async function claimDailyBonus() {
+    if (!profileRef) await initPlayerProfile();
+
+    const today = getTodayDateString();
+    let failMsg = null;
+
+    const result = await profileRef.transaction((current) => {
+      if (!current) return current;
+
+      if (current.lastDailyDate === today) {
+        failMsg = "Tu as déjà récupéré ton bonus quotidien de 200 $ aujourd'hui ! Reviens demain.";
+        return;
+      }
+
+      current.balance = Math.max(0, Number(current.balance ?? 0)) + DAILY_BONUS_AMOUNT;
+      current.lastDailyDate = today;
+      current.timestamp = Date.now();
+      return current;
+    });
+
+    if (!result.committed || failMsg) {
+      return { ok: false, error: failMsg || "Bonus quotidien indisponible." };
+    }
+
+    currentProfile = result.snapshot.val();
+    return {
+      ok: true,
+      reward: DAILY_BONUS_AMOUNT,
+      balance: currentProfile.balance,
+      lastDailyDate: today,
+      profile: currentProfile
+    };
+  }
+
+  function decorateLeaderboard(sortedList) {
+    const total = sortedList.length;
+    return sortedList.map((player, index) => {
+      const isFirst = index === 0;
+      const isLast = total > 1 && index === total - 1;
+      const tokens = Number(player.tokens ?? player.tokensUsed ?? 0);
+      const debt = Number(player.debt ?? 0);
+      return {
+        ...player,
+        balance: Number(player.balance ?? 0),
+        tokens,
+        tokensUsed: tokens,
+        debt,
+        rank: index + 1,
+        isFirst,
+        isLast,
+        badgeEmoji: isFirst ? '👑' : (isLast ? '🫏' : null)
+      };
+    });
+  }
+
   async function getLeaderboard() {
     const snap = await db.ref('casino/users').once('value');
     const data = snap.val() || {};
@@ -282,31 +399,6 @@
     return decorateLeaderboard(list);
   }
 
-  /**
-   * Ajoute les métadonnées de rang et de badge (👑 / 🫏) à la liste triée
-   */
-  function decorateLeaderboard(sortedList) {
-    const total = sortedList.length;
-    return sortedList.map((player, index) => {
-      const isFirst = index === 0;
-      const isLast = total > 1 && index === total - 1;
-      const tokens = Number(player.tokens ?? player.tokensUsed ?? 0);
-      return {
-        ...player,
-        balance: Number(player.balance ?? 0),
-        tokens: tokens,
-        tokensUsed: tokens,
-        rank: index + 1,
-        isFirst: isFirst,
-        isLast: isLast,
-        badgeEmoji: isFirst ? '👑' : (isLast ? '🫏' : null)
-      };
-    });
-  }
-
-  /**
-   * Écoute en temps réel le classement du Casino
-   */
   function subscribeLeaderboard(callback) {
     if (typeof callback !== 'function') return () => {};
     leaderboardSubscribers.add(callback);
@@ -329,9 +421,6 @@
     };
   }
 
-  /**
-   * Écoute en temps réel les changements du profil du joueur connecté
-   */
   function subscribeProfile(callback) {
     if (typeof callback !== 'function') return () => {};
     profileSubscribers.add(callback);
@@ -343,25 +432,26 @@
     };
   }
 
-  // Exposition globale
   window.CasinoAPI = {
     INITIAL_BALANCE,
     ATM_THRESHOLD,
     ATM_REWARD,
-    MAX_TOKENS,
+    DAILY_BONUS_AMOUNT,
     initPlayerProfile,
     updateCasinoBalance,
     useATM,
-    canAffordBet,
-    getMaxBet,
+    repayDebt,
+    claimDailyBonus,
+    canClaimDailyBonus,
+    getTodayDateString,
     getLeaderboard,
     subscribeLeaderboard,
     subscribeProfile,
     sortCasinoPlayers,
+    sortCasinoDebtPlayers,
     getCurrentProfile: () => currentProfile
   };
 
-  // Alias globaux directs pour un appel simplifié depuis n'importe quel jeu du casino
   window.updateCasinoBalance = updateCasinoBalance;
   window.useATM = useATM;
 })();
