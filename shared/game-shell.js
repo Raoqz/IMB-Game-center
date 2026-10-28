@@ -1,5 +1,5 @@
 /* =========================================================
-   IMB GAME CENTER - SHARED GAME SHELL (v5 - Casino Ready)
+   IMB GAME CENTER - SHARED GAME SHELL (v6 - Roulette Invite & Debt Ready)
    ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyALmOSvJ1YsP_-0b1EKU5zcEhqpyUVg5go",
@@ -38,6 +38,7 @@ window.GameShell = {
   onStateUpdate: null,
   onPlayerJoined: null,
   onRoomConnected: null,
+  onJoinRoom: null, // Permet aux jeux personnalisés (ex: Roulette) de gérer leur propre salon
 
   init(config) {
     this.gameId = config.gameId;
@@ -48,6 +49,7 @@ window.GameShell = {
     this.onStateUpdate = config.onStateUpdate;
     this.onPlayerJoined = config.onPlayerJoined;
     this.onRoomConnected = config.onRoomConnected;
+    this.onJoinRoom = config.onJoinRoom || null;
 
     this.buildShellDom();
     this.listenAuth();
@@ -75,17 +77,21 @@ window.GameShell = {
       this.listenStackedInvitations();
       this.listenLiveChat();
 
+      if (this.onGameInit) {
+        await this.onGameInit(this.currentUser);
+      }
+
       const hash = window.location.hash;
       const match = hash.match(/room=([A-Z0-9]{4})/i);
       if (match) {
         const code = match[1].toUpperCase();
         const inputCode = document.getElementById('shellInputRoomCode');
         if (inputCode) inputCode.value = code;
-        this.joinRoom(code);
-      }
-
-      if (this.onGameInit) {
-        this.onGameInit(this.currentUser);
+        if (typeof this.onJoinRoom === 'function') {
+          this.onJoinRoom(code);
+        } else {
+          this.joinRoom(code);
+        }
       }
     });
   },
@@ -124,7 +130,7 @@ window.GameShell = {
           <div class="flex items-center gap-2.5">
             <a href="/" class="neo-btn bg-white text-[#12131a] px-3 py-1 rounded-xl text-xs flex items-center gap-1 font-black shadow-[2px_2px_0px_#12131a]">
               <span>←</span>
-              <span class="hidden sm:inline">Retour</span>
+              <span class="hidden sm:inline">Accueil</span>
             </a>
             <h1 class="font-black italic tracking-wider text-sm sm:text-base text-white uppercase">${this.gameTitle}</h1>
           </div>
@@ -132,7 +138,7 @@ window.GameShell = {
           <div class="flex items-center gap-1.5 sm:gap-2">
             <button onclick="GameShell.announceGameInChat()" title="Partager dans le chat général" class="neo-btn ${accentBtn} px-2.5 sm:px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1 shadow-[2px_2px_0px_#12131a]">
               <span>📢</span>
-              <span class="hidden md:inline">${isCasino ? 'Appeler au Casino' : 'Annoncer ma partie'}</span>
+              <span class="hidden md:inline">${isCasino ? 'Annoncer / Inviter' : 'Annoncer ma partie'}</span>
             </button>
 
             <button onclick="GameShell.openLeaderboard()" title="Classement général" class="neo-btn bg-white text-[#12131a] w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_#12131a]">
@@ -230,7 +236,7 @@ window.GameShell = {
               <span class="text-2xl">${topBarIcon}</span>
               <div>
                 <h3 class="text-base font-black text-[#12131a] uppercase leading-none">${this.gameTitle} : Classement</h3>
-                <span class="text-[10px] font-mono text-slate-500">${isCasino ? 'Richesse ($) & Tokens utilisés' : 'Palmarès enregistré'}</span>
+                <span class="text-[10px] font-mono text-slate-500">${isCasino ? 'Richesse ($), Dettes & Tokens' : 'Palmarès enregistré'}</span>
               </div>
             </div>
             <button onclick="GameShell.closeLeaderboard()" class="w-8 h-8 rounded-lg border-2 border-[#12131a] bg-slate-100 hover:bg-rose-100 text-[#12131a] flex items-center justify-center text-sm font-black shadow-[1px_2px_0px_#12131a]">✕</button>
@@ -265,7 +271,7 @@ window.GameShell = {
     });
   },
 
-  /* ---------------- GESTION DES SALLES ---------------- */
+  /* ---------------- GESTION DES SALLES GÉNÉRIQUES ---------------- */
   generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -314,6 +320,10 @@ window.GameShell = {
 
   async joinRoom(code) {
     code = code.trim().toUpperCase();
+    if (typeof this.onJoinRoom === 'function') {
+      return this.onJoinRoom(code);
+    }
+
     this.currentRoomCode = code;
     this.roomRef = db.ref(`rooms/${this.gameId}/${code}`);
 
@@ -416,11 +426,11 @@ window.GameShell = {
     }
   },
 
-  /* ---------------- INVITATIONS ---------------- */
+  /* ---------------- INVITATIONS (CORRIGÉ POUR ROULETTE & SALONS) ---------------- */
   async sendDirectInvite(targetTag) {
     const isCasino = this.theme === 'casino';
     if (!this.currentRoomCode && !isCasino) {
-      alert("Crée d'abord une salle avant d'inviter un camarade !");
+      alert("Crée d'abord un salon avant d'inviter un camarade !");
       return;
     }
 
@@ -455,8 +465,8 @@ window.GameShell = {
       const recentInvites = allInvites.slice(-3);
 
       stackContainer.innerHTML = recentInvites.map(inv => {
-        const isCasinoInvite = inv.gameId === 'casino' || inv.roomCode === 'CASINO';
-        const roomLabel = isCasinoInvite ? '' : `(Salle <strong>${inv.roomCode}</strong>)`;
+        const hasSpecificRoom = inv.roomCode && inv.roomCode !== 'CASINO';
+        const roomLabel = hasSpecificRoom ? `(Salon <strong>${inv.roomCode}</strong>)` : '';
 
         return `
           <div id="inviteCard_${inv.key}" class="pointer-events-auto bg-[#fed72d] border-[3px] border-[#12131a] rounded-2xl p-3 shadow-[4px_5px_0px_#12131a] flex items-center justify-between gap-2.5 animate-bounce">
@@ -485,13 +495,37 @@ window.GameShell = {
 
   acceptInvite(gameId, roomCode, inviteKey) {
     if (inviteKey) this.dismissInvite(inviteKey);
-    if (gameId === 'casino' || roomCode === 'CASINO') {
+
+    const normalizedGame = String(gameId || '').toLowerCase();
+    const isRoulette = normalizedGame === 'casino/roulette' || normalizedGame === 'casino-roulette' || normalizedGame === 'roulette';
+
+    if (isRoulette) {
+      const hashPart = (roomCode && roomCode !== 'CASINO') ? `#room=${roomCode}` : '';
+      if (this.gameId === 'casino/roulette' || this.gameId === 'casino-roulette') {
+        if (roomCode && roomCode !== 'CASINO') {
+          window.location.hash = `room=${roomCode}`;
+          if (typeof this.onJoinRoom === 'function') {
+            this.onJoinRoom(roomCode);
+          }
+        }
+      } else {
+        window.location.href = `/games/casino/roulette/index.html${hashPart}`;
+      }
+      return;
+    }
+
+    if (normalizedGame === 'casino') {
       window.location.href = `/games/casino/index.html`;
       return;
     }
+
     if (gameId === this.gameId) {
       window.location.hash = `room=${roomCode}`;
-      this.joinRoom(roomCode);
+      if (typeof this.onJoinRoom === 'function') {
+        this.onJoinRoom(roomCode);
+      } else {
+        this.joinRoom(roomCode);
+      }
     } else {
       window.location.href = `/games/${gameId}/index.html#room=${roomCode}`;
     }
@@ -503,7 +537,7 @@ window.GameShell = {
     }
   },
 
-  /* ---------------- CLASSEMENT TOP 3 / FULL (AVEC MODE CASINO) ---------------- */
+  /* ---------------- CLASSEMENT TOP 3 / FULL ---------------- */
   openLeaderboard() {
     const modal = document.getElementById('shellModalLeaderboard');
     modal.classList.remove('hidden');
@@ -518,11 +552,7 @@ window.GameShell = {
       } else {
         db.ref('casino/users').once('value', snap => {
           const data = snap.val() || {};
-          this.fullLeaderboardData = Object.values(data).sort((a, b) => {
-            if ((b.balance ?? 0) !== (a.balance ?? 0)) return (b.balance ?? 0) - (a.balance ?? 0);
-            if ((a.tokens ?? 0) !== (b.tokens ?? 0)) return (a.tokens ?? 0) - (b.tokens ?? 0);
-            return (a.timestamp ?? 0) - (b.timestamp ?? 0);
-          });
+          this.fullLeaderboardData = Object.values(data).sort((a, b) => (b.balance ?? 0) - (a.balance ?? 0));
           this.renderLeaderboardRows();
         });
       }
@@ -549,8 +579,8 @@ window.GameShell = {
       return;
     }
 
-    const listToDisplay = this.isLeaderboardExpanded 
-      ? this.fullLeaderboardData 
+    const listToDisplay = this.isLeaderboardExpanded
+      ? this.fullLeaderboardData
       : this.fullLeaderboardData.slice(0, 5);
 
     container.innerHTML = listToDisplay.map((p, idx) => {
@@ -588,12 +618,13 @@ window.GameShell = {
       }
 
       const tokensCount = p.tokens ?? p.tokensUsed ?? 0;
+      const debtAmount = Number(p.debt ?? 0);
       const rightColumnHtml = isCasino
         ? `
           <div class="text-right flex-shrink-0">
             <div class="text-xs font-black text-[#065f46] font-mono">${(p.balance ?? 0).toLocaleString('fr-FR')} $</div>
-            <div class="text-[10px] font-mono font-bold ${tokensCount > 0 ? 'text-rose-600' : 'text-emerald-700'}">
-              🪙 ${tokensCount}/20 token${tokensCount > 1 ? 's' : ''}
+            <div class="text-[10px] font-mono font-bold ${debtAmount > 0 ? 'text-rose-600' : 'text-slate-500'}">
+              Dette : ${debtAmount.toLocaleString('fr-FR')} $ · 🪙 ${tokensCount}
             </div>
           </div>
         `
@@ -614,7 +645,7 @@ window.GameShell = {
               <div class="text-xs font-black text-[#12131a] truncate flex items-center gap-1">
                 <span>${this.escapeHtml(p.nickname)}</span>
                 ${isCasino && isFirst ? '<span class="text-[9px] bg-[#12131a] text-[#fed72d] px-1.5 py-0.2 rounded font-mono">BOSS</span>' : ''}
-                ${isCasino && isLast ? '<span class="text-[9px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-mono">RUINÉ</span>' : ''}
+                ${isCasino && isLast ? '<span class="text-[9px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-mono">FAUCHÉ</span>' : ''}
               </div>
               <div class="text-[9px] font-mono text-slate-500 truncate">@${this.escapeHtml(p.tag)}</div>
             </div>
@@ -626,8 +657,8 @@ window.GameShell = {
 
     if (totalPlayers > 5) {
       expandWrapper.classList.remove('hidden');
-      btnExpand.textContent = this.isLeaderboardExpanded 
-        ? "Réduire au Top 5 ▲" 
+      btnExpand.textContent = this.isLeaderboardExpanded
+        ? "Réduire au Top 5 ▲"
         : `Voir le classement complet (${totalPlayers} joueurs) ▼`;
     } else {
       expandWrapper.classList.add('hidden');
@@ -682,8 +713,8 @@ window.GameShell = {
 
       let statusText = 'hors ligne';
       if (isOnline) {
-        statusText = presenceInfo && presenceInfo.currentGame 
-          ? `dans ${presenceInfo.currentGame}` 
+        statusText = presenceInfo && presenceInfo.currentGame
+          ? `dans ${presenceInfo.currentGame}`
           : 'En ligne';
       }
 
@@ -746,7 +777,11 @@ window.GameShell = {
         const mentionedMe = this.isUserMentionedInText(m.text);
 
         if (m.isInvite) {
-          const isCasino = m.internalGame === 'casino' || m.internalRoom === 'CASINO';
+          const hasRoomCode = m.internalRoom && m.internalRoom !== 'CASINO';
+          const btnLabel = hasRoomCode
+            ? `Rejoindre le salon ${this.escapeHtml(m.internalRoom)} ➔`
+            : `Rejoindre ${this.escapeHtml(m.gameTitle)} 🎰`;
+
           return `
             <div class="neo-box bg-[#fed72d] p-2.5 text-[#12131a] space-y-1.5 ${mentionedMe ? 'ring-2 ring-rose-500' : ''}">
               <div class="flex items-center justify-between text-[11px] font-black">
@@ -757,8 +792,8 @@ window.GameShell = {
                 <div class="font-black text-[11px] mb-1">🎮 ${this.escapeHtml(m.gameTitle)}</div>
                 <p class="text-[10px] font-bold text-slate-700 italic mb-2">« ${this.formatChatMessageWithMentions(m.text)} »</p>
                 ${m.internalGame ? `
-                  <button onclick="GameShell.acceptInvite('${m.internalGame}', '${m.internalRoom}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">
-                    ${isCasino ? 'Rejoindre le Casino 🎰' : `Rejoindre la salle ${m.internalRoom} ➔`}
+                  <button onclick="GameShell.acceptInvite('${m.internalGame}', '${m.internalRoom || 'CASINO'}')" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black">
+                    ${btnLabel}
                   </button>
                 ` : `
                   <a href="${m.roomUrl}" target="_blank" class="w-full neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] py-1.5 rounded-lg text-xs font-black block text-center">
@@ -811,10 +846,15 @@ window.GameShell = {
   announceGameInChat() {
     const isCasino = this.theme === 'casino';
     if (!this.currentRoomCode && !isCasino) {
-      alert("Crée d'abord une salle !");
+      alert("Crée d'abord un salon avant d'annoncer ta partie !");
       return;
     }
     if (!this.currentUser) return;
+
+    const hasRoom = Boolean(this.currentRoomCode);
+    const inviteText = hasRoom
+      ? `@promo Je lance un salon sur ${this.gameTitle} ! Rejoignez la table avec le code : ${this.currentRoomCode} 🎡💸`
+      : `@promo Je suis sur ${this.gameTitle} ! Venez faire sauter la banque 🎰💸`;
 
     db.ref('chat').push({
       authorNick: this.currentUser.nickname,
@@ -825,9 +865,7 @@ window.GameShell = {
       gameTitle: this.gameTitle,
       internalGame: this.gameId,
       internalRoom: this.currentRoomCode || 'CASINO',
-      text: isCasino
-        ? `@promo Je suis au Casino IMB ! Venez faire sauter la banque 🎰💸`
-        : `@promo Je lance une partie de ${this.gameTitle} ! Rejoins avec le code : ${this.currentRoomCode}`,
+      text: inviteText,
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       timestamp: Date.now()
     });
@@ -931,7 +969,6 @@ window.GameShell = {
     document.getElementById('shellChatBox').classList.remove('hidden');
   },
 
-  /* ---------------- OUTILS ---------------- */
   toggleBarVisibility() {
     const bar = document.getElementById('shellTopBar');
     const restoreBtn = document.getElementById('shellBtnRestoreBar');
