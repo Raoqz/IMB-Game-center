@@ -1,7 +1,6 @@
 /* =========================================================
-   IMB CASINO - ROULETTE APP (Flow Fluide & Déduction Directe)
-   Cycle : Faites vos jeux (déduction HUD en direct) ->
-           Rotation immédiate -> Résultat -> Maj Firebase
+   IMB CASINO - ROULETTE APP (Sauvegarde Firebase Directe)
+   Cycle : Mise -> Rotation -> Résultat -> Écriture immédiate DB (+X / -X)
    ========================================================= */
 (function () {
   'use strict';
@@ -52,7 +51,7 @@
         <p class="pl-3">– <strong>Numéro plein (0 à 36) :</strong> ×36 ta mise</p>
         <p class="pl-3">– <strong>Douzaines (1-12, 13-24, 25-36) & Colonnes (2:1) :</strong> ×3 ta mise</p>
         <p class="pl-3">– <strong>Chances simples (Rouge/Noir, Pair/Impair, 1-18/19-36) :</strong> ×2 ta mise</p>
-        <p>• 💵 <strong>Déduction en direct :</strong> Chaque jeton posé est immédiatement déduit de ton solde disponible en haut à droite. Clic droit ou "Effacer" te rembourse tes jetons tant que la roue ne tourne pas.</p>
+        <p>• 💵 <strong>Mise & Solde :</strong> Ton solde est mis à jour en direct dans la base de données dès que la roue s'arrête sur le numéro gagnant.</p>
         <p>• 🏧 <strong>ATM :</strong> Si ton solde est ≤ 200 $, utilise le bouton ATM directement en haut de la table pour recevoir +1 000 $ (+1 Token, max 20).</p>
       `,
       onGameInit: (user) => {
@@ -102,45 +101,64 @@
     if (avatarEl) avatarEl.textContent = user.avatarEmoji || '🍺';
     if (nickEl) nickEl.textContent = user.nickname || user.tag;
 
-    const userCasinoRef = db.ref(`casino/users/${user.tag}`);
-    const snap = await userCasinoRef.once('value');
+    try {
+      const userCasinoRef = db.ref(`casino/users/${user.tag}`);
+      const snap = await userCasinoRef.once('value');
 
-    if (!snap.exists()) {
-      const initialData = {
-        tag: user.tag,
-        nickname: user.nickname || user.tag,
-        avatarEmoji: user.avatarEmoji || '🍺',
-        flagEmoji: user.flagEmoji || '🇫🇷',
-        balance: 1000,
-        tokens: 0,
-        tokensUsed: 0,
-        timestamp: Date.now(),
-        createdAt: Date.now()
-      };
-      await userCasinoRef.set(initialData);
-      myProfile = initialData;
-    } else {
-      const existing = snap.val();
-      if (typeof existing.balance !== 'number' || isNaN(existing.balance)) {
-        existing.balance = 1000;
-        await userCasinoRef.update({ balance: 1000 });
+      if (!snap.exists()) {
+        const initialData = {
+          tag: user.tag,
+          nickname: user.nickname || user.tag,
+          avatarEmoji: user.avatarEmoji || '🍺',
+          flagEmoji: user.flagEmoji || '🇫🇷',
+          balance: 1000,
+          tokens: 0,
+          tokensUsed: 0,
+          timestamp: Date.now(),
+          createdAt: Date.now()
+        };
+        await userCasinoRef.set(initialData);
+        myProfile = initialData;
+      } else {
+        const existing = snap.val();
+        const validBalance = (typeof existing.balance === 'number' && !isNaN(existing.balance))
+          ? Math.max(0, existing.balance)
+          : 1000;
+        const validTokens = Number(existing.tokens ?? existing.tokensUsed ?? 0);
+
+        myProfile = {
+          ...existing,
+          tag: user.tag,
+          nickname: user.nickname || existing.nickname || user.tag,
+          avatarEmoji: user.avatarEmoji || existing.avatarEmoji || '🍺',
+          flagEmoji: user.flagEmoji || existing.flagEmoji || '🇫🇷',
+          balance: validBalance,
+          tokens: validTokens,
+          tokensUsed: validTokens
+        };
+
+        await userCasinoRef.update({
+          tag: myProfile.tag,
+          nickname: myProfile.nickname,
+          avatarEmoji: myProfile.avatarEmoji,
+          flagEmoji: myProfile.flagEmoji,
+          balance: validBalance,
+          tokens: validTokens,
+          tokensUsed: validTokens
+        });
       }
-      myProfile = existing;
-    }
 
-    // Initialiser CasinoAPI en tâche de fond sans bloquer
-    if (window.CasinoAPI && typeof CasinoAPI.initPlayerProfile === 'function') {
-      CasinoAPI.initPlayerProfile(user).catch(() => {});
+      // Écoute en temps réel sans couper les autres écouteurs (pas de .off() global)
+      userCasinoRef.on('value', (s) => {
+        const val = s.val();
+        if (!val) return;
+        myProfile = val;
+        renderBetsAndBalanceUI();
+      });
+    } catch (err) {
+      console.error('Erreur accès Firebase casino/users (vérifie les règles Firebase) :', err);
+      showToast('Erreur permissions Firebase : ajoute "casino" dans tes règles Firebase !', '⚠️');
     }
-
-    // Écoute temps réel directe sur Firebase
-    userCasinoRef.off();
-    userCasinoRef.on('value', (s) => {
-      const val = s.val();
-      if (!val) return;
-      myProfile = val;
-      renderBetsAndBalanceUI();
-    });
 
     renderBetsAndBalanceUI();
 
@@ -150,44 +168,59 @@
     }
   }
 
-  /* ---------------- 2. PERSISTANCE DIRECTE DU SOLDE SUR FIREBASE ---------------- */
+  /* ---------------- 2. SAUVEGARDE IMMÉDIATE DU SOLDE SUR FIREBASE (+50 / -50) ---------------- */
   async function commitBalanceDeltaToFirebase(deltaAmount) {
     const delta = Math.round(Number(deltaAmount));
-    const currentBal = Math.max(0, Number(myProfile?.balance ?? 1000));
+    if (isNaN(delta) || delta === 0) {
+      renderBetsAndBalanceUI();
+      return getRealBalance();
+    }
+
+    // S'assurer d'avoir l'utilisateur avant d'écrire
+    if (!myUser) {
+      myUser = (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
+    }
+
+    const currentBal = getRealBalance();
     const nextBal = Math.max(0, currentBal + delta);
 
-    // Mise à jour locale immédiate pour une réactivité instantanée
+    // 1. Mise à jour locale instantanée
     myProfile.balance = nextBal;
     renderBetsAndBalanceUI();
 
-    const user = myUser || (window.GameShell && GameShell.currentUser);
-    if (!user || !user.tag) return nextBal;
+    if (!myUser || !myUser.tag) return nextBal;
 
+    // 2. Écriture directe et immédiate dans Firebase Realtime Database
     try {
-      const userCasinoRef = db.ref(`casino/users/${user.tag}`);
-      await userCasinoRef.transaction((cur) => {
-        if (!cur) {
-          return {
-            tag: user.tag,
-            nickname: user.nickname || user.tag,
-            avatarEmoji: user.avatarEmoji || '🍺',
-            flagEmoji: user.flagEmoji || '🇫🇷',
-            balance: nextBal,
-            tokens: Number(myProfile.tokens || 0),
-            tokensUsed: Number(myProfile.tokens || 0),
-            timestamp: Date.now()
-          };
-        }
-        const base = Math.max(0, Number(cur.balance ?? 1000));
-        cur.balance = Math.max(0, base + delta);
-        cur.timestamp = Date.now();
-        return cur;
-      });
-    } catch (err) {
-      console.error('Erreur mise à jour solde Firebase :', err);
-    }
+      const userCasinoRef = db.ref(`casino/users/${myUser.tag}`);
+      const snap = await userCasinoRef.once('value');
+      const serverData = snap.val();
 
-    return nextBal;
+      const baseBal = (serverData && typeof serverData.balance === 'number' && !isNaN(serverData.balance))
+        ? Math.max(0, serverData.balance)
+        : currentBal;
+      const finalBalance = Math.max(0, baseBal + delta);
+      const tokensCount = Number(serverData?.tokens ?? serverData?.tokensUsed ?? myProfile.tokens ?? 0);
+
+      await userCasinoRef.update({
+        tag: myUser.tag,
+        nickname: myUser.nickname || myUser.tag,
+        avatarEmoji: myUser.avatarEmoji || '🍺',
+        flagEmoji: myUser.flagEmoji || '🇫🇷',
+        balance: finalBalance,
+        tokens: tokensCount,
+        tokensUsed: tokensCount,
+        timestamp: Date.now()
+      });
+
+      myProfile.balance = finalBalance;
+      renderBetsAndBalanceUI();
+      return finalBalance;
+    } catch (err) {
+      console.error('Échec écriture Firebase :', err);
+      showToast('Sauvegarde refusée par Firebase (vérifie tes règles "casino") !', '⚠️');
+      return nextBal;
+    }
   }
 
   /* ---------------- 3. CONSTRUCTION DE LA ROUE SVG ROTATIVE ---------------- */
@@ -449,7 +482,6 @@
   }
 
   function renderBetsAndBalanceUI() {
-    // 1. Badges de jetons sur les cases
     document.querySelectorAll('[id^="badge_"]').forEach(el => {
       el.innerHTML = '';
     });
@@ -461,13 +493,11 @@
       }
     }
 
-    // 2. Calcul du Solde Réel, Mise sur tapis et Solde Disponible (déduit en direct)
     const realBalance = getRealBalance();
     const totalBet = getTotalBet();
     const availableBalance = Math.max(0, realBalance - totalBet);
     const tok = Number(myProfile?.tokens ?? myProfile?.tokensUsed ?? 0);
 
-    // Mise à jour du HUD (affiche le solde disponible en direct !)
     const hudBalEl = document.getElementById('hudBalanceValue');
     const hudSubEl = document.getElementById('hudBettingSub');
     const hudTokEl = document.getElementById('hudTokensValue');
@@ -485,13 +515,11 @@
       }
     }
 
-    // Mise à jour des compteurs sous le tapis
     const totalBetEl = document.getElementById('totalBetDisplay');
     const remBalEl = document.getElementById('remainingBalanceDisplay');
     if (totalBetEl) totalBetEl.textContent = `${totalBet.toLocaleString('fr-FR')} $`;
     if (remBalEl) remBalEl.textContent = `${availableBalance.toLocaleString('fr-FR')} $`;
 
-    // État du bouton ATM
     const atmBtn = document.getElementById('btnInGameAtm');
     const atmText = document.getElementById('btnInGameAtmText');
     if (balPill && atmBtn && atmText) {
@@ -507,7 +535,6 @@
       }
     }
 
-    // État du bouton Tourner
     const btnSpin = document.getElementById('btnSpin');
     if (btnSpin) {
       const canSpin = !isSpinning && totalBet > 0 && totalBet <= realBalance;
@@ -534,33 +561,40 @@
       return;
     }
 
-    if (window.CasinoAPI && typeof CasinoAPI.useATM === 'function') {
-      const res = await CasinoAPI.useATM();
-      if (res && res.ok) {
-        myProfile.balance = res.balance;
-        myProfile.tokens = res.tokens;
-        renderBetsAndBalanceUI();
-        GameShell.fireConfetti();
-        showToast(`+1 000 $ crédités ! (Token ${res.tokens}/20)`, '💵');
-        return;
-      }
+    if (!myUser) {
+      myUser = (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
     }
+    if (!myUser || !myUser.tag) return;
 
-    // Fallback direct Firebase si CasinoAPI n'était pas initialisé
-    const user = myUser || (window.GameShell && GameShell.currentUser);
-    if (!user || !user.tag) return;
-    const ref = db.ref(`casino/users/${user.tag}`);
-    await ref.transaction((cur) => {
-      if (!cur) return cur;
-      if ((cur.balance || 0) > 200 || (cur.tokens || 0) >= 20) return;
-      cur.balance = (cur.balance || 0) + 1000;
-      cur.tokens = (cur.tokens || 0) + 1;
-      cur.tokensUsed = cur.tokens;
-      cur.timestamp = Date.now();
-      return cur;
-    });
-    GameShell.fireConfetti();
-    showToast('+1 000 $ crédités par l\'ATM !', '💵');
+    try {
+      const ref = db.ref(`casino/users/${myUser.tag}`);
+      const snap = await ref.once('value');
+      const cur = snap.val() || myProfile;
+      const newBal = Math.max(0, Number(cur.balance ?? realBalance)) + 1000;
+      const newTok = Number(cur.tokens ?? cur.tokensUsed ?? tok) + 1;
+
+      await ref.update({
+        tag: myUser.tag,
+        nickname: myUser.nickname || myUser.tag,
+        avatarEmoji: myUser.avatarEmoji || '🍺',
+        flagEmoji: myUser.flagEmoji || '🇫🇷',
+        balance: newBal,
+        tokens: newTok,
+        tokensUsed: newTok,
+        timestamp: Date.now(),
+        lastAtmAt: Date.now()
+      });
+
+      myProfile.balance = newBal;
+      myProfile.tokens = newTok;
+      myProfile.tokensUsed = newTok;
+      renderBetsAndBalanceUI();
+      GameShell.fireConfetti();
+      showToast(`+1 000 $ crédités ! (Token ${newTok}/20)`, '💵');
+    } catch (e) {
+      console.error('Erreur ATM :', e);
+      showToast('Erreur permissions Firebase lors du retrait ATM.', '⚠️');
+    }
   }
 
   /* ---------------- 6. LANCEMENT DE LA ROUE, ROTATION & RÉSULTAT ---------------- */
@@ -605,7 +639,6 @@
 
     const winningNumber = Math.floor(Math.random() * 37);
 
-    // En mode salon multijoueur, synchroniser le tirage avec toute la table
     if (currentRoomCode && roomRef) {
       const spinId = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       lastProcessedSpinId = spinId;
@@ -619,7 +652,6 @@
       return;
     }
 
-    // En mode solo, lancer immédiatement
     executeSpinSequence(winningNumber);
   }
 
@@ -648,7 +680,6 @@
         : 'La roue tourne...';
     }
 
-    // Lancement immédiat de la rotation physique de la roue
     animateWheelRotationToNumber(winningNumber, async () => {
       const winColor = RouletteEngine.getNumberColor(winningNumber);
       const colorLabel = winColor === 'red' ? 'ROUGE 🔴' : (winColor === 'black' ? 'NOIR ⚫' : 'ZÉRO VERT 🟢');
@@ -659,9 +690,9 @@
 
       if (participated) {
         const payout = RouletteEngine.calculateWinnings(winningNumber, myBetsSnapshot);
-        const netDelta = payout - totalBet; // ex: si mise 100$ et gain 200$, netDelta = +100$ ; si perdu, netDelta = -100$
+        const netDelta = payout - totalBet; // +X si gagné, -totalBet si perdu
 
-        // Vider les jetons du tapis et mettre à jour le solde réel sur Firebase
+        // Vider le tapis et enregistrer immédiatement le nouveau solde sur Firebase
         currentBets = {};
         await commitBalanceDeltaToFirebase(netDelta);
         syncRoomBets();
@@ -669,7 +700,7 @@
         if (payout > 0) {
           if (liveBanner) {
             liveBanner.className = 'w-full bg-emerald-500 text-[#12131a] border-2 border-[#12131a] rounded-xl px-3 py-2 text-center font-mono text-xs font-black';
-            liveBanner.textContent = `🎉 NUMÉRO ${winningNumber} (${colorLabel}) · GAGNÉ : +${payout.toLocaleString('fr-FR')} $ (Net +${netDelta.toLocaleString('fr-FR')} $)`;
+            liveBanner.textContent = `🎉 NUMÉRO ${winningNumber} (${colorLabel}) · GAGNÉ : +${payout.toLocaleString('fr-FR')} $ (Solde : ${netDelta >= 0 ? '+' : ''}${netDelta.toLocaleString('fr-FR')} $)`;
           }
           showResultModal(true, winningNumber, winColor, payout, netDelta);
 
@@ -680,9 +711,9 @@
         } else {
           if (liveBanner) {
             liveBanner.className = 'w-full bg-rose-600 text-white border-2 border-[#12131a] rounded-xl px-3 py-2 text-center font-mono text-xs font-black';
-            liveBanner.textContent = `💀 NUMÉRO ${winningNumber} (${colorLabel}) · PERDU (-${totalBet.toLocaleString('fr-FR')} $)`;
+            liveBanner.textContent = `💀 NUMÉRO ${winningNumber} (${colorLabel}) · PERDU (${netDelta.toLocaleString('fr-FR')} $)`;
           }
-          showResultModal(false, winningNumber, winColor, 0, -totalBet);
+          showResultModal(false, winningNumber, winColor, 0, netDelta);
         }
       } else {
         if (liveBanner) {
@@ -724,7 +755,6 @@
     function step(now) {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
-      // Courbe cubic-out fluide
       const eased = 1 - Math.pow(1 - t, 3.3);
       const angle = startAngle + (finalAngle - startAngle) * eased;
 
@@ -1043,7 +1073,7 @@
       icon.textContent = payout >= BIG_WIN_THRESHOLD ? '🤑' : '🎉';
       title.textContent = payout >= BIG_WIN_THRESHOLD ? 'MEGA WIN !' : 'Gagné !';
       desc.textContent = `La roue s'est arrêtée sur le ${num} (${colorLabel}).`;
-      payoutEl.textContent = `+ ${payout.toLocaleString('fr-FR')} $ (Profit net : +${netDelta.toLocaleString('fr-FR')} $)`;
+      payoutEl.textContent = `+ ${payout.toLocaleString('fr-FR')} $ (Solde : ${netDelta >= 0 ? '+' : ''}${netDelta.toLocaleString('fr-FR')} $)`;
       payoutEl.className = 'text-base sm:text-lg font-mono font-black text-emerald-800 bg-emerald-100 border-2 border-[#12131a] py-2.5 px-3 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
     } else {
       icon.textContent = '💀';
