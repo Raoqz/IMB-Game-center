@@ -385,7 +385,7 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 
-        <!-- CARTE IMB CASINO (NOUVEAU) -->
+        <!-- CARTE IMB CASINO -->
         <div class="game-card flex flex-col justify-between">
           <div>
             <div class="w-full h-32 bg-[#059669] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
@@ -409,6 +409,33 @@
               <span>↗</span>
             </a>
             <span class="text-[11px] font-mono font-black text-emerald-700">Multijoueur</span>
+          </div>
+        </div>
+
+      <!-- CARTE PILE POIL (STACK) -->
+        <div class="game-card flex flex-col justify-between">
+          <div>
+            <div class="w-full h-32 bg-[#ff4f6d] flex items-center justify-center border-b-[3px] border-[#12131a] relative">
+              <span class="text-6xl drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)]">🥞🏗️</span>
+              <span class="absolute top-2.5 right-2.5 bg-[#fed72d] text-[#12131a] border-2 border-[#12131a] text-[10px] font-mono font-black px-2 py-0.5 rounded-full shadow-[1.5px_2px_0px_#12131a]">
+                Record d'étages
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-lg font-black text-[#12131a]">Pile Poil (Stack)</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1 mb-3">Empile les blocs le plus haut possible ! Ce qui dépasse est coupé : vise pile poil.</p>
+
+              <div class="border-2 border-dashed border-amber-300 bg-[#fffbeb] rounded-2xl p-2.5 space-y-1.5 mb-3" id="pilePoilTop3Box">
+                <div class="text-[10px] font-bold text-slate-400 italic text-center py-2">Chargement du Top 3...</div>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <a href="/games/pile-poil/index.html" onclick="trackGameLaunch('pile-poil')" class="neo-btn bg-[#fed72d] hover:bg-[#eec418] text-[#12131a] text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5">
+              <span>Jouer</span>
+              <span>↗</span>
+            </a>
+            <span class="text-[11px] font-mono font-black text-slate-600">Solo · Record</span>
           </div>
         </div>
         
