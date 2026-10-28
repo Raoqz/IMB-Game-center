@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IMB Casino - Lobby</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind & Styles -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/games/casino/casino-style.css">
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- Confetti, Shell & API Casino -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="/shared/game-shell.js"></script>
+  <script src="/games/casino/casino-api.js"></script>
+</head>
+<body class="casino-body pt-16 pb-12 select-none">
+
+  <!-- ================= HUD PERMANENT EN HAUT À DROITE (SOUS LE SHELL) ================= -->
+  <div id="casinoHud" class="casino-hud">
+    <div class="flex items-center gap-1.5 pr-1">
+      <span id="hudAvatar" class="text-base">🎰</span>
+      <span id="hudNickname" class="text-xs font-black text-[#12131a] hidden sm:inline truncate max-w-[110px]">Joueur</span>
+    </div>
+
+    <div id="hudBalancePill" class="hud-pill balance" title="Ton solde Casino actuel">
+      <span>💰</span>
+      <span><strong id="hudBalanceValue">1 000</strong> $</span>
+    </div>
+
+    <div class="hud-pill tokens" title="Tokens ATM utilisés (Max 20)">
+      <span>🪙</span>
+      <span><strong id="hudTokensValue">0</strong>/20</span>
+    </div>
+  </div>
+
+  <!-- ================= CONTENU PRINCIPAL DU LOBBY CASINO ================= -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-6 flex flex-col gap-6">
+
+    <!-- HERO BANNER CASINO -->
+    <section class="bg-[#065f46] border-[3.5px] border-[#12131a] rounded-3xl p-5 sm:p-7 shadow-[5px_7px_0px_#12131a] text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+      <div class="relative z-10">
+        <div class="inline-flex items-center gap-2 bg-[#ef4444] border-2 border-[#12131a] px-3 py-0.5 rounded-full text-[11px] font-mono font-black uppercase shadow-[2px_2px_0px_#12131a] mb-2">
+          <span>🎲 Économie Persistante</span>
+        </div>
+        <h2 id="casinoHeroGreeting" class="text-3xl sm:text-4xl md:text-5xl font-black italic tracking-tight uppercase leading-none drop-shadow-[2px_3px_0px_#12131a]">
+          BIENVENUE AU CASINO !
+        </h2>
+        <p class="text-xs sm:text-sm font-bold text-emerald-100 mt-2 max-w-xl leading-relaxed">
+          Tout le monde démarre avec <strong>1 000 $</strong>. Fais fructifier ta bankroll sur les tables de jeu pour décrocher la couronne 👑… et évite le bonnet d'âne 🫏 !
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5 z-10">
+        <button onclick="GameShell.openRules()" class="neo-btn bg-white hover:bg-slate-100 text-[#12131a] px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a]">
+          <span>📖</span>
+          <span>Règles du Casino</span>
+        </button>
+        <button onclick="GameShell.openLeaderboard()" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-1.5 shadow-[3px_4px_0px_#12131a]">
+          <span>👑</span>
+          <span>Palmarès complet</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- GRILLE PRINCIPALE : ATM (GAUCHE) + CLASSEMENT RICHESSE (DROITE) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- COLONNE 1 : DISTRIBUTEUR ATM (5 COLONNES SUR DESKTOP) -->
+      <div class="lg:col-span-5 atm-machine">
+        <div class="atm-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🏧</span>
+            <div>
+              <h3 class="text-base font-black uppercase tracking-wider leading-none">IMB CASH EXPRESS</h3>
+              <span class="text-[10px] font-mono opacity-90">Distributeur de sauvetage</span>
+            </div>
+          </div>
+          <span id="atmStatusBadge" class="bg-[#12131a] text-white font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-white/30">
+            VERROUILLÉ
+          </span>
+        </div>
+
+        <div class="p-5 space-y-4">
+          <div id="atmScreen" class="atm-screen">
+            <div class="flex items-center justify-between text-[11px] opacity-80 border-b border-emerald-500/30 pb-1.5 mb-2">
+              <span>SOLDE DISPONIBLE :</span>
+              <strong id="atmScreenBalance">1 000 $</strong>
+            </div>
+            <div class="flex items-center justify-between text-[11px] opacity-80 border-b border-emerald-500/30 pb-1.5 mb-2">
+              <span>TOKENS UTILISÉS :</span>
+              <strong id="atmScreenTokens">0 / 20</strong>
+            </div>
+            <p id="atmScreenMessage" class="text-xs font-bold leading-relaxed mt-2">
+              &gt; Retrait autorisé uniquement si ton solde est inférieur ou égal à 200 $.
+            </p>
+            <div class="atm-slot"></div>
+          </div>
+
+          <button id="btnUseAtm" onclick="handleAtmClick(event)" disabled class="atm-btn locked">
+            <span id="btnAtmIcon" class="text-xl">🔒</span>
+            <span id="btnAtmLabel">Solde &gt; 200 $ (Indisponible)</span>
+          </button>
+
+          <p class="text-[11px] font-bold text-slate-500 text-center leading-snug">
+            Chaque retrait crédite <strong class="text-emerald-700">+1 000 $</strong> et ajoute <strong class="text-rose-600">+1 Token</strong> à ton dossier fiscal. Limite stricte : <strong>20 Tokens max</strong>.
+          </p>
+        </div>
+      </div>
+
+      <!-- COLONNE 2 : CLASSEMENT DE RICHESSE EN DIRECT (7 COLONNES SUR DESKTOP) -->
+      <div class="lg:col-span-7 neo-box bg-white p-5 sm:p-6 border-[3.5px] border-[#12131a] rounded-3xl shadow-[6px_8px_0px_#12131a]">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b-[2.5px] border-[#12131a]">
+          <div class="flex items-center gap-2.5">
+            <span class="w-10 h-10 rounded-2xl bg-[#ef4444] text-white border-2 border-[#12131a] flex items-center justify-center text-xl shadow-[2px_2px_0px_#12131a]">
+              🏆
+            </span>
+            <div>
+              <h3 class="text-lg font-black text-[#12131a] uppercase leading-none">Classement des Fortunes</h3>
+              <p class="text-[11px] font-bold text-slate-500 mt-0.5">
+                Trié par Solde ($) › Moins de Tokens › Ancienneté
+              </p>
+            </div>
+          </div>
+
+          <span id="wealthTotalPlayers" class="bg-[#059669] text-white border-2 border-[#12131a] font-mono text-xs font-black px-3 py-1 rounded-full shadow-[2px_2px_0px_#12131a]">
+            0 joueur
+          </span>
+        </div>
+
+        <div id="casinoLeaderboardContainer" class="space-y-2.5 max-h-[340px] overflow-y-auto custom-scrollbar pr-1">
+          <p class="text-xs font-bold text-slate-400 text-center py-8">Chargement des fortunes de la promo...</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= TABLES DE JEUX DU CASINO ================= -->
+    <section>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🎲</span>
+        <h3 class="text-2xl font-black italic tracking-wide text-white uppercase drop-shadow-[2px_2px_0px_#12131a]">
+          Tables de Jeux
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+
+        <!-- CARTE 1 : ROULETTE EUROPÉENNE -->
+        <div class="casino-card">
+          <div>
+            <div class="casino-card-banner bg-[#ef4444]">
+              <span class="text-6xl drop-shadow-[3px_4px_0px_#12131a]">🎡</span>
+              <span class="absolute top-3 right-3 bg-white text-[#12131a] border-2 border-[#12131a] text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full shadow-[2px_2px_0px_#12131a]">
+                Table n°1
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-xl font-black text-[#12131a]">La Roulette</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1">
+                Rouge ou Noir, Pair ou Impair, ou Numéro plein (×36). Fais tourner la roue et encaisse les jetons !
+              </p>
+            </div>
+          </div>
+
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <a href="/games/casino/roulette/index.html" onclick="return handleOpenRoulette(event)" class="neo-btn bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-[2px_3px_0px_#12131a]">
+              <span>Rejoindre la table</span>
+              <span>➔</span>
+            </a>
+            <span class="text-[11px] font-mono font-black text-emerald-800 bg-emerald-100 border border-emerald-400 px-2.5 py-1 rounded-lg">
+              Mise max : Solde
+            </span>
+          </div>
+        </div>
+
+        <!-- CARTE 2 : BLACKJACK 21 (PROCHAINEMENT) -->
+        <div class="casino-card opacity-90">
+          <div>
+            <div class="casino-card-banner bg-white">
+              <span class="text-6xl drop-shadow-[2px_3px_0px_rgba(0,0,0,0.2)]">🃏</span>
+              <span class="absolute top-3 right-3 bg-[#12131a] text-white text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full">
+                Bientôt
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-xl font-black text-[#12131a]">Blackjack 21</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1">
+                Approche-toi le plus possible de 21 sans dépasser pour battre le croupier et doubler ta mise.
+              </p>
+            </div>
+          </div>
+
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <button type="button" onclick="showCasinoToast('La table de Blackjack ouvre très bientôt ! 🃏', '⏳')" class="neo-btn bg-slate-100 text-slate-600 text-xs font-black px-4 py-2.5 rounded-xl">
+              En préparation
+            </button>
+            <span class="text-[11px] font-mono font-black text-slate-400">×2 / ×2.5</span>
+          </div>
+        </div>
+
+        <!-- CARTE 3 : CRASH / MINES (PROCHAINEMENT) -->
+        <div class="casino-card opacity-90">
+          <div>
+            <div class="casino-card-banner bg-[#065f46]">
+              <span class="text-6xl drop-shadow-[3px_4px_0px_#12131a]">🚀</span>
+              <span class="absolute top-3 right-3 bg-[#12131a] text-white text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full">
+                Bientôt
+              </span>
+            </div>
+            <div class="p-4">
+              <h4 class="text-xl font-black text-[#12131a]">Rocket Crash</h4>
+              <p class="text-xs font-bold text-slate-500 mt-1">
+                Le multiplicateur grimpe en direct : encaisse tes gains avant que la fusée n'explose en plein vol !
+              </p>
+            </div>
+          </div>
+
+          <div class="p-4 pt-0 flex items-center justify-between gap-2">
+            <button type="button" onclick="showCasinoToast('Rocket Crash arrive prochainement ! 🚀', '⏳')" class="neo-btn bg-slate-100 text-slate-600 text-xs font-black px-4 py-2.5 rounded-xl">
+              En préparation
+            </button>
+            <span class="text-[11px] font-mono font-black text-slate-400">Multiplicateur</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= TOAST NOTIFICATION CASINO ================= -->
+  <div id="casinoToast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[170] bg-white border-[3px] border-[#12131a] shadow-[4px_5px_0px_#12131a] text-[#12131a] text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none transform translate-y-3">
+    <span id="casinoToastIcon" class="text-base">🎰</span>
+    <span id="casinoToastMsg">Notification</span>
+  </div>
+
+  <!-- ================= LOGIQUE D'INTERFACE DU LOBBY CASINO ================= -->
+  <script>
+    let myCasinoProfile = null;
+
+    // 1. Initialisation du Shell en mode "casino"
+    GameShell.init({
+      gameId: 'casino',
+      gameTitle: '🎰 IMB Casino',
+      theme: 'casino',
+      rulesHtml: `
+        <p>• 💰 <strong>Capital de départ :</strong> Chaque membre de la promo démarre avec <strong>1 000 $</strong> et <strong>0 Token</strong>.</p>
+        <p>• 🚫 <strong>Zéro dette :</strong> Le solde ne peut jamais être négatif. Ta mise maximale est toujours bridée à ton solde actuel.</p>
+        <p>• 🏧 <strong>Distributeur ATM :</strong> Si ton solde tombe à <strong>200 $ ou moins</strong>, tu peux tirer un Token à l'ATM pour recevoir <strong>+1 000 $</strong> (limité à 20 Tokens maximum par joueur).</p>
+        <p>• 🏆 <strong>Classement :</strong> Trié par <strong>Solde ($) décroissant</strong>, puis par le <strong>plus petit nombre de Tokens utilisés</strong>, puis par <strong>ancienneté</strong>. Le 1er porte la couronne 👑 et le dernier reçoit le bonnet d'âne 🫏 !</p>
+      `,
+      onGameInit: async (user) => {
+        document.getElementById('casinoHeroGreeting').textContent = `SALUT ${user.nickname.toUpperCase()} !`;
+        document.getElementById('hudAvatar').textContent = user.avatarEmoji || '🍺';
+        document.getElementById('hudNickname').textContent = user.nickname;
+
+        await CasinoAPI.initPlayerProfile(user);
+
+        CasinoAPI.subscribeProfile((profile) => {
+          myCasinoProfile = profile;
+          renderHudAndAtm(profile);
+        });
+
+        CasinoAPI.subscribeLeaderboard((list) => {
+          renderCasinoLeaderboard(list);
+        });
+      }
+    });
+
+    // 2. Mise à jour du HUD et du distributeur ATM
+    function renderHudAndAtm(profile) {
+      if (!profile) return;
+      const bal = Number(profile.balance ?? 0);
+      const tok = Number(profile.tokens ?? profile.tokensUsed ?? 0);
+      const formattedBal = bal.toLocaleString('fr-FR');
+
+      // HUD
+      document.getElementById('hudBalanceValue').textContent = formattedBal;
+      document.getElementById('hudTokensValue').textContent = tok;
+
+      const balPill = document.getElementById('hudBalancePill');
+      if (bal <= CasinoAPI.ATM_THRESHOLD) {
+        balPill.classList.add('low');
+      } else {
+        balPill.classList.remove('low');
+      }
+
+      // Écran ATM
+      const screen = document.getElementById('atmScreen');
+      const screenBal = document.getElementById('atmScreenBalance');
+      const screenTok = document.getElementById('atmScreenTokens');
+      const screenMsg = document.getElementById('atmScreenMessage');
+      const statusBadge = document.getElementById('atmStatusBadge');
+      const btn = document.getElementById('btnUseAtm');
+      const btnIcon = document.getElementById('btnAtmIcon');
+      const btnLabel = document.getElementById('btnAtmLabel');
+
+      screenBal.textContent = `${formattedBal} $`;
+      screenTok.textContent = `${tok} / ${CasinoAPI.MAX_TOKENS}`;
+
+      const isEligibleBalance = bal <= CasinoAPI.ATM_THRESHOLD;
+      const hasTokensLeft = tok < CasinoAPI.MAX_TOKENS;
+
+      if (!hasTokensLeft) {
+        screen.classList.add('danger');
+        statusBadge.textContent = 'PLAFOND ATTEINT';
+        statusBadge.className = 'bg-rose-950 text-rose-200 font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-rose-400';
+        screenMsg.innerHTML = `&gt; 🚫 Banqueroute : tu as épuisé tes 20/20 Tokens.`;
+        btn.disabled = true;
+        btn.className = 'atm-btn locked';
+        btnIcon.textContent = '🚫';
+        btnLabel.textContent = 'Limite de 20 Tokens atteinte';
+      } else if (isEligibleBalance) {
+        screen.classList.remove('danger');
+        statusBadge.textContent = 'DISPONIBLE';
+        statusBadge.className = 'bg-emerald-400 text-[#12131a] font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-[#12131a] animate-pulse';
+        screenMsg.innerHTML = `&gt; ✅ Solde critique (${formattedBal} $). Tu peux retirer +1 000 $ contre 1 Token !`;
+        btn.disabled = false;
+        btn.className = 'atm-btn ready';
+        btnIcon.textContent = '💵';
+        btnLabel.textContent = 'Retirer +1 000 $ (+1 Token)';
+      } else {
+        screen.classList.remove('danger');
+        statusBadge.textContent = 'VERROUILLÉ';
+        statusBadge.className = 'bg-[#12131a] text-white font-mono text-[10px] font-black px-2.5 py-1 rounded-full border border-white/30';
+        screenMsg.innerHTML = `&gt; 🔒 Ton solde est supérieur à ${CasinoAPI.ATM_THRESHOLD} $. Joue avant de pouvoir emprunter.`;
+        btn.disabled = true;
+        btn.className = 'atm-btn locked';
+        btnIcon.textContent = '🔒';
+        btnLabel.textContent = `Disponible si solde ≤ ${CasinoAPI.ATM_THRESHOLD} $`;
+      }
+    }
+
+    // 3. Action du bouton ATM avec animation de billets
+    async function handleAtmClick(event) {
+      const btn = document.getElementById('btnUseAtm');
+      const originRect = btn.getBoundingClientRect();
+
+      btn.disabled = true;
+      const res = await CasinoAPI.useATM();
+
+      if (!res.ok) {
+        showCasinoToast(res.error || 'Retrait refusé.', '⚠️');
+        if (myCasinoProfile) renderHudAndAtm(myCasinoProfile);
+        return;
+      }
+
+      // Animation de billets volants + bump du HUD
+      spawnFlyingBills(originRect.left + originRect.width / 2, originRect.top);
+      const hud = document.getElementById('casinoHud');
+      hud.classList.remove('bump');
+      void hud.offsetWidth;
+      hud.classList.add('bump');
+
+      GameShell.fireConfetti();
+      showCasinoToast(`+1 000 $ crédités ! (Token ${res.tokens}/${CasinoAPI.MAX_TOKENS})`, '💸');
+    }
+
+    function spawnFlyingBills(startX, startY) {
+      const emojis = ['💵', '💸', '💰', '🪙'];
+      for (let i = 0; i < 12; i++) {
+        const el = document.createElement('div');
+        el.className = 'flying-bill';
+        el.textContent = emojis[i % emojis.length];
+        el.style.left = `${startX}px`;
+        el.style.top = `${startY}px`;
+        const tx = (Math.random() - 0.5) * 280;
+        const ty = -120 - Math.random() * 180;
+        const rot = (Math.random() - 0.5) * 50;
+        el.style.setProperty('--tx', `${tx}px`);
+        el.style.setProperty('--ty', `${ty}px`);
+        el.style.setProperty('--rot', `${rot}deg`);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1300);
+      }
+    }
+
+    // 4. Affichage du classement en direct (👑 pour le 1er, 🫏 pour le dernier)
+    function renderCasinoLeaderboard(list) {
+      const container = document.getElementById('casinoLeaderboardContainer');
+      const countBadge = document.getElementById('wealthTotalPlayers');
+      const total = list.length;
+
+      countBadge.textContent = `${total} joueur${total > 1 ? 's' : ''}`;
+
+      if (total === 0) {
+        container.innerHTML = `<p class="text-xs font-bold text-slate-400 text-center py-8">Aucun joueur enregistré au Casino.</p>`;
+        return;
+      }
+
+      const myTag = GameShell.currentUser ? GameShell.currentUser.tag : null;
+
+      container.innerHTML = list.map((p) => {
+        const isMe = myTag && p.tag === myTag;
+        let rowCls = 'wealth-row';
+        if (p.isFirst) rowCls += ' first';
+        else if (p.isLast) rowCls += ' last';
+        if (isMe) rowCls += ' me';
+
+        let rankDisplay = `<span class="w-7 text-center font-mono font-black text-xs text-slate-500">#${p.rank}</span>`;
+        if (p.isFirst) {
+          rankDisplay = `<span class="w-7 text-center text-xl" title="Plus grosse fortune du serveur">👑</span>`;
+        } else if (p.isLast) {
+          rankDisplay = `<span class="w-7 text-center text-xl" title="Bonnet d'âne du Casino">🫏</span>`;
+        } else if (p.rank === 2) {
+          rankDisplay = `<span class="w-7 text-center text-lg">🥈</span>`;
+        } else if (p.rank === 3) {
+          rankDisplay = `<span class="w-7 text-center text-lg">🥉</span>`;
+        }
+
+        const badgePill = p.isFirst
+          ? `<span class="bg-[#12131a] text-[#fed72d] text-[9px] font-mono font-black px-2 py-0.5 rounded-full">LE PARRAIN</span>`
+          : (p.isLast
+              ? `<span class="bg-rose-600 text-white text-[9px] font-mono font-black px-2 py-0.5 rounded-full">FAUCHÉ</span>`
+              : '');
+
+        return `
+          <div class="${rowCls}">
+            <div class="flex items-center gap-2.5 min-w-0">
+              ${rankDisplay}
+              <span class="w-9 h-9 rounded-xl bg-white border-2 border-[#12131a] flex items-center justify-center text-base shadow-[1px_2px_0px_#12131a] flex-shrink-0">
+                ${p.avatarEmoji || '🍺'}
+              </span>
+              <div class="min-w-0">
+                <div class="text-xs sm:text-sm font-black text-[#12131a] truncate flex items-center gap-1.5">
+                  <span>${GameShell.escapeHtml(p.nickname)}</span>
+                  ${isMe ? '<span class="text-[10px] font-mono text-emerald-700">(toi)</span>' : ''}
+                  ${badgePill}
+                </div>
+                <div class="text-[10px] font-mono text-slate-500 truncate">
+                  @${GameShell.escapeHtml(p.tag)}
+                </div>
+              </div>
+            </div>
+
+            <div class="text-right flex-shrink-0">
+              <div class="font-mono text-sm sm:text-base font-black text-[#065f46]">
+                ${Number(p.balance || 0).toLocaleString('fr-FR')} $
+              </div>
+              <div class="text-[10px] font-mono font-bold ${p.tokens > 0 ? 'text-rose-600' : 'text-slate-500'}">
+                🪙 ${p.tokens}/20 token${p.tokens > 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleOpenRoulette(e) {
+      // Tant que la page /games/casino/roulette/index.html n'est pas encore créée,
+      // on affiche une notification si la page n'existe pas encore
+      return true;
+    }
+
+    function showCasinoToast(msg, icon = '🎰') {
+      const toast = document.getElementById('casinoToast');
+      document.getElementById('casinoToastMsg').textContent = msg;
+      document.getElementById('casinoToastIcon').textContent = icon;
+
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(showCasinoToast._t);
+      showCasinoToast._t = setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
