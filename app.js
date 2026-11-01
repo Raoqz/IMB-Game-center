@@ -49,13 +49,6 @@ const INTERNAL_GAMES = {
     bg: '#ff4f6d',
     path: '/games/pile-poil/index.html'
   },
-  morpion: {
-    id: 'morpion',
-    title: 'Morpion',
-    icon: '⭕',
-    bg: '#ffd166',
-    path: '/games/morpion/index.html'
-  },
   skyjo: {
     id: 'skyjo',
     title: 'Skyjo',
@@ -69,6 +62,13 @@ const INTERNAL_GAMES = {
     icon: '⚽',
     bg: '#fed72d',
     path: '/games/flappy-giroud/index.html'
+  },
+   morpion: {
+    id: 'morpion',
+    title: 'Morpion',
+    icon: '⭕',
+    bg: '#ffd166',
+    path: '/games/morpion/index.html'
   },
   undercover: {
     id: 'undercover',
