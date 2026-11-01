@@ -42,6 +42,13 @@ const INTERNAL_GAMES = {
     bg: '#1f86e3',
     path: '/games/catan/index.html'
   },
+   president: {
+    id: 'president',
+    title: 'Président',
+    icon: '👑',
+    bg: '#e3343f',
+    path: '/games/president/index.html'
+  },
   'pile-poil': {
     id: 'pile-poil',
     title: 'Pile Poil',
@@ -299,6 +306,8 @@ async function loadAuthenticatedUser(firebaseUser) {
     loadCasinoTop3Card();
     loadCatanTop3Card();
     checkLobbyCatanActiveRoom();
+    loadPresidentTop3Card();
+    checkLobbyPresidentActiveRoom();
     loadPilePoilTop3Card();
     loadMorpionTop3Card();
     checkLobbyMorpionActiveRoom();
@@ -396,6 +405,15 @@ function renderRecentGames() {
 function checkLobbyCatanActiveRoom() {
   const activeRoom = localStorage.getItem('imb_active_room_catan');
   const badge = document.getElementById('catanActiveRoomBadge');
+  if (badge) {
+    if (activeRoom && activeRoom.length >= 4) badge.classList.remove('hidden');
+    else badge.classList.add('hidden');
+  }
+}
+
+function checkLobbyPresidentActiveRoom() {
+  const activeRoom = localStorage.getItem('imb_active_room_president');
+  const badge = document.getElementById('presidentActiveRoomBadge');
   if (badge) {
     if (activeRoom && activeRoom.length >= 4) badge.classList.remove('hidden');
     else badge.classList.add('hidden');
@@ -513,6 +531,35 @@ function loadCatanTop3Card() {
     `).join('') + `
       <div class="text-right pt-1 border-t border-amber-200/60">
         <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLobbyLeaderboard('catan', 'Catan');" class="text-[10px] font-black text-amber-900 hover:underline">Classement ></button>
+      </div>
+    `;
+  });
+}
+
+function loadPresidentTop3Card() {
+  const container = document.getElementById('presidentTop3Box');
+  if (!container) return;
+  db.ref('scores/president').on('value', snap => {
+    const data = snap.val() || {};
+    const sorted = Object.values(data).sort((a, b) => (b.wins || 0) - (a.wins || 0)).slice(0, 3);
+    if (sorted.length === 0) {
+      container.innerHTML = `<div class="text-[10px] font-bold text-slate-400 italic text-center py-1">Aucun Président élu. Sois le premier !</div>`;
+      return;
+    }
+    const medals = ['👑', '🥈', '🥉'];
+    container.innerHTML = sorted.map((p, idx) => `
+      <div class="flex items-center justify-between gap-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="text-sm">${medals[idx]}</span>
+          <span class="text-xs font-black text-[#12131a] truncate">${escapeHtml(p.nickname)}</span>
+        </div>
+        <span class="bg-[#121526] text-white px-2 py-0.5 rounded-full font-mono text-[9px] font-black flex-shrink-0">
+          ${p.wins || 0} victoire${(p.wins || 0) > 1 ? 's' : ''}
+        </span>
+      </div>
+    `).join('') + `
+      <div class="text-right pt-1 border-t border-amber-200/60">
+        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLobbyLeaderboard('president', 'Président');" class="text-[10px] font-black text-amber-900 hover:underline">Classement ></button>
       </div>
     `;
   });
