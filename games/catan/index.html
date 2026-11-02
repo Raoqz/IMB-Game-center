@@ -1066,6 +1066,10 @@ function genCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; f
 function joinRoom(code, create) {
   code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
   if (code.length < 4) { toast('Code invalide (4 caractères minimum)'); return; }
+  
+  // Évite de relancer la connexion si on est déjà dans ce même salon
+  if (NET.online && NET.code === code && NET.room) return;
+
   if (!hasSDK()) { toast('Connexion au serveur en cours...'); return; }
   leaveRoom(true);
   NET.code = code; NET.online = true; S = null; view = 'lobby'; ui.hideOver = false;
