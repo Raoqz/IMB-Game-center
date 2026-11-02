@@ -1,11 +1,11 @@
 /* =========================================================
-   IMB CASINO - BLACKJACK APP (Étape 4)
-   Jeu Solo & Salon Multi simultané, Timer AFK 60s, Casino API
+   IMB CASINO - BLACKJACK APP
+   Solo & Salon Multijoueur synchronisé, Jetons cumulables,
+   Remboursement Push corrigé, Sans spam Big Win
    ========================================================= */
 (function () {
   'use strict';
 
-  const BIG_WIN_THRESHOLD = 500;
   const AFK_TIMEOUT_SECONDS = 60;
 
   let myUser = null;
@@ -15,21 +15,23 @@
   let activeChip = 50;
   let currentBet = 50;
   let previousBet = 50;
+  let freshBettingPhase = true; // Permet au 1er clic après une manche de repartir proprement ou d'empiler
 
   let shoe = [];
   let playerCards = [];
   let dealerCards = [];
-  let gameState = 'BETTING'; // BETTING, PLAYING, DEALER_TURN, ROUND_OVER
+  let gameState = 'BETTING'; // BETTING, WAITING_ROOM, PLAYING, DEALER_TURN, ROUND_OVER
 
   let soundEnabled = true;
   let audioCtx = null;
 
-  // État Salon Multijoueur & Timer AFK
+  // État Salon Multijoueur & Synchronisation Firebase
   let currentRoomCode = null;
   let roomRef = null;
+  let roomDataCache = null;
+  let settledRoundId = null;
   let afkInterval = null;
   let afkSecondsLeft = AFK_TIMEOUT_SECONDS;
-  let hasActedThisTurn = false;
 
   window.addEventListener('DOMContentLoaded', () => {
     shoe = BlackjackEngine.createShoe(6);
@@ -42,9 +44,9 @@
       theme: 'casino',
       rulesHtml: `
         <p>• 🃏 <strong>Objectif :</strong> Obtenir un score de 21 ou s'en approcher plus que le croupier sans dépasser.</p>
-        <p>• 💰 <strong>Paiements :</strong> Victoire 1:1, Blackjack naturel (As + 10/Bûche) payé 3:2.</p>
+        <p>• 💰 <strong>Paiements :</strong> Victoire 1:1 (×2), Blackjack naturel payé 3:2 (×2.5), Égalité (Push) = mise intégralement remboursée.</p>
         <p>• 🎩 <strong>Croupier :</strong> Tire jusqu'à 16 et s'arrête obligatoirement à partir de 17.</p>
-        <p>• ⏱️ <strong>Multijoueur :</strong> En salon, tu as 60 secondes pour jouer ton tour. Sans action, ton jeu est automatiquement bloqué sur "Rester" puis tu es exclu.</p>
+        <p>• 👥 <strong>Salon Multijoueur :</strong> Tous les joueurs du salon affrontent la même main du croupier en direct.</p>
       `,
       onGameInit: (user) => {
         bootstrapPlayerSession(user);
@@ -154,88 +156,201 @@
     }
   }
 
-  /* ---------------- GESTION DES JETONS & MISES ---------------- */
+  /* =========================================================
+     1. GESTION DES JETONS & MISES (CORRIGÉE)
+     ========================================================= */
+  function prepareForNewBetIfNeeded() {
+    if (gameState === 'ROUND_OVER') {
+      gameState = 'BETTING';
+    }
+  }
+
   function selectChip(val) {
+    prepareForNewBetIfNeeded();
     if (gameState !== 'BETTING') return;
+
+    const realBal = getRealBalance();
     activeChip = val;
+
     document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
     const t = document.getElementById(`chip_${val}`);
     if (t) t.classList.add('active');
+
+    if (realBal <= 0) {
+      showToast('Solde à 0 $ ! Utilise le bouton 🏧 ATM (+1 000 $).', '⚠️');
+      return;
+    }
+
+    if (val === 'MAX') {
+      currentBet = realBal;
+      freshBettingPhase = false;
+    } else {
+      const chipAmount = Number(val) || 0;
+      if (freshBettingPhase) {
+        // Si la mise était pré-remplie automatiquement, le 1er clic sur un jeton ajoute directement ou ajuste
+        currentBet = Math.min(realBal, currentBet + chipAmount);
+        freshBettingPhase = false;
+      } else {
+        if (currentBet + chipAmount > realBal) {
+          currentBet = realBal;
+          showToast('Mise maximum atteinte selon ton solde.', '💰');
+        } else {
+          currentBet += chipAmount;
+        }
+      }
+    }
+
+    playCardSound();
+    renderBetsAndBalanceUI();
+    syncMySeatBet();
   }
 
   function clearBet() {
+    prepareForNewBetIfNeeded();
     if (gameState !== 'BETTING') return;
     currentBet = 0;
+    freshBettingPhase = false;
     renderBetsAndBalanceUI();
+    syncMySeatBet();
   }
 
   function rebetLast() {
+    prepareForNewBetIfNeeded();
     if (gameState !== 'BETTING') return;
     const realBal = getRealBalance();
     if (previousBet <= 0) return;
     if (previousBet > realBal) {
-      showToast('Solde insuffisant pour rejouer cette mise.', '⚠️');
-      return;
+      currentBet = realBal;
+      showToast('Solde ajusté au maximum disponible.', '⚠️');
+    } else {
+      currentBet = previousBet;
     }
-    currentBet = previousBet;
+    freshBettingPhase = false;
     renderBetsAndBalanceUI();
+    syncMySeatBet();
   }
 
   function doubleBetAmount() {
+    prepareForNewBetIfNeeded();
     if (gameState !== 'BETTING') return;
     const realBal = getRealBalance();
-    if (currentBet * 2 > realBal) {
-      showToast('Solde insuffisant pour doubler la mise.', '⚠️');
-      return;
+    if (currentBet <= 0) {
+      currentBet = Math.min(realBal, 50);
+    } else if (currentBet * 2 > realBal) {
+      currentBet = realBal;
+      showToast('Solde maximum engagé !', '💰');
+    } else {
+      currentBet *= 2;
     }
-    currentBet *= 2;
+    freshBettingPhase = false;
     renderBetsAndBalanceUI();
+    syncMySeatBet();
   }
 
   function renderBetsAndBalanceUI() {
     const realBal = getRealBalance();
     const tok = Number(myProfile?.tokens ?? myProfile?.tokensUsed ?? 0);
 
-    document.getElementById('hudBalanceValue').textContent = realBal.toLocaleString('fr-FR');
-    document.getElementById('hudTokensValue').textContent = tok;
+    const balEl = document.getElementById('hudBalanceValue');
+    const tokEl = document.getElementById('hudTokensValue');
+    if (balEl) balEl.textContent = realBal.toLocaleString('fr-FR');
+    if (tokEl) tokEl.textContent = tok;
+
+    // Si en phase de mise la mise dépasse le solde, on la plafonne
+    if (gameState === 'BETTING' && currentBet > realBal) {
+      currentBet = realBal;
+    }
 
     const currentBetDisp = document.getElementById('currentBetDisplay');
     if (currentBetDisp) currentBetDisp.textContent = `${currentBet.toLocaleString('fr-FR')} $`;
 
     const btnDeal = document.getElementById('btnDeal');
-    if (btnDeal && gameState === 'BETTING') {
-      const canDeal = currentBet > 0 && currentBet <= realBal;
-      btnDeal.disabled = !canDeal;
-      if (canDeal) {
+    if (btnDeal) {
+      if (gameState === 'WAITING_ROOM') {
+        btnDeal.disabled = false;
         btnDeal.classList.remove('opacity-50', 'cursor-not-allowed');
-      } else {
-        btnDeal.classList.add('opacity-50', 'cursor-not-allowed');
+        btnDeal.innerHTML = '🚀 LANCER LA TABLE';
+      } else if (gameState === 'BETTING' || gameState === 'ROUND_OVER') {
+        btnDeal.innerHTML = '🃏 DISTRIBUER';
+        const canDeal = currentBet > 0 && currentBet <= realBal;
+        btnDeal.disabled = !canDeal;
+        if (canDeal) {
+          btnDeal.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+          btnDeal.classList.add('opacity-50', 'cursor-not-allowed');
+        }
       }
     }
   }
 
-  /* ---------------- DISTRIBUTION DES CARTES (DEAL) ---------------- */
+  function setStatusBanner(text, tone = 'default') {
+    const statusBanner = document.getElementById('bjStatusBanner');
+    if (!statusBanner) return;
+    statusBanner.textContent = text;
+    if (tone === 'win') {
+      statusBanner.className = 'inline-block bg-[#10b981] text-[#12131a] border-2 border-[#12131a] px-4 py-1.5 rounded-2xl font-mono text-xs sm:text-sm font-black shadow-[3px_3px_0px_#12131a] transition-all scale-105';
+    } else if (tone === 'push') {
+      statusBanner.className = 'inline-block bg-[#fed72d] text-[#12131a] border-2 border-[#12131a] px-4 py-1.5 rounded-2xl font-mono text-xs sm:text-sm font-black shadow-[3px_3px_0px_#12131a] transition-all';
+    } else if (tone === 'lose') {
+      statusBanner.className = 'inline-block bg-[#ef4444] text-white border-2 border-[#12131a] px-4 py-1.5 rounded-2xl font-mono text-xs sm:text-sm font-black shadow-[3px_3px_0px_#12131a] transition-all';
+    } else {
+      statusBanner.className = 'inline-block bg-[#12131a] text-[#fed72d] border-2 border-[#fed72d] px-4 py-1.5 rounded-2xl font-mono text-xs font-black shadow-[3px_3px_0px_rgba(0,0,0,0.4)] transition-all';
+    }
+  }
+
+  function showBettingControls(visible) {
+    const chipBox = document.getElementById('chipSelectorBox');
+    const betBox = document.getElementById('bettingControlsBox');
+    const actBox = document.getElementById('actionControlsBox');
+
+    if (visible) {
+      chipBox.classList.remove('hidden');
+      betBox.classList.remove('hidden');
+      actBox.classList.add('hidden');
+      actBox.classList.remove('grid');
+    } else {
+      chipBox.classList.add('hidden');
+      betBox.classList.add('hidden');
+      actBox.classList.remove('hidden');
+      actBox.classList.add('grid');
+    }
+  }
+
+  /* =========================================================
+     2. DISTRIBUTION DES CARTES (SOLO & SALON MULTIJOUEUR)
+     ========================================================= */
   async function dealCards() {
+    // Si on est déjà en attente des autres joueurs en salon et qu'on clique sur "🚀 LANCER LA TABLE"
+    if (currentRoomCode && gameState === 'WAITING_ROOM') {
+      await triggerMultiplayerRoundStart();
+      return;
+    }
+
+    prepareForNewBetIfNeeded();
     if (gameState !== 'BETTING') return;
+
     const realBal = getRealBalance();
-    if (currentBet <= 0 || currentBet > realBal) return;
+    if (currentBet <= 0 || currentBet > realBal) {
+      showToast('Choisis une mise valide avec les jetons !', '⚠️');
+      return;
+    }
 
     previousBet = currentBet;
-    const debitRes = await commitBalanceDeltaToFirebase(-currentBet);
-    if (debitRes === realBal && currentBet > 0) return; // Échec débit
+    await commitBalanceDeltaToFirebase(-currentBet);
 
+    // --- MODE SALON MULTIJOUEUR ---
+    if (currentRoomCode && roomRef) {
+      await handleMultiplayerDealReady();
+      return;
+    }
+
+    // --- MODE SOLO ---
     gameState = 'PLAYING';
     playerCards = [];
     dealerCards = [];
-    hasActedThisTurn = false;
 
-    // Bascule interface (cacher les jetons, afficher les actions)
-    document.getElementById('chipSelectorBox').classList.add('hidden');
-    document.getElementById('bettingControlsBox').classList.add('hidden');
-    document.getElementById('actionControlsBox').classList.remove('hidden');
-    document.getElementById('actionControlsBox').classList.add('grid');
+    showBettingControls(false);
 
-    // Tirer 2 cartes joueur et 2 cartes croupier (dont 1 cachée)
     playerCards.push(BlackjackEngine.drawCard(shoe));
     dealerCards.push(BlackjackEngine.drawCard(shoe));
     playerCards.push(BlackjackEngine.drawCard(shoe));
@@ -244,55 +359,67 @@
     renderTable();
     playCardSound();
 
-    // Vérifier si Blackjack naturel dès la donne
     const pEval = BlackjackEngine.evaluateHand(playerCards);
     const dEval = BlackjackEngine.evaluateHand(dealerCards);
 
     if (pEval.isBlackjack || dEval.isBlackjack) {
-      finishRound();
+      finishSoloRound();
       return;
     }
 
-    // Vérifier si le joueur peut doubler
-    const canDbl = BlackjackEngine.canDoubleDown(playerCards, currentBet, getRealBalance());
-    const btnDbl = document.getElementById('btnDoubleDown');
-    if (btnDbl) btnDbl.disabled = !canDbl;
-
-    // Lancer le timer AFK 60s
+    updateActionButtonsState();
     startAfkTimer();
-    syncRoomState();
   }
 
-  /* ---------------- ACTIONS DU JOUEUR (Hit, Stand, Double) ---------------- */
-  function playerHit() {
+  function updateActionButtonsState() {
+    const canDbl = BlackjackEngine.canDoubleDown(playerCards, currentBet, getRealBalance());
+    const btnDbl = document.getElementById('btnDoubleDown');
+    const btnHit = document.getElementById('btnHit');
+    const btnStand = document.getElementById('btnStand');
+
+    const isPlaying = gameState === 'PLAYING';
+    if (btnHit) btnHit.disabled = !isPlaying;
+    if (btnStand) btnStand.disabled = !isPlaying;
+    if (btnDbl) btnDbl.disabled = !(isPlaying && canDbl);
+  }
+
+  /* =========================================================
+     3. ACTIONS DU JOUEUR (Hit, Stand, Double)
+     ========================================================= */
+  async function playerHit() {
     if (gameState !== 'PLAYING') return;
-    hasActedThisTurn = true;
     resetAfkTimer();
 
     playerCards.push(BlackjackEngine.drawCard(shoe));
     playCardSound();
     renderTable();
+    updateActionButtonsState();
 
     const evalP = BlackjackEngine.evaluateHand(playerCards);
-    const btnDbl = document.getElementById('btnDoubleDown');
-    if (btnDbl) btnDbl.disabled = true; // Impossible de doubler après un Hit
 
     if (evalP.isBust || evalP.total === 21) {
       stopAfkTimer();
-      if (evalP.isBust) {
-        triggerBustEffect();
+      if (evalP.isBust) triggerBustEffect();
+
+      if (currentRoomCode && roomRef) {
+        await finishMyMultiplayerTurn();
+      } else {
+        setTimeout(() => startSoloDealerTurn(), 550);
       }
-      setTimeout(() => startDealerTurn(), 600);
-    } else {
-      syncRoomState();
+    } else if (currentRoomCode && roomRef) {
+      await syncMySeatHand('PLAYING');
     }
   }
 
   async function playerStand() {
     if (gameState !== 'PLAYING') return;
-    hasActedThisTurn = true;
     stopAfkTimer();
-    startDealerTurn();
+
+    if (currentRoomCode && roomRef) {
+      await finishMyMultiplayerTurn();
+    } else {
+      startSoloDealerTurn();
+    }
   }
 
   async function playerDoubleDown() {
@@ -303,39 +430,39 @@
       return;
     }
 
-    hasActedThisTurn = true;
     stopAfkTimer();
 
-    // Débiter la mise supplémentaire
     await commitBalanceDeltaToFirebase(-currentBet);
     currentBet *= 2;
+    renderBetsAndBalanceUI();
 
     playerCards.push(BlackjackEngine.drawCard(shoe));
     playCardSound();
     renderTable();
 
     const evalP = BlackjackEngine.evaluateHand(playerCards);
-    if (evalP.isBust) {
-      triggerBustEffect();
-    }
+    if (evalP.isBust) triggerBustEffect();
 
-    setTimeout(() => startDealerTurn(), 700);
+    if (currentRoomCode && roomRef) {
+      await finishMyMultiplayerTurn();
+    } else {
+      setTimeout(() => startSoloDealerTurn(), 650);
+    }
   }
 
-  /* ---------------- TOUR DU CROUPIER & RÉSOLUTION ---------------- */
-  function startDealerTurn() {
+  /* =========================================================
+     4. RÉSOLUTION SOLO & REMBOURSEMENT ÉGALITÉ CORRIGÉ
+     ========================================================= */
+  function startSoloDealerTurn() {
     gameState = 'DEALER_TURN';
-    document.getElementById('actionControlsBox').classList.add('hidden');
-    document.getElementById('actionControlsBox').classList.remove('grid');
     renderTable();
 
     const pEval = BlackjackEngine.evaluateHand(playerCards);
     if (pEval.isBust) {
-      finishRound();
+      finishSoloRound();
       return;
     }
 
-    // Le croupier tire jusqu'à 16 et s'arrête à 17+
     const dealerInterval = setInterval(() => {
       if (BlackjackEngine.shouldDealerHit(dealerCards)) {
         dealerCards.push(BlackjackEngine.drawCard(shoe));
@@ -344,34 +471,396 @@
       } else {
         clearInterval(dealerInterval);
         const dEval = BlackjackEngine.evaluateHand(dealerCards);
-        if (dEval.isBust) {
-          triggerBustEffect();
-        }
-        setTimeout(() => finishRound(), 500);
+        if (dEval.isBust) triggerBustEffect();
+        setTimeout(() => finishSoloRound(), 400);
       }
-    }, 750);
+    }, 650);
   }
 
-  async function finishRound() {
+  async function finishSoloRound() {
     gameState = 'ROUND_OVER';
     renderTable();
+    await settleMyHandPayout();
+  }
 
+  /**
+   * Calcule et crédite les gains (y compris le remboursement de la mise en cas d'égalité !)
+   */
+  async function settleMyHandPayout() {
     const res = BlackjackEngine.resolveRound(playerCards, dealerCards, currentBet);
-    if (res.netDelta !== 0) {
+
+    // CORRECTION DU BUG D'ÉGALITÉ : res.payout vaut `stake` en cas de Push (égalité)
+    if (res.payout > 0) {
       await commitBalanceDeltaToFirebase(res.payout);
     }
 
-    showResultModal(res);
-
-    if (res.netDelta >= BIG_WIN_THRESHOLD) {
-      GameShell.fireConfetti();
-      broadcastBigWin(res);
+    if (res.netDelta > 0) {
+      setStatusBanner(`${res.title} · +${res.payout.toLocaleString('fr-FR')} $ (Net +${res.netDelta.toLocaleString('fr-FR')} $)`, 'win');
+      if (res.outcome === 'blackjack' && window.GameShell && typeof GameShell.fireConfetti === 'function') {
+        GameShell.fireConfetti();
+      }
+    } else if (res.netDelta === 0) {
+      setStatusBanner(`${res.title} · +${res.payout.toLocaleString('fr-FR')} $ rendus`, 'push');
+    } else {
+      setStatusBanner(`${res.title} (${res.netDelta.toLocaleString('fr-FR')} $)`, 'lose');
     }
 
-    syncRoomState();
+    // Ré-afficher immédiatement les contrôles de mise pour enchaîner sans modale bloquante
+    showBettingControls(true);
+    freshBettingPhase = true;
+    const realBal = getRealBalance();
+    currentBet = Math.min(realBal, previousBet > 0 ? previousBet : 50);
+    renderBetsAndBalanceUI();
   }
 
-  /* ---------------- TIMER AFK 60 SECONDES ---------------- */
+  /* =========================================================
+     5. SALON MULTIJOUEUR TEMPS RÉEL (CROUPIER COMMUN)
+     ========================================================= */
+  function openRoomModal() {
+    if (currentRoomCode) {
+      const box = document.getElementById('multiRoomBox');
+      if (box) box.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    createMultiplayerRoom();
+  }
+
+  async function createMultiplayerRoom() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    await joinMultiplayerRoom(code, true);
+  }
+
+  async function joinMultiplayerRoomFromInput() {
+    const input = document.getElementById('inputJoinRoomCode');
+    const code = (input.value || '').trim().toUpperCase();
+    if (code.length !== 4) {
+      showToast('Entre un code de salon à 4 caractères.', '⚠️');
+      return;
+    }
+    await joinMultiplayerRoom(code, false);
+  }
+
+  async function joinMultiplayerRoom(code, isCreating = false) {
+    const user = myUser || (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
+    if (!user) return;
+    if (roomRef) roomRef.off();
+
+    code = code.trim().toUpperCase();
+    currentRoomCode = code;
+    if (window.GameShell) GameShell.currentRoomCode = code;
+    window.location.hash = `room=${code}`;
+
+    roomRef = db.ref(`rooms/casino-blackjack/${code}`);
+
+    if (isCreating) {
+      await roomRef.update({
+        code,
+        createdAt: Date.now(),
+        hostTag: user.tag
+      });
+    }
+
+    const mySeatRef = roomRef.child(`seats/${user.tag}`);
+    await mySeatRef.set({
+      tag: user.tag,
+      nickname: user.nickname,
+      avatarEmoji: user.avatarEmoji || '🍺',
+      cards: [],
+      score: 0,
+      label: '0',
+      status: 'BETTING',
+      bet: currentBet,
+      lastActive: Date.now()
+    });
+    mySeatRef.onDisconnect().remove();
+
+    document.getElementById('btnModeSolo').className = 'neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
+    document.getElementById('btnModeRoom').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
+    const badge = document.getElementById('roomCodeDisplayBadge');
+    if (badge) {
+      badge.textContent = `#${code}`;
+      badge.classList.remove('hidden');
+    }
+    const topBadge = document.getElementById('roomCodeBadge');
+    if (topBadge) {
+      topBadge.textContent = `#${code}`;
+      topBadge.classList.remove('hidden');
+    }
+    document.getElementById('btnLeaveRoom').classList.remove('hidden');
+    document.getElementById('multiSeatsPanel').classList.remove('hidden');
+
+    // Écouter l'état complet du salon (sièges + manche commune)
+    roomRef.on('value', (snap) => {
+      const val = snap.val() || {};
+      roomDataCache = val;
+      onRoomSnapshotUpdate(val);
+    });
+
+    showToast(`Salon Blackjack #${code} rejoint !`, '👥');
+  }
+
+  function switchToSolo() {
+    stopAfkTimer();
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (roomRef && user) {
+      roomRef.child(`seats/${user.tag}`).remove();
+      roomRef.off();
+    }
+    roomRef = null;
+    roomDataCache = null;
+    currentRoomCode = null;
+    if (window.GameShell) GameShell.currentRoomCode = null;
+    history.replaceState(null, '', window.location.pathname);
+
+    gameState = 'BETTING';
+    playerCards = [];
+    dealerCards = [];
+    showBettingControls(true);
+    renderTable();
+    renderBetsAndBalanceUI();
+
+    document.getElementById('btnModeSolo').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
+    document.getElementById('btnModeRoom').className = 'neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
+    document.getElementById('roomCodeDisplayBadge').classList.add('hidden');
+    const topBadge = document.getElementById('roomCodeBadge');
+    if (topBadge) topBadge.classList.add('hidden');
+    document.getElementById('btnLeaveRoom').classList.add('hidden');
+    document.getElementById('multiSeatsPanel').classList.add('hidden');
+    showToast('Mode Solo activé.', '👤');
+  }
+
+  function syncMySeatBet() {
+    if (!currentRoomCode || !roomRef || !myUser) return;
+    if (gameState === 'BETTING' || gameState === 'ROUND_OVER') {
+      roomRef.child(`seats/${myUser.tag}`).update({
+        bet: currentBet,
+        status: 'BETTING',
+        lastActive: Date.now()
+      });
+    }
+  }
+
+  async function handleMultiplayerDealReady() {
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    if (!roomRef || !user) return;
+
+    // Si la manche précédente du salon était terminée ('OVER'), on réinitialise la manche commune
+    const currentRound = roomDataCache && roomDataCache.round;
+    if (currentRound && currentRound.phase === 'OVER') {
+      await roomRef.child('round').remove();
+    }
+
+    // Tirer dès maintenant les 2 cartes initiales du joueur
+    playerCards = [BlackjackEngine.drawCard(shoe), BlackjackEngine.drawCard(shoe)];
+    const pEval = BlackjackEngine.evaluateHand(playerCards, false);
+
+    gameState = 'WAITING_ROOM';
+    renderBetsAndBalanceUI();
+    setStatusBanner('Mise validée ! En attente des autres joueurs (ou clique sur 🚀 LANCER LA TABLE)...');
+
+    await roomRef.child(`seats/${user.tag}`).update({
+      bet: currentBet,
+      cards: playerCards,
+      score: pEval.total,
+      label: pEval.label,
+      status: 'READY',
+      lastActive: Date.now()
+    });
+
+    // Vérifier si tous les joueurs présents à la table sont READY
+    const seatsSnap = await roomRef.child('seats').once('value');
+    const seats = Object.values(seatsSnap.val() || {});
+    const allReady = seats.length > 0 && seats.every(s => s.status === 'READY' || s.status === 'PLAYING' || s.status === 'DONE');
+
+    if (allReady) {
+      await triggerMultiplayerRoundStart();
+    }
+  }
+
+  async function triggerMultiplayerRoundStart() {
+    if (!roomRef) return;
+    const initialDealer = [BlackjackEngine.drawCard(shoe), BlackjackEngine.drawCard(shoe)];
+    const newRoundId = 'R_' + Date.now();
+
+    // Transaction pour ne créer la donne du croupier qu'une seule fois
+    await roomRef.child('round').transaction((curr) => {
+      if (curr && curr.phase === 'PLAYING') return; // Déjà en cours
+      return {
+        id: newRoundId,
+        phase: 'PLAYING',
+        dealerCards: initialDealer,
+        startedAt: Date.now()
+      };
+    });
+  }
+
+  async function syncMySeatHand(newStatus) {
+    if (!roomRef || !myUser) return;
+    const pEval = BlackjackEngine.evaluateHand(playerCards, false);
+    await roomRef.child(`seats/${myUser.tag}`).update({
+      cards: playerCards,
+      score: pEval.total,
+      label: pEval.label,
+      bet: currentBet,
+      status: newStatus,
+      lastActive: Date.now()
+    });
+  }
+
+  async function finishMyMultiplayerTurn() {
+    gameState = 'DEALER_TURN';
+    updateActionButtonsState();
+    setStatusBanner('Tu as terminé ton tour. En attente de la fin de table...');
+    await syncMySeatHand('DONE');
+    await checkAndResolveMultiplayerDealer();
+  }
+
+  async function checkAndResolveMultiplayerDealer() {
+    if (!roomRef) return;
+    const snap = await roomRef.once('value');
+    const val = snap.val();
+    if (!val || !val.round || val.round.phase !== 'PLAYING') return;
+
+    const seats = Object.values(val.seats || {});
+    const activePlayers = seats.filter(s => s.status === 'PLAYING' || s.status === 'READY' || s.status === 'DONE');
+    const everyoneDone = activePlayers.length > 0 && activePlayers.every(s => s.status === 'DONE');
+
+    if (!everyoneDone) return;
+
+    // Le croupier tire ses cartes communes pour toute la table
+    let sharedDealerCards = Array.isArray(val.round.dealerCards) ? [...val.round.dealerCards] : [BlackjackEngine.drawCard(shoe), BlackjackEngine.drawCard(shoe)];
+    while (BlackjackEngine.shouldDealerHit(sharedDealerCards)) {
+      sharedDealerCards.push(BlackjackEngine.drawCard(shoe));
+    }
+
+    await roomRef.child('round').update({
+      dealerCards: sharedDealerCards,
+      phase: 'OVER',
+      endedAt: Date.now()
+    });
+  }
+
+  async function onRoomSnapshotUpdate(val) {
+    const seatsMap = val.seats || {};
+    const round = val.round || null;
+    renderMultiSeats(seatsMap, round);
+
+    const phaseBadge = document.getElementById('multiRoomPhaseBadge');
+    if (phaseBadge) {
+      if (!round) phaseBadge.textContent = 'Mises ouvertes';
+      else if (round.phase === 'PLAYING') phaseBadge.textContent = 'Tour des joueurs';
+      else if (round.phase === 'OVER') phaseBadge.textContent = 'Résultat de la table';
+    }
+
+    if (!myUser || !seatsMap[myUser.tag]) return;
+    const mySeat = seatsMap[myUser.tag];
+
+    // 1. La manche commune vient de démarrer ('PLAYING')
+    if (round && round.phase === 'PLAYING') {
+      dealerCards = round.dealerCards || [];
+
+      if (mySeat.status === 'READY') {
+        gameState = 'PLAYING';
+        showBettingControls(false);
+        renderTable();
+        playCardSound();
+
+        const pEval = BlackjackEngine.evaluateHand(playerCards, false);
+        const dEval = BlackjackEngine.evaluateHand(dealerCards, false);
+
+        if (pEval.isBlackjack || dEval.isBlackjack) {
+          await finishMyMultiplayerTurn();
+        } else {
+          await syncMySeatHand('PLAYING');
+          updateActionButtonsState();
+          startAfkTimer();
+        }
+      } else if (mySeat.status === 'PLAYING') {
+        renderTable();
+      } else if (mySeat.status === 'DONE') {
+        renderTable();
+        checkAndResolveMultiplayerDealer();
+      }
+    }
+
+    // 2. La manche commune est terminée ('OVER') : le croupier a tiré ses cartes
+    if (round && round.phase === 'OVER' && settledRoundId !== round.id) {
+      if (mySeat.status === 'DONE' || mySeat.status === 'PLAYING' || mySeat.status === 'READY') {
+        settledRoundId = round.id;
+        stopAfkTimer();
+        dealerCards = round.dealerCards || [];
+        gameState = 'ROUND_OVER';
+        renderTable();
+        playCardSound();
+
+        const dEval = BlackjackEngine.evaluateHand(dealerCards, false);
+        if (dEval.isBust) triggerBustEffect();
+
+        await settleMyHandPayout();
+
+        const res = BlackjackEngine.resolveRound(playerCards, dealerCards, currentBet);
+        await roomRef.child(`seats/${myUser.tag}`).update({
+          status: 'BETTING',
+          lastOutcome: res.netDelta > 0 ? `+${res.payout}$` : (res.netDelta === 0 ? 'Égalité' : 'Perdu')
+        });
+      }
+    }
+  }
+
+  function renderMultiSeats(seatsMap, round) {
+    const container = document.getElementById('multiSeatsContainer');
+    const countBadge = document.getElementById('multiPlayersCount');
+    if (!container) return;
+
+    const user = myUser || (window.GameShell && GameShell.currentUser);
+    const myTag = user ? user.tag : null;
+    const allSeats = Object.values(seatsMap);
+
+    if (countBadge) countBadge.textContent = allSeats.length;
+
+    const statusLabelMap = {
+      BETTING: '💰 Mise...',
+      READY: '✅ Prêt',
+      PLAYING: '🤔 Joue...',
+      DONE: '✋ Reste'
+    };
+
+    container.innerHTML = allSeats.map(s => {
+      const isMe = s.tag === myTag;
+      const cardsArr = Array.isArray(s.cards) ? s.cards : [];
+      const miniCardsHtml = cardsArr.length > 0
+        ? cardsArr.map(c => `<span class="bj-seat-mini-card ${c.color === 'red' ? 'red' : 'black'}">${c.rank}${c.suit}</span>`).join(' ')
+        : `<span class="text-[10px] text-emerald-200/60 italic">Aucune carte</span>`;
+
+      const statusText = (round && round.phase === 'OVER' && s.lastOutcome)
+        ? s.lastOutcome
+        : (statusLabelMap[s.status] || s.status);
+
+      return `
+        <div class="bj-seat-card ${isMe ? 'me' : ''}">
+          <div class="flex items-center justify-between text-xs font-black">
+            <span class="truncate">${s.avatarEmoji || '🍺'} ${GameShell.escapeHtml(s.nickname)}${isMe ? ' (toi)' : ''}</span>
+            <span class="font-mono text-[11px] text-emerald-300 flex-shrink-0">${(s.bet || 0).toLocaleString('fr-FR')} $</span>
+          </div>
+          <div class="flex items-center gap-1 flex-wrap my-0.5">
+            ${miniCardsHtml}
+          </div>
+          <div class="flex items-center justify-between text-[11px] font-mono">
+            <span class="opacity-90">Total : <strong>${s.label || s.score || 0}</strong></span>
+            <span class="bg-[#12131a] text-[#fed72d] px-2 py-0.5 rounded-full font-bold text-[9px]">${statusText}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /* =========================================================
+     6. TIMER AFK 60 SECONDES & RENDU DES CARTES
+     ========================================================= */
   function startAfkTimer() {
     stopAfkTimer();
     afkSecondsLeft = AFK_TIMEOUT_SECONDS;
@@ -392,7 +881,7 @@
 
       if (afkSecondsLeft <= 0) {
         stopAfkTimer();
-        showToast('Inactivité détectée : action automatique (Stand).', '⏱️');
+        showToast('Temps écoulé : tu restes automatiquement (Stand).', '⏱️');
         playerStand();
       }
     }, 1000);
@@ -413,32 +902,32 @@
     if (box) box.classList.add('hidden');
   }
 
-  /* ---------------- RENDU VISUEL DE LA TABLE (HTML CARTES) ---------------- */
   function renderTable() {
     const dealerContainer = document.getElementById('dealerCardsContainer');
     const playerContainer = document.getElementById('playerHandCardsContainer');
     const dealerScore = document.getElementById('dealerScoreBadge');
     const playerScore = document.getElementById('playerScoreBadge');
-    const statusBanner = document.getElementById('bjStatusBanner');
 
-    const hideDealerSecond = gameState === 'PLAYING';
+    const hideDealerSecond = (gameState === 'PLAYING' || gameState === 'WAITING_ROOM') ||
+                             (currentRoomCode && roomDataCache && roomDataCache.round && roomDataCache.round.phase === 'PLAYING');
+
     const dEval = BlackjackEngine.evaluateHand(dealerCards, hideDealerSecond);
     const pEval = BlackjackEngine.evaluateHand(playerCards, false);
 
-    // Rendu des cartes du croupier
-    dealerContainer.innerHTML = dealerCards.map((c, idx) => {
-      if (hideDealerSecond && idx === 1) {
-        return `<div class="bj-card face-down"></div>`;
-      }
-      return renderCardHtml(c);
-    }).join('');
+    dealerContainer.innerHTML = dealerCards.length > 0
+      ? dealerCards.map((c, idx) => {
+          if (hideDealerSecond && idx === 1) {
+            return `<div class="bj-card face-down"></div>`;
+          }
+          return renderCardHtml(c);
+        }).join('')
+      : `<span class="text-xs font-bold text-emerald-200/70 italic">En attente de mise...</span>`;
 
     dealerScore.textContent = dEval.label;
     dealerScore.className = 'bj-score-badge';
     if (dEval.isBlackjack) dealerScore.classList.add('blackjack');
     else if (dEval.isBust) dealerScore.classList.add('bust');
 
-    // Rendu des cartes du joueur
     playerContainer.innerHTML = playerCards.length > 0
       ? playerCards.map(c => renderCardHtml(c)).join('')
       : `<span class="text-xs font-bold text-emerald-200/70 italic">—</span>`;
@@ -448,11 +937,9 @@
     if (pEval.isBlackjack) playerScore.classList.add('blackjack');
     else if (pEval.isBust) playerScore.classList.add('bust');
 
-    // Messages de statut
-    if (gameState === 'BETTING') statusBanner.textContent = 'Place tes jetons pour commencer !';
-    else if (gameState === 'PLAYING') statusBanner.textContent = 'À toi de jouer : Tire ou Reste.';
-    else if (gameState === 'DEALER_TURN') statusBanner.textContent = 'Tour du Croupier...';
-    else if (gameState === 'ROUND_OVER') statusBanner.textContent = 'Manche terminée !';
+    if (gameState === 'BETTING') setStatusBanner('Clique sur les jetons pour miser !');
+    else if (gameState === 'PLAYING') setStatusBanner('À toi de jouer : Tire, Reste ou Double !');
+    else if (gameState === 'DEALER_TURN') setStatusBanner('Tour du Croupier...');
   }
 
   function renderCardHtml(card) {
@@ -504,137 +991,9 @@
     } catch (e) {}
   }
 
-  /* ---------------- MODE SALON MULTIJOUEUR (FIREBASE) ---------------- */
-  function openRoomModal() {
-    // Enregistrement direct ou création si modal simple
-    createMultiplayerRoom();
-  }
-
-  async function createMultiplayerRoom() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    await joinMultiplayerRoom(code, true);
-  }
-
-  async function joinMultiplayerRoomFromInput() {
-    const input = document.getElementById('inputJoinRoomCode');
-    const code = (input.value || '').trim().toUpperCase();
-    if (code.length !== 4) {
-      showToast('Entre un code de salon à 4 caractères.', '⚠️');
-      return;
-    }
-    await joinMultiplayerRoom(code, false);
-  }
-
-  async function joinMultiplayerRoom(code, isCreating = false) {
-    const user = myUser || (window.GameShell && GameShell.currentUser) || await waitForResolvedUser();
-    if (!user) return;
-    if (roomRef) roomRef.off();
-
-    code = code.trim().toUpperCase();
-    currentRoomCode = code;
-    if (window.GameShell) GameShell.currentRoomCode = code;
-    window.location.hash = `room=${code}`;
-
-    roomRef = db.ref(`rooms/casino-blackjack/${code}`);
-
-    if (isCreating) {
-      await roomRef.set({ code, createdAt: Date.now(), hostTag: user.tag });
-    }
-
-    const mySeatRef = roomRef.child(`seats/${user.tag}`);
-    await mySeatRef.set({
-      tag: user.tag,
-      nickname: user.nickname,
-      avatarEmoji: user.avatarEmoji || '🍺',
-      cards: playerCards.map(c => c.id),
-      score: BlackjackEngine.evaluateHand(playerCards).total,
-      status: gameState,
-      bet: currentBet,
-      lastActive: Date.now()
-    });
-    mySeatRef.onDisconnect().remove();
-
-    document.getElementById('btnModeSolo').className = 'neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
-    document.getElementById('btnModeRoom').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
-    const badge = document.getElementById('roomCodeDisplayBadge');
-    badge.textContent = `#${code}`;
-    badge.classList.remove('hidden');
-    document.getElementById('btnLeaveRoom').classList.remove('hidden');
-    document.getElementById('multiSeatsPanel').classList.remove('hidden');
-
-    roomRef.child('seats').on('value', (snap) => {
-      const seatsMap = snap.val() || {};
-      renderMultiSeats(seatsMap);
-    });
-
-    showToast(`Salon Blackjack #${code} rejoint !`, '👥');
-  }
-
-  function switchToSolo() {
-    stopAfkTimer();
-    const user = myUser || (window.GameShell && GameShell.currentUser);
-    if (roomRef && user) {
-      roomRef.child(`seats/${user.tag}`).remove();
-      roomRef.off();
-    }
-    roomRef = null;
-    currentRoomCode = null;
-    if (window.GameShell) GameShell.currentRoomCode = null;
-    history.replaceState(null, '', window.location.pathname);
-
-    document.getElementById('btnModeSolo').className = 'neo-btn bg-[#fed72d] text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
-    document.getElementById('btnModeRoom').className = 'neo-btn bg-white text-[#12131a] px-2.5 py-1 rounded-lg text-[11px] font-black';
-    document.getElementById('roomCodeDisplayBadge').classList.add('hidden');
-    document.getElementById('btnLeaveRoom').classList.add('hidden');
-    document.getElementById('multiSeatsPanel').classList.add('hidden');
-    showToast('Mode Solo activé.', '👤');
-  }
-
-  function syncRoomState() {
-    const user = myUser || (window.GameShell && GameShell.currentUser);
-    if (roomRef && user) {
-      roomRef.child(`seats/${user.tag}`).update({
-        score: BlackjackEngine.evaluateHand(playerCards).total,
-        status: gameState,
-        bet: currentBet,
-        lastActive: Date.now()
-      });
-    }
-  }
-
-  function renderMultiSeats(seatsMap) {
-    const container = document.getElementById('multiSeatsContainer');
-    const countBadge = document.getElementById('multiPlayersCount');
-    const user = myUser || (window.GameShell && GameShell.currentUser);
-    const myTag = user ? user.tag : null;
-
-    const otherSeats = Object.values(seatsMap).filter(s => s.tag !== myTag);
-    if (countBadge) countBadge.textContent = Object.keys(seatsMap).length;
-
-    if (otherSeats.length === 0) {
-      container.innerHTML = `<span class="text-xs font-bold text-emerald-200/70 italic">Aucun autre joueur à la table pour l'instant.</span>`;
-      return;
-    }
-
-    container.innerHTML = otherSeats.map(s => `
-      <div class="bj-seat-card">
-        <div class="flex items-center justify-between text-xs font-black">
-          <span>${s.avatarEmoji || '🍺'} ${GameShell.escapeHtml(s.nickname)}</span>
-          <span class="font-mono text-[11px] text-emerald-300">Mise: ${(s.bet || 0).toLocaleString('fr-FR')}$</span>
-        </div>
-        <div class="flex items-center justify-between text-[11px] font-mono">
-          <span class="opacity-80">Score : <strong>${s.score || 0}</strong></span>
-          <span class="bg-[#12131a] text-yellow-300 px-2 py-0.5 rounded-full font-bold uppercase text-[9px]">${s.status}</span>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  /* ---------------- CHAT DU CASINO & BIG WINS ---------------- */
+  /* =========================================================
+     7. CHAT DE LA TABLE (SANS ANNONCES BIG WINS)
+     ========================================================= */
   function listenCasinoChat() {
     const container = document.getElementById('casinoTableChatList');
     if (!container) return;
@@ -677,81 +1036,9 @@
     input.value = '';
   }
 
-  function broadcastBigWin(res) {
-    const user = myUser || (window.GameShell && GameShell.currentUser);
-    if (!user) return;
-    const msgText = `🔥 ${user.nickname} (@${user.tag}) a décroché un gain de ${res.payout.toLocaleString('fr-FR')} $ au Blackjack 21 !`;
-
-    db.ref('casino/chat').push({
-      nickname: user.nickname,
-      tag: user.tag,
-      avatar: user.avatarEmoji || '🍺',
-      text: msgText,
-      timestamp: Date.now()
-    });
-
-    db.ref('chat').push({
-      authorNick: user.nickname,
-      authorTag: user.tag,
-      authorAvatar: user.avatarEmoji || '🍺',
-      authorFlag: user.flagEmoji || '🇫🇷',
-      isInvite: true,
-      gameTitle: '🃏 Blackjack - MEGA WIN !',
-      internalGame: 'casino/blackjack',
-      internalRoom: currentRoomCode || 'CASINO',
-      text: `@promo ${msgText}`,
-      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      timestamp: Date.now()
-    });
-  }
-
-  /* ---------------- MODALE RÉSULTAT ---------------- */
-  function showResultModal(res) {
-    const modal = document.getElementById('bjResultModal');
-    const icon = document.getElementById('resultModalIcon');
-    const title = document.getElementById('resultModalTitle');
-    const desc = document.getElementById('resultModalDesc');
-    const payoutEl = document.getElementById('resultModalPayout');
-
-    title.textContent = res.title;
-    desc.textContent = `Score joueur : ${res.playerEval.total} · Score croupier : ${res.dealerEval.total}`;
-
-    if (res.netDelta > 0) {
-      icon.textContent = '🎉';
-      payoutEl.textContent = `+ ${res.payout.toLocaleString('fr-FR')} $ (Net : +${res.netDelta.toLocaleString('fr-FR')} $)`;
-      payoutEl.className = 'text-base font-mono font-black text-emerald-800 bg-emerald-100 border-2 border-[#12131a] py-2.5 px-3 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
-    } else if (res.netDelta === 0) {
-      icon.textContent = '🤝';
-      payoutEl.textContent = `Mise remboursée (0 $)`;
-      payoutEl.className = 'text-base font-mono font-black text-slate-800 bg-slate-100 border-2 border-[#12131a] py-2.5 px-3 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
-    } else {
-      icon.textContent = '💀';
-      payoutEl.textContent = `${res.netDelta.toLocaleString('fr-FR')} $`;
-      payoutEl.className = 'text-base font-mono font-black text-rose-700 bg-rose-100 border-2 border-[#12131a] py-2.5 px-3 rounded-2xl my-4 shadow-[2px_3px_0px_#12131a]';
-    }
-
-    modal.classList.remove('hidden');
-  }
-
-  function closeResultModal(shouldRebet = false) {
-    document.getElementById('bjResultModal').classList.add('hidden');
-    gameState = 'BETTING';
-    playerCards = [];
-    dealerCards = [];
-    renderTable();
-
-    document.getElementById('actionControlsBox').classList.add('hidden');
-    document.getElementById('actionControlsBox').classList.remove('grid');
-    document.getElementById('chipSelectorBox').classList.remove('hidden');
-    document.getElementById('bettingControlsBox').classList.remove('hidden');
-
-    if (shouldRebet) {
-      rebetLast();
-    }
-  }
-
   function showToast(msg, icon = '🃏') {
     const toast = document.getElementById('rouletteToast');
+    if (!toast) return;
     document.getElementById('rouletteToastIcon').textContent = icon;
     document.getElementById('rouletteToastMsg').textContent = msg;
 
@@ -792,7 +1079,6 @@
     switchToSolo,
     useAtmInGame,
     toggleSound: () => { soundEnabled = !soundEnabled; showToast(soundEnabled ? 'Son ON' : 'Muet', '🔊'); },
-    sendCasinoChatMessage,
-    closeResultModal
+    sendCasinoChatMessage
   };
 })();
