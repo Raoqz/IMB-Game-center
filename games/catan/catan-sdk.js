@@ -1,15 +1,11 @@
 /* =========================================================
-   IMB GAME CENTER - CATAN (Étape 1 : Pont Firebase SDK)
-   Remplace _sdk.js et _prefill.js pour relier Catan à Firebase
+   IMB GAME CENTER - CATAN (Pont Firebase SDK Corrigé)
    Stockage salon : rooms/catan/<CODE>
    Stockage scores : scores/catan/<tag>
    ========================================================= */
 (function () {
   'use strict';
 
-  /**
-   * Attend que l'utilisateur soit authentifié et chargé dans GameShell
-   */
   function waitForShellUser() {
     return new Promise((resolve) => {
       if (window.GameShell && window.GameShell.currentUser) {
@@ -24,19 +20,12 @@
     });
   }
 
-  /**
-   * Convertit l'emoji du joueur (ex: 🍺) en Data-URI SVG pour que
-   * les balises <img src="..."> de Catan l'affichent proprement.
-   */
   function emojiToDataUri(emoji) {
     const safeEmoji = emoji || '🍺';
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text x="50%" y="54%" dominant-baseline="central" text-anchor="middle" font-size="40">${safeEmoji}</text></svg>`;
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
   }
 
-  /**
-   * Extrait le code de salon depuis ?room=XXXX ou #room=XXXX
-   */
   function getRoomFromUrl() {
     const q = new URLSearchParams(window.location.search).get('room');
     if (q) return q.trim().toUpperCase();
@@ -44,12 +33,42 @@
     return match ? match[1].toUpperCase() : null;
   }
 
+  /**
+   * Restaure les objets/tableaux vides que Firebase Realtime Database
+   * aurait pu supprimer si un état non-sérialisé était présent.
+   */
+  function normalizePayload(raw) {
+    if (!raw) return null;
+    let parsed = raw;
+    if (typeof raw.payloadJson === 'string') {
+      try { parsed = JSON.parse(raw.payloadJson); } catch (e) {}
+    } else if (raw.data !== undefined) {
+      parsed = raw.data;
+    }
+
+    if (parsed && parsed.t === 'state' && parsed.s) {
+      const s = parsed.s;
+      s.bld = s.bld || {};
+      s.rd = s.rd || {};
+      s.disc = s.disc || {};
+      s.lens = Array.isArray(s.lens) ? s.lens : [];
+      s.ev = Array.isArray(s.ev) ? s.ev : [];
+      s.log = Array.isArray(s.log) ? s.log : [];
+      if (typeof s.deck !== 'string') s.deck = '';
+      if (Array.isArray(s.players)) {
+        s.players.forEach(p => {
+          p.r = Array.isArray(p.r) ? p.r : [0, 0, 0, 0, 0];
+          p.dev = Object.assign({ K: 0, R: 0, Y: 0, M: 0, V: 0 }, p.dev || {});
+          p.nd = Object.assign({ K: 0, R: 0, Y: 0, M: 0, V: 0 }, p.nd || {});
+        });
+      }
+    }
+    return parsed;
+  }
+
   window.ChadGang = {
     hubUrl: window.location.origin,
 
-    /**
-     * Identité du joueur connecté -> { id, name, avatar, isAdmin }
-     */
     me: async function () {
       const user = await waitForShellUser();
       return {
@@ -71,17 +90,16 @@
       return getRoomFromUrl();
     },
 
-    /**
-     * Connexion temps réel à une salle Catan sur Firebase : rooms/catan/<CODE>
-     */
     join: function (code, opts) {
       const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
       const L = { ready: [], players: [], message: [], error: [] };
       let closed = false;
       let playersRef = null;
       let messagesRef = null;
+      let lastStateRef = null;
       let onPlayersValue = null;
       let onMessageAdded = null;
+      let onLastStateValue = null;
 
       function emit(evt, a, b) {
         (L[evt] || []).forEach(function (fn) {
@@ -102,21 +120,23 @@
           if (closed) return;
           const user = await waitForShellUser();
           const now = Date.now();
+          const payloadJson = JSON.stringify(data);
+          const sender = { id: user.tag, name: user.nickname || user.tag };
 
-          // Si keep: true, on sauvegarde le dernier état de la partie pour les reconnexions
+          // Si keep: true (état de la partie), on met à jour lastState (écouté en direct par tous)
           if (o && o.keep) {
             await roomRef.child('lastState').set({
-              data: data,
-              from: { id: user.tag, name: user.nickname || user.tag },
+              payloadJson: payloadJson,
+              from: sender,
               timestamp: now
             });
           }
 
-          // Diffuser l'événement à tous les joueurs de la salle
+          // Diffuser le message à tous les joueurs de la salle
           const msgRef = roomRef.child('messages').push();
           await msgRef.set({
-            data: data,
-            from: { id: user.tag, name: user.nickname || user.tag },
+            payloadJson: payloadJson,
+            from: sender,
             timestamp: now
           });
         },
@@ -126,6 +146,7 @@
 
           if (playersRef && onPlayersValue) playersRef.off('value', onPlayersValue);
           if (messagesRef && onMessageAdded) messagesRef.off('child_added', onMessageAdded);
+          if (lastStateRef && onLastStateValue) lastStateRef.off('value', onLastStateValue);
 
           if (window.GameShell && window.GameShell.currentUser) {
             const tag = window.GameShell.currentUser.tag;
@@ -141,7 +162,6 @@
         }
       };
 
-      // Initialisation asynchrone de la salle
       (async function initRoomConnection() {
         try {
           const user = await waitForShellUser();
@@ -152,26 +172,29 @@
 
           const roomData = snap.val();
           const hasPlayers = roomData && roomData.players && Object.keys(roomData.players).length > 0;
-          const hasState = roomData && roomData.lastState;
+          const hasState = roomData && (roomData.lastState || roomData.createdAt);
 
-          // Si le joueur tente de rejoindre une salle qui n'existe pas (create: false)
           if (!hasPlayers && !hasState && opts && opts.create === false) {
             emit('error', 'Salle introuvable : vérifie le code');
             return;
           }
 
+          if (!roomData || !roomData.createdAt) {
+            await roomRef.child('createdAt').set(Date.now());
+          }
+
           channel.me = user.tag;
 
-          // Synchroniser le code de salle avec GameShell et le stockage local ("Reprendre")
           if (window.GameShell) {
             window.GameShell.currentRoomCode = c;
           }
           try {
             localStorage.setItem('imb_active_room_catan', c);
-            window.location.hash = 'room=' + c;
+            if (window.location.hash !== '#room=' + c) {
+              history.replaceState(null, '', window.location.pathname + '#room=' + c);
+            }
           } catch (e) {}
 
-          // Conserver l'ordre d'arrivée (joinedAt) si le joueur était déjà présent
           const myPlayerRef = roomRef.child('players/' + user.tag);
           const existingPlayerSnap = await myPlayerRef.once('value');
           const existingPlayer = existingPlayerSnap.val();
@@ -185,27 +208,32 @@
           });
           myPlayerRef.onDisconnect().remove();
 
-          // Nettoyer les anciens messages éphémères s'il y en a trop
-          const allPlayersSnap = await roomRef.child('players').once('value');
           const sortPlayers = (map) => {
             return Object.values(map || {})
               .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))
               .map(p => ({ id: p.id, name: p.name, avatar: p.avatar || null }));
           };
 
+          const allPlayersSnap = await roomRef.child('players').once('value');
           const initialPlayers = sortPlayers(allPlayersSnap.val());
-          const lastStateSnap = await roomRef.child('lastState').once('value');
-          const lastStateVal = lastStateSnap.val();
-          const joinTimestamp = Date.now();
 
-          // 1. Émettre l'événement 'ready' (info.me DOIT être le tag string pour Catan)
+          const lastStateSnap = await roomRef.child('lastState').once('value');
+          const initialLastState = normalizePayload(lastStateSnap.val());
+
+          // Mémoriser les clés des anciens messages pour n'écouter que les nouveaux (sans dépendre de l'horloge du PC)
+          const existingMsgsSnap = await roomRef.child('messages').limitToLast(30).once('value');
+          const seenMsgKeys = new Set(Object.keys(existingMsgsSnap.val() || {}));
+
+          if (closed) return;
+
+          // 1. Émettre 'ready'
           emit('ready', {
             me: user.tag,
             players: initialPlayers,
-            last: lastStateVal ? lastStateVal.data : null
+            last: initialLastState
           });
 
-          // 2. Écouter les changements de liste des joueurs en direct
+          // 2. Écouter les joueurs en direct
           playersRef = roomRef.child('players');
           onPlayersValue = function (pSnap) {
             if (closed) return;
@@ -213,13 +241,34 @@
           };
           playersRef.on('value', onPlayersValue);
 
-          // 3. Écouter tous les nouveaux messages envoyés à partir de maintenant
-          messagesRef = roomRef.child('messages').orderByChild('timestamp').startAt(joinTimestamp - 200);
+          // 3. Écouter lastState en direct (garantit que le lancement de partie arrive toujours instantanément)
+          lastStateRef = roomRef.child('lastState');
+          let isFirstLastState = true;
+          onLastStateValue = function (lSnap) {
+            if (closed) return;
+            if (isFirstLastState) {
+              isFirstLastState = false;
+              return;
+            }
+            const val = lSnap.val();
+            const payload = normalizePayload(val);
+            if (payload) {
+              emit('message', payload, (val && val.from) || {});
+            }
+          };
+          lastStateRef.on('value', onLastStateValue);
+
+          // 4. Écouter tous les nouveaux messages en direct
+          messagesRef = roomRef.child('messages').limitToLast(25);
           onMessageAdded = function (mSnap) {
             if (closed) return;
+            if (seenMsgKeys.has(mSnap.key)) return;
+            seenMsgKeys.add(mSnap.key);
+
             const msg = mSnap.val();
-            if (!msg || !msg.data) return;
-            emit('message', msg.data, msg.from || {});
+            const payload = normalizePayload(msg);
+            if (!payload) return;
+            emit('message', payload, (msg && msg.from) || {});
           };
           messagesRef.on('child_added', onMessageAdded);
 
@@ -232,9 +281,6 @@
       return channel;
     },
 
-    /**
-     * Publie une invitation dans le chat général de l'IMB Game Center
-     */
     createInvite: async function (opts) {
       opts = opts || {};
       const user = await waitForShellUser();
@@ -273,9 +319,6 @@
       });
     },
 
-    /**
-     * Enregistre le résultat de fin de partie dans scores/catan/<tag>
-     */
     finPartie: async function (o) {
       o = o || {};
       const user = await waitForShellUser();
@@ -303,7 +346,6 @@
             updatedAt: Date.now()
           };
         }
-        // Éviter de compter deux fois la même partie
         if (current.lastMatchId === matchId) {
           return current;
         }
@@ -328,9 +370,6 @@
       return { counted: true, record: isNewRecord };
     },
 
-    /**
-     * Récupère le classement général de Catan (trié par victoires)
-     */
     classement: async function () {
       const user = await waitForShellUser();
       const snap = await db.ref('scores/catan').once('value');
