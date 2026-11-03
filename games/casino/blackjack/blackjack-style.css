@@ -1,5 +1,5 @@
 /* =========================================================
-   IMB CASINO - BLACKJACK 21 STYLES (Néo-Brutaliste)
+   IMB CASINO - BLACKJACK 21 STYLES (Néo-Brutaliste Avancé)
    ========================================================= */
 body.blackjack-body {
   background-color: #047857;
@@ -68,37 +68,92 @@ body.blackjack-body {
   50% { transform: scale(1.05); }
 }
 
-/* ---------- TAPIS PRINCIPAL DU BLACKJACK ---------- */
+/* ---------- TAPIS PRINCIPAL DU BLACKJACK (REBORD & HABILLAGE) ---------- */
 .bj-felt-arena {
   background: #065f46;
-  border: 3.5px solid #12131a;
-  border-radius: 28px;
-  padding: 18px;
+  border: 4px solid #12131a;
+  border-radius: 26px;
+  padding: 16px;
   box-shadow: 6px 8px 0px #12131a;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 450px;
+  min-height: 400px; /* Optimisé single-screen */
 }
 
+/* Rebord intérieur rembourré style table de casino */
 .bj-felt-arena::before {
-  content: "BLACKJACK PAYS 3 TO 2 · DEALER MUST STAND ON 17";
+  content: "";
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 6px;
+  border: 2px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+/* Inscription des règles en haut du tapis (évite la collision avec le statut) */
+.bj-felt-rules {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.16);
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  padding: 8px 22px;
-  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.25);
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: -4px;
   pointer-events: none;
-  white-space: nowrap;
+}
+
+/* Sabot de cartes décoratif (haut droite) */
+.bj-felt-shoe {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 32px;
+  height: 44px;
+  background: #ffffff;
+  border: 2px solid #12131a;
+  border-radius: 6px;
+  box-shadow: 2px 3px 0px #12131a;
+  background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0, rgba(0,0,0,0.08) 4px, transparent 0, transparent 8px);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Zone de défausse décorative (haut gauche) */
+.bj-felt-discard {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  width: 30px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Cercle de mise visuel au centre */
+.bj-betting-spot {
+  width: 90px;
+  height: 45px;
+  border: 2.5px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 0 auto;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+
+.bj-betting-spot.has-bet {
+  border-color: #fed72d;
+  background: rgba(4, 120, 87, 0.6);
+  box-shadow: 0 0 12px rgba(254, 215, 45, 0.4), inset 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .bj-felt-arena.bust-shake {
@@ -119,18 +174,31 @@ body.blackjack-body {
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  min-height: 118px;
-  padding: 6px;
+  min-height: 108px;
+  padding: 4px;
+}
+
+/* Silhouette de carte vide par défaut sur le tapis */
+.bj-card-placeholder {
+  width: 68px;
+  height: 98px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  margin-left: -10px;
+}
+.bj-card-placeholder:first-child {
+  margin-left: 0;
 }
 
 .bj-card {
-  width: 78px;
-  height: 112px;
+  width: 74px;
+  height: 106px;
   background: #ffffff;
   border: 3px solid #12131a;
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 4px 5px 0px #12131a;
-  padding: 6px 7px;
+  padding: 5px 6px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -173,12 +241,12 @@ body.blackjack-body {
 }
 
 .bj-card-rank {
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: -0.5px;
 }
 
 .bj-card-suit-sm {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .bj-card-center {
@@ -186,7 +254,7 @@ body.blackjack-body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 32px;
+  font-size: 30px;
   line-height: 1;
   filter: drop-shadow(1px 1px 0px rgba(18, 19, 26, 0.12));
 }
@@ -209,9 +277,9 @@ body.blackjack-body {
 
 .bj-card.face-down::after {
   content: "🎰";
-  font-size: 26px;
-  width: 44px;
-  height: 44px;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   background: #fed72d;
   border: 2.5px solid #12131a;
@@ -232,7 +300,7 @@ body.blackjack-body {
   }
 }
 
-/* ---------- BADGE DE SCORE D'UNE MAIN ---------- */
+/* ---------- BADGE DE SCORE D'UNE MAIN (AVEC COULEURS DYNAMIQUES) ---------- */
 .bj-score-badge {
   display: inline-flex;
   align-items: center;
@@ -241,33 +309,44 @@ body.blackjack-body {
   color: #ffffff;
   border: 2.5px solid #12131a;
   border-radius: 999px;
-  padding: 3px 12px;
+  padding: 2px 10px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 900;
-  font-size: 12px;
+  font-size: 11px;
   box-shadow: 2px 3px 0px rgba(0, 0, 0, 0.35);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.bj-score-badge.neutral {
+  background: #334155;
+  color: #ffffff;
+}
+
+.bj-score-badge.strong {
+  background: #f59e0b; /* Orange/Ambre zone forte 17-20 */
+  color: #12131a;
+}
+
+.bj-score-badge.win {
+  background: #10b981; /* Vert vif 21 */
+  color: #12131a;
 }
 
 .bj-score-badge.blackjack {
-  background: #fed72d;
+  background: #fed72d; /* Or */
   color: #12131a;
   animation: pulseAlert 1s infinite;
 }
 
 .bj-score-badge.bust {
-  background: #ef4444;
+  background: #ef4444; /* Rouge bust */
   color: #ffffff;
-}
-
-.bj-score-badge.win {
-  background: #10b981;
-  color: #12131a;
 }
 
 /* ---------- SIÈGES DES JOUEURS (MODE SALON MULTIJOUEUR) ---------- */
 .bj-multi-seats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
   width: 100%;
 }
@@ -275,13 +354,13 @@ body.blackjack-body {
 .bj-seat-card {
   background: rgba(6, 78, 59, 0.85);
   border: 2.5px solid #12131a;
-  border-radius: 16px;
-  padding: 8px 10px;
+  border-radius: 14px;
+  padding: 7px 9px;
   color: #ffffff;
   box-shadow: 2px 3px 0px #12131a;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .bj-seat-card.me {
@@ -295,11 +374,11 @@ body.blackjack-body {
   justify-content: center;
   background: #ffffff;
   border: 1.5px solid #12131a;
-  border-radius: 6px;
-  padding: 1px 5px;
+  border-radius: 5px;
+  padding: 1px 4px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 900;
-  font-size: 11px;
+  font-size: 10px;
   box-shadow: 1px 1.5px 0px #12131a;
 }
 
@@ -309,7 +388,7 @@ body.blackjack-body {
 /* ---------- BARRE CHRONOMÈTRE AFK (60 SECONDES) ---------- */
 .afk-timer-wrapper {
   width: 100%;
-  height: 10px;
+  height: 8px;
   background: #064e3b;
   border: 2px solid #12131a;
   border-radius: 999px;
@@ -327,12 +406,12 @@ body.blackjack-body {
   background: #ef4444;
 }
 
-/* ---------- BOUTONS DE JETONS & ACTIONS ---------- */
+/* ---------- VRAIS JETONS DE CASINO NÉO-BRUTALISTES (.chip-btn) ---------- */
 .chip-btn {
   border: 2.5px solid #12131a;
   border-radius: 9999px;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 900;
   font-size: 11px;
@@ -342,15 +421,26 @@ body.blackjack-body {
   cursor: pointer;
   box-shadow: 2.5px 3.5px 0px #12131a;
   transition: transform 0.1s, box-shadow 0.1s, outline 0.1s;
+  position: relative;
   background: #ffffff;
   color: #12131a;
 }
 
-.chip-btn.chip-10 { background: #e0f2fe; }
-.chip-btn.chip-50 { background: #dcfce7; }
-.chip-btn.chip-100 { background: #fef08a; }
-.chip-btn.chip-500 { background: #fecdd3; }
-.chip-btn.chip-max { background: #ef4444; color: #ffffff; }
+/* Anneau pointillé interne typique des jetons de casino */
+.chip-btn::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 2px dashed rgba(18, 19, 26, 0.35);
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.chip-btn.chip-10 { background: #e0f2fe; color: #0369a1; }   /* Bleu */
+.chip-btn.chip-50 { background: #dcfce7; color: #047857; }   /* Vert émeraude */
+.chip-btn.chip-100 { background: #fef08a; color: #a16207; }  /* Or / Jaune */
+.chip-btn.chip-500 { background: #fecdd3; color: #be123c; }  /* Rose / Violet */
+.chip-btn.chip-max { background: #ef4444; color: #ffffff; }  /* Rouge vif */
 
 .chip-btn.active {
   transform: translateY(-4px) scale(1.06);
@@ -376,15 +466,15 @@ body.blackjack-body {
 
 .bj-action-btn {
   border: 3px solid #12131a;
-  border-radius: 16px;
-  padding: 12px 16px;
+  border-radius: 14px;
+  padding: 10px 14px;
   font-weight: 900;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   box-shadow: 3px 4px 0px #12131a;
   transition: transform 0.1s, box-shadow 0.1s, opacity 0.15s;
   cursor: pointer;
