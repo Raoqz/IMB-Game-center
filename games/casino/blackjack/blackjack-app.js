@@ -1,7 +1,7 @@
 /* =========================================================
    IMB CASINO - BLACKJACK APP
    Solo & Salon Multijoueur synchronisé, Jetons cumulables,
-   Remboursement Push corrigé, Sans spam Big Win
+   Remboursement Push corrigé, Filtre chat Roulette inclus
    ========================================================= */
 (function () {
   'use strict';
@@ -15,7 +15,7 @@
   let activeChip = 50;
   let currentBet = 50;
   let previousBet = 50;
-  let freshBettingPhase = true; // Permet au 1er clic après une manche de repartir proprement ou d'empiler
+  let freshBettingPhase = true; 
 
   let shoe = [];
   let playerCards = [];
@@ -24,6 +24,7 @@
 
   let soundEnabled = true;
   let audioCtx = null;
+  let filterRouletteChat = true; // État du filtre anti-spam Roulette
 
   // État Salon Multijoueur & Synchronisation Firebase
   let currentRoomCode = null;
@@ -157,7 +158,7 @@
   }
 
   /* =========================================================
-     1. GESTION DES JETONS & MISES (CORRIGÉE)
+     1. GESTION DES JETONS & MISES
      ========================================================= */
   function prepareForNewBetIfNeeded() {
     if (gameState === 'ROUND_OVER') {
@@ -187,7 +188,6 @@
     } else {
       const chipAmount = Number(val) || 0;
       if (freshBettingPhase) {
-        // Si la mise était pré-remplie automatiquement, le 1er clic sur un jeton ajoute directement ou ajuste
         currentBet = Math.min(realBal, currentBet + chipAmount);
         freshBettingPhase = false;
       } else {
@@ -256,13 +256,25 @@
     if (balEl) balEl.textContent = realBal.toLocaleString('fr-FR');
     if (tokEl) tokEl.textContent = tok;
 
-    // Si en phase de mise la mise dépasse le solde, on la plafonne
     if (gameState === 'BETTING' && currentBet > realBal) {
       currentBet = realBal;
     }
 
     const currentBetDisp = document.getElementById('currentBetDisplay');
     if (currentBetDisp) currentBetDisp.textContent = `${currentBet.toLocaleString('fr-FR')} $`;
+
+    // Gestion visuelle du cercle de mise sur le tapis
+    const bettingSpot = document.getElementById('bjBettingSpot');
+    const bettingSpotText = document.getElementById('bjBettingSpotText');
+    if (bettingSpot && bettingSpotText) {
+      if (currentBet > 0 && (gameState === 'BETTING' || gameState === 'WAITING_ROOM')) {
+        bettingSpot.classList.add('has-bet');
+        bettingSpotText.textContent = `${currentBet.toLocaleString('fr-FR')} $`;
+      } else {
+        bettingSpot.classList.remove('has-bet');
+        bettingSpotText.textContent = 'ZONE DE MISE';
+      }
+    }
 
     const btnDeal = document.getElementById('btnDeal');
     if (btnDeal) {
@@ -320,7 +332,6 @@
      2. DISTRIBUTION DES CARTES (SOLO & SALON MULTIJOUEUR)
      ========================================================= */
   async function dealCards() {
-    // Si on est déjà en attente des autres joueurs en salon et qu'on clique sur "🚀 LANCER LA TABLE"
     if (currentRoomCode && gameState === 'WAITING_ROOM') {
       await triggerMultiplayerRoundStart();
       return;
@@ -338,13 +349,11 @@
     previousBet = currentBet;
     await commitBalanceDeltaToFirebase(-currentBet);
 
-    // --- MODE SALON MULTIJOUEUR ---
     if (currentRoomCode && roomRef) {
       await handleMultiplayerDealReady();
       return;
     }
 
-    // --- MODE SOLO ---
     gameState = 'PLAYING';
     playerCards = [];
     dealerCards = [];
@@ -483,13 +492,9 @@
     await settleMyHandPayout();
   }
 
-  /**
-   * Calcule et crédite les gains (y compris le remboursement de la mise en cas d'égalité !)
-   */
   async function settleMyHandPayout() {
     const res = BlackjackEngine.resolveRound(playerCards, dealerCards, currentBet);
 
-    // CORRECTION DU BUG D'ÉGALITÉ : res.payout vaut `stake` en cas de Push (égalité)
     if (res.payout > 0) {
       await commitBalanceDeltaToFirebase(res.payout);
     }
@@ -505,7 +510,6 @@
       setStatusBanner(`${res.title} (${res.netDelta.toLocaleString('fr-FR')} $)`, 'lose');
     }
 
-    // Ré-afficher immédiatement les contrôles de mise pour enchaîner sans modale bloquante
     showBettingControls(true);
     freshBettingPhase = true;
     const realBal = getRealBalance();
@@ -593,7 +597,6 @@
     document.getElementById('btnLeaveRoom').classList.remove('hidden');
     document.getElementById('multiSeatsPanel').classList.remove('hidden');
 
-    // Écouter l'état complet du salon (sièges + manche commune)
     roomRef.on('value', (snap) => {
       const val = snap.val() || {};
       roomDataCache = val;
@@ -648,13 +651,11 @@
     const user = myUser || (window.GameShell && GameShell.currentUser);
     if (!roomRef || !user) return;
 
-    // Si la manche précédente du salon était terminée ('OVER'), on réinitialise la manche commune
     const currentRound = roomDataCache && roomDataCache.round;
     if (currentRound && currentRound.phase === 'OVER') {
       await roomRef.child('round').remove();
     }
 
-    // Tirer dès maintenant les 2 cartes initiales du joueur
     playerCards = [BlackjackEngine.drawCard(shoe), BlackjackEngine.drawCard(shoe)];
     const pEval = BlackjackEngine.evaluateHand(playerCards, false);
 
@@ -671,7 +672,6 @@
       lastActive: Date.now()
     });
 
-    // Vérifier si tous les joueurs présents à la table sont READY
     const seatsSnap = await roomRef.child('seats').once('value');
     const seats = Object.values(seatsSnap.val() || {});
     const allReady = seats.length > 0 && seats.every(s => s.status === 'READY' || s.status === 'PLAYING' || s.status === 'DONE');
@@ -686,9 +686,8 @@
     const initialDealer = [BlackjackEngine.drawCard(shoe), BlackjackEngine.drawCard(shoe)];
     const newRoundId = 'R_' + Date.now();
 
-    // Transaction pour ne créer la donne du croupier qu'une seule fois
     await roomRef.child('round').transaction((curr) => {
-      if (curr && curr.phase === 'PLAYING') return; // Déjà en cours
+      if (curr && curr.phase === 'PLAYING') return;
       return {
         id: newRoundId,
         phase: 'PLAYING',
@@ -731,7 +730,6 @@
 
     if (!everyoneDone) return;
 
-    // Le croupier tire ses cartes communes pour toute la table
     let sharedDealerCards = Array.isArray(val.round.dealerCards) ? [...val.round.dealerCards] : [BlackjackEngine.drawCard(shoe), BlackjackEngine.drawCard(shoe)];
     while (BlackjackEngine.shouldDealerHit(sharedDealerCards)) {
       sharedDealerCards.push(BlackjackEngine.drawCard(shoe));
@@ -759,7 +757,6 @@
     if (!myUser || !seatsMap[myUser.tag]) return;
     const mySeat = seatsMap[myUser.tag];
 
-    // 1. La manche commune vient de démarrer ('PLAYING')
     if (round && round.phase === 'PLAYING') {
       dealerCards = round.dealerCards || [];
 
@@ -787,7 +784,6 @@
       }
     }
 
-    // 2. La manche commune est terminée ('OVER') : le croupier a tiré ses cartes
     if (round && round.phase === 'OVER' && settledRoundId !== round.id) {
       if (mySeat.status === 'DONE' || mySeat.status === 'PLAYING' || mySeat.status === 'READY') {
         settledRoundId = round.id;
@@ -859,7 +855,7 @@
   }
 
   /* =========================================================
-     6. TIMER AFK 60 SECONDES & RENDU DES CARTES
+     6. TIMER AFK 60 SECONDES & RENDU DES CARTES & SCORES DYNAMIQUES
      ========================================================= */
   function startAfkTimer() {
     stopAfkTimer();
@@ -902,6 +898,23 @@
     if (box) box.classList.add('hidden');
   }
 
+  function applyDynamicScoreBadgeStyle(badgeEl, evalObj) {
+    if (!badgeEl) return;
+    badgeEl.className = 'bj-score-badge';
+    
+    if (evalObj.isBlackjack) {
+      badgeEl.classList.add('blackjack');
+    } else if (evalObj.isBust) {
+      badgeEl.classList.add('bust');
+    } else if (evalObj.total === 21) {
+      badgeEl.classList.add('win');
+    } else if (evalObj.total >= 17 && evalObj.total <= 20) {
+      badgeEl.classList.add('strong');
+    } else if (evalObj.total > 0) {
+      badgeEl.classList.add('neutral');
+    }
+  }
+
   function renderTable() {
     const dealerContainer = document.getElementById('dealerCardsContainer');
     const playerContainer = document.getElementById('playerHandCardsContainer');
@@ -921,21 +934,17 @@
           }
           return renderCardHtml(c);
         }).join('')
-      : `<span class="text-xs font-bold text-emerald-200/70 italic">En attente de mise...</span>`;
+      : `<div class="bj-card-placeholder"></div><div class="bj-card-placeholder"></div>`;
 
     dealerScore.textContent = dEval.label;
-    dealerScore.className = 'bj-score-badge';
-    if (dEval.isBlackjack) dealerScore.classList.add('blackjack');
-    else if (dEval.isBust) dealerScore.classList.add('bust');
+    applyDynamicScoreBadgeStyle(dealerScore, dEval);
 
     playerContainer.innerHTML = playerCards.length > 0
       ? playerCards.map(c => renderCardHtml(c)).join('')
-      : `<span class="text-xs font-bold text-emerald-200/70 italic">—</span>`;
+      : `<div class="bj-card-placeholder"></div><div class="bj-card-placeholder"></div>`;
 
     playerScore.textContent = pEval.label;
-    playerScore.className = 'bj-score-badge';
-    if (pEval.isBlackjack) playerScore.classList.add('blackjack');
-    else if (pEval.isBust) playerScore.classList.add('bust');
+    applyDynamicScoreBadgeStyle(playerScore, pEval);
 
     if (gameState === 'BETTING') setStatusBanner('Clique sur les jetons pour miser !');
     else if (gameState === 'PLAYING') setStatusBanner('À toi de jouer : Tire, Reste ou Double !');
@@ -992,29 +1001,64 @@
   }
 
   /* =========================================================
-     7. CHAT DE LA TABLE (SANS ANNONCES BIG WINS)
+     7. CHAT DE LA TABLE AVEC FILTRE ANTI-SPAM ROULETTE
      ========================================================= */
+  function toggleRouletteFilter() {
+    const checkbox = document.getElementById('toggleFilterRoulette');
+    if (checkbox) {
+      filterRouletteChat = checkbox.checked;
+    }
+    // Relancer l'écouteur/affichage avec la dernière snapshot en cache si disponible
+    if (listenCasinoChat._lastData) {
+      renderChatMessages(listenCasinoChat._lastData);
+    }
+  }
+
   function listenCasinoChat() {
     const container = document.getElementById('casinoTableChatList');
     if (!container) return;
 
-    db.ref('casino/chat').limitToLast(25).on('value', (snap) => {
+    db.ref('casino/chat').limitToLast(35).on('value', (snap) => {
       const data = snap.val();
-      if (!data) {
-        container.innerHTML = `<p class="text-[11px] font-bold text-slate-400 text-center py-4">Aucun message à la table.</p>`;
-        return;
-      }
-      const messages = Object.values(data).reverse();
-      container.innerHTML = messages.map(m => `
-        <div class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
-          <div class="flex items-center justify-between">
-            <span class="font-black text-[#12131a]">${m.avatar || '🍺'} ${GameShell.escapeHtml(m.nickname)}</span>
-            <span class="text-[9px] font-mono text-slate-400">${m.time || ''}</span>
-          </div>
-          <p class="font-bold text-slate-700 break-words leading-snug">${GameShell.escapeHtml(m.text)}</p>
-        </div>
-      `).join('');
+      listenCasinoChat._lastData = data;
+      renderChatMessages(data);
     });
+  }
+
+  function renderChatMessages(data) {
+    const container = document.getElementById('casinoTableChatList');
+    if (!container) return;
+
+    if (!data) {
+      container.innerHTML = `<p class="text-[11px] font-bold text-slate-400 text-center py-4">Aucun message à la table.</p>`;
+      return;
+    }
+
+    let messages = Object.values(data).reverse();
+
+    // Application du filtre anti-spam Roulette si activé
+    if (filterRouletteChat) {
+      messages = messages.filter(m => {
+        const txt = (m.text || '').toLowerCase();
+        const isRouletteSpam = txt.includes('roulette') || txt.includes('rafler') || txt.includes('numéro');
+        return !isRouletteSpam;
+      });
+    }
+
+    if (messages.length === 0) {
+      container.innerHTML = `<p class="text-[11px] font-bold text-slate-400 text-center py-4">Aucun message de table (annonces roulette filtrées).</p>`;
+      return;
+    }
+
+    container.innerHTML = messages.map(m => `
+      <div class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
+        <div class="flex items-center justify-between">
+          <span class="font-black text-[#12131a]">${m.avatar || '🍺'} ${GameShell.escapeHtml(m.nickname)}</span>
+          <span class="text-[9px] font-mono text-slate-400">${m.time || ''}</span>
+        </div>
+        <p class="font-bold text-slate-700 break-words leading-snug">${GameShell.escapeHtml(m.text)}</p>
+      </div>
+    `).join('');
   }
 
   function sendCasinoChatMessage(event) {
@@ -1079,6 +1123,7 @@
     switchToSolo,
     useAtmInGame,
     toggleSound: () => { soundEnabled = !soundEnabled; showToast(soundEnabled ? 'Son ON' : 'Muet', '🔊'); },
+    toggleRouletteFilter,
     sendCasinoChatMessage
   };
 })();
